@@ -161,7 +161,7 @@ export default function DashboardPage() {
           <ActionButton href="/products"   label="Products" />
           <ActionButton href="/orders"     label="Orders" />
           {role !== UserRole.CUSTOMER && <ActionButton href="/inventory"  label="Inventory" />}
-          {role !== UserRole.CUSTOMER && <ActionButton href="/purchase-orders" label="進貨" />}
+          {role !== UserRole.CUSTOMER && <ActionButton href="/purchase-orders" label="Purchase" />}
           {role === UserRole.ADMIN        && <ActionButton href="/users"      label="Users" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/financials" label="Financials" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/warehouse"  label="Warehouse" />}
