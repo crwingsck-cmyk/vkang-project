@@ -222,7 +222,7 @@ export default function InventoryPage() {
   const [stockists, setStockists] = useState<User[]>([]);
   const [userMap, setUserMap] = useState<Record<string, User>>({});
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<InventoryStatus | ''>('');
+  const [filterStatus, setFilterStatus] = useState<InventoryStatus | 'has_stock' | ''>('has_stock');
   const [filterStockist, setFilterStockist] = useState('');
   const [adjustItem, setAdjustItem] = useState<Inventory | null>(null);
   const [editItem, setEditItem] = useState<Inventory | null>(null);
@@ -252,9 +252,11 @@ export default function InventoryPage() {
           ? await InventoryService.getAll()
           : await InventoryService.getByUser(user?.id ?? firebaseUser?.uid ?? '');
 
-      const filtered = filterStatus
-        ? data.filter((item) => item.status === filterStatus)
-        : data;
+      const filtered = !filterStatus
+        ? data
+        : filterStatus === 'has_stock'
+          ? data.filter((item) => item.status !== InventoryStatus.OUT_OF_STOCK)
+          : data.filter((item) => item.status === filterStatus);
 
       setInventory(filtered);
     } catch (error) {
@@ -349,10 +351,11 @@ export default function InventoryPage() {
             )}
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as InventoryStatus | '')}
+              onChange={(e) => setFilterStatus(e.target.value as InventoryStatus | 'has_stock' | '')}
               className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
             >
-              <option value="">All Status</option>
+              <option value="has_stock">有庫存</option>
+              <option value="">全部</option>
               <option value={InventoryStatus.IN_STOCK}>In Stock</option>
               <option value={InventoryStatus.LOW_STOCK}>Low Stock</option>
               <option value={InventoryStatus.OUT_OF_STOCK}>Out of Stock</option>
