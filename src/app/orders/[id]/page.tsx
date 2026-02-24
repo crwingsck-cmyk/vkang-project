@@ -18,7 +18,7 @@ const statusColors: Record<TransactionStatus, string> = {
 
 export default function OrderDetailPage() {
   const params = useParams();
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const toast = useToast();
   const orderId = (params?.id ?? '') as string;
 
@@ -30,13 +30,30 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     loadOrder();
-  }, [orderId]);
+  }, [orderId, user?.id, role]);
 
   async function loadOrder() {
     setLoading(true);
+    setError('');
     try {
       const data = await OrderService.getById(orderId);
-      if (!data) { setError('Order not found.'); return; }
+      if (!data) {
+        setError('Order not found.');
+        return;
+      }
+      // 權限檢查：CUSTOMER 只能看自己為買方的訂單，STOCKIST 只能看自己為賣方的訂單，ADMIN 可看全部
+      const currentUserId = user?.id;
+      if (role === UserRole.CUSTOMER) {
+        if (!currentUserId || data.toUser?.userId !== currentUserId) {
+          setError('您沒有權限查看此訂單。');
+          return;
+        }
+      } else if (role === UserRole.STOCKIST) {
+        if (!currentUserId || data.fromUser?.userId !== currentUserId) {
+          setError('您沒有權限查看此訂單。');
+          return;
+        }
+      }
       setOrder(data);
     } catch {
       setError('Failed to load order.');
