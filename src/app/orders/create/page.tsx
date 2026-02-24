@@ -15,7 +15,8 @@ export default function CreateOrderPage() {
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [buyerOptions, setBuyerOptions] = useState<User[]>([]); // 買方選項：STOCKIST 時僅顯示下線
   const [stockists, setStockists] = useState<User[]>([]);
   const [admins, setAdmins] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
@@ -36,10 +37,18 @@ export default function CreateOrderPage() {
 
   useEffect(() => {
     ProductService.getAll().then(setProducts).catch(console.error);
-    UserService.getAll().then(setCustomers).catch(console.error);
+    UserService.getAll().then(setAllUsers).catch(console.error);
     UserService.getStockists().then(setStockists).catch(console.error);
     UserService.getAdmins().then(setAdmins).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (role === UserRole.STOCKIST && (user?.id ?? firebaseUser?.uid)) {
+      UserService.getChildren(user?.id ?? firebaseUser?.uid!).then(setBuyerOptions).catch(() => setBuyerOptions([]));
+    } else {
+      setBuyerOptions(allUsers);
+    }
+  }, [role, user?.id, firebaseUser?.uid, allUsers]);
 
   useEffect(() => {
     if (role === UserRole.STOCKIST && user?.id) {
@@ -96,9 +105,13 @@ export default function CreateOrderPage() {
     const fromUser = role === UserRole.ADMIN
       ? (admins.find((a) => a.id === fromUserId) || stockists.find((s) => s.id === fromUserId) || (fromUserId === adminId ? { id: adminId, displayName: user?.displayName || 'Admin' } : null))
       : user;
-    const toUser = customers.find((c) => c.id === toUserId);
+    const toUser = allUsers.find((u) => u.id === toUserId);
     if (!fromUser) { setError('找不到所選經銷商。'); return; }
-    if (!toUser) { setError('找不到所選顧客。'); return; }
+    if (!toUser) { setError('找不到所選買方。'); return; }
+    if (toUser.parentUserId && fromUser?.id !== toUser.parentUserId) {
+      setError('買方只能向直屬上線下單，請選擇正確的賣方。');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -145,7 +158,7 @@ export default function CreateOrderPage() {
 
         <div>
           <h1 className="text-3xl font-bold text-gray-900">建立訂單</h1>
-          <p className="text-gray-400 mt-1">建立銷售訂單（經銷商 → 顧客）</p>
+          <p className="text-gray-400 mt-1">建立銷售訂單（上線 → 下線，下線僅能向直屬上線下單）</p>
         </div>
 
         {error && (
@@ -188,24 +201,24 @@ export default function CreateOrderPage() {
                   onChange={(e) => setFromUserId(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
                 >
-                  <option value="">請選擇...</option>
-                  {(user?.id ?? firebaseUser?.uid) && (
-                    <option value={user?.id ?? firebaseUser?.uid}>
-                      tan sun sun（總經銷商）
-                    </option>
-                  )}
-                  {admins.filter((a) => a.id !== (user?.id ?? firebaseUser?.uid)).map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.displayName} (總經銷商)
-                    </option>
-                  ))}
-                  {stockists.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.displayName} (經銷商)
-                    </option>
-                  ))}
+                  <option value="">{toUserId ? '請選擇賣方...' : '請先選擇買方'}</option>
+                  {(() => {
+                    const toUser = allUsers.find((u) => u.id === toUserId);
+                    const allowed = toUser?.parentUserId
+                      ? [...admins, ...stockists].filter((s) => s.id === toUser.parentUserId)
+                      : [...admins, ...stockists];
+                    return allowed.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.displayName} {s.role === UserRole.ADMIN ? '（總經銷商）' : '（經銷商）'}
+                      </option>
+                    ));
+                  })()}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">選擇賣方，庫存將從該帳戶扣減。總經銷商 = Admin；經銷商 = Stockist</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {allUsers.find((u) => u.id === toUserId)?.parentUserId
+                    ? '買方有上線時，賣方僅能為其直屬上線'
+                    : '買方無上線時，可選任一賣方'}
+                </p>
               </div>
             )}
 
@@ -215,23 +228,23 @@ export default function CreateOrderPage() {
               </label>
               <select
                 value={toUserId}
-                onChange={(e) => setToUserId(e.target.value)}
+                onChange={(e) => {
+                  setToUserId(e.target.value);
+                  const selected = allUsers.find((u) => u.id === e.target.value);
+                  if (role === UserRole.ADMIN && selected?.parentUserId) setFromUserId(selected.parentUserId);
+                }}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
               >
-                <option value="">請選擇顧客...</option>
-                {role === UserRole.ADMIN && (user?.id ?? firebaseUser?.uid) && (
-                  <option value={user?.id ?? firebaseUser?.uid}>
-                    tan sun sun
-                  </option>
-                )}
-                {customers
-                  .filter((c) => !(role === UserRole.ADMIN && c.id === (user?.id ?? firebaseUser?.uid)))
-                  .map((c) => (
+                <option value="">請選擇買方（下線）...</option>
+                {buyerOptions.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.displayName}
+                      {c.displayName} {c.role === UserRole.STOCKIST ? '（經銷商）' : c.role === UserRole.ADMIN ? '（總經銷商）' : '（顧客）'}
                     </option>
                   ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {role === UserRole.STOCKIST ? '僅顯示您的直屬下線，下線必須向您（上線）下單' : '選擇買方後，賣方將限制為其直屬上線'}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -24,15 +24,6 @@ const features: Feature[] = [
     href: '/products',
   },
   {
-    badge: 'STOCK',
-    badgeColor: 'text-success bg-success/10 border-success/20',
-    title: 'Inventory Control',
-    desc: 'Real-time stock levels across all warehouse locations with automatic inbound and outbound tracking.',
-    detail: 'Every stockist maintains their own inventory ledger linked to the master product catalog. Stock levels update automatically as orders are fulfilled. The system flags items approaching low-stock thresholds and provides full inbound/outbound history for any SKU at any warehouse.',
-    tags: ['Real-time', 'Multi-warehouse', 'Auto-sync', 'Low Stock Alerts'],
-    href: '/inventory',
-  },
-  {
     badge: 'ORDERS',
     badgeColor: 'text-accent-text bg-accent-muted border-accent/20',
     title: 'Order Management',

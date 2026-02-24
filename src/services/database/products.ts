@@ -21,10 +21,19 @@ export const ProductService = {
   },
 
   /**
-   * Get a product by ID (SKU)
+   * Get a product by ID (document ID) or SKU
+   * 先以 document ID 查詢，若無則以 SKU 查詢（含已軟刪除）
    */
   async getById(id: string) {
-    return FirestoreService.get<Product>(COLLECTION, id);
+    let result = await FirestoreService.get<Product>(COLLECTION, id);
+    if (!result) {
+      const results = await FirestoreService.query<Product>(COLLECTION, [
+        where('sku', '==', id),
+        firestoreLimit(1),
+      ]);
+      result = results[0] ?? null;
+    }
+    return result;
   },
 
   /**

@@ -110,12 +110,13 @@ export default function ProductDetailPage() {
         setSaving(false);
         return;
       }
+      const docId = product?.id ?? productId;
       const packsPerBoxVal = (() => {
         const raw = String(form.packsPerBox || '').trim();
         const num = raw ? parseInt(raw.replace(/\D/g, ''), 10) : undefined;
         return num && num > 0 ? num : undefined;
       })();
-      const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, {
+      const res = await fetch(`/api/products/${encodeURIComponent(docId)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,8 @@ export default function ProductDetailPage() {
     if (!confirm(`確定要刪除「${product?.name}」嗎？此操作無法復原。`)) return;
     setDeleting(true);
     try {
-      await ProductService.delete(productId);
+      const docId = product?.id ?? productId;
+      await ProductService.delete(docId);
       router.push('/products');
     } catch (err) {
       setError('Failed to delete product.');

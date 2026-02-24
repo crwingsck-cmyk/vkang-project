@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { InventoryService } from '@/services/database/inventory';
 import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType, InventoryStatus } from '@/types/models';
+import { User, UserRole, TransactionType, TransactionStatus, InventoryStatus } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -50,13 +50,13 @@ function DistributorCard({
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">訂單數</p>
+          <p className="text-xs text-gray-300">待處理訂單</p>
           <p className="text-sm font-semibold text-white tabular-nums">
             {stats.orderCount}
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">低庫存</p>
+          <p className="text-xs text-gray-300">現有庫存</p>
           <p
             className={`text-sm font-semibold tabular-nums ${
               stats.lowStock > 0 ? 'text-amber-300' : 'text-white'
@@ -93,10 +93,11 @@ export default function StockistsPage() {
         0
       );
       const sales = orders.filter((o) => o.transactionType === TransactionType.SALE);
+      const pendingSales = sales.filter((o) => o.status === TransactionStatus.PENDING);
       const lowStock = inv.filter(
         (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
       ).length;
-      return { invValue, orderCount: sales.length, lowStock };
+      return { invValue, orderCount: pendingSales.length, lowStock };
     } catch {
       return { invValue: 0, orderCount: 0, lowStock: 0 };
     }

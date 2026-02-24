@@ -29,9 +29,14 @@ export async function GET(
     }
 
     const db = getAdminDb();
-    const docSnap = await db.collection('products').doc(id).get();
+    let docSnap = await db.collection('products').doc(id).get();
     if (!docSnap.exists) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      const bySku = await db.collection('products').where('sku', '==', id).limit(1).get();
+      if (!bySku.empty) {
+        docSnap = bySku.docs[0];
+      } else {
+        return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      }
     }
 
     const data = docSnap.data();
@@ -74,11 +79,16 @@ export async function PATCH(
 
     const body = await request.json();
     const db = getAdminDb();
-    const docRef = db.collection('products').doc(id);
-    const docSnap = await docRef.get();
+    let docSnap = await db.collection('products').doc(id).get();
     if (!docSnap.exists) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      const bySku = await db.collection('products').where('sku', '==', id).limit(1).get();
+      if (!bySku.empty) {
+        docSnap = bySku.docs[0];
+      } else {
+        return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      }
     }
+    const docRef = db.collection('products').doc(docSnap.id);
 
     const updates: Record<string, unknown> = {
       updatedAt: Date.now(),

@@ -136,19 +136,13 @@ export default function StockistDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">訂單數</p>
-                  <p className="text-xl font-bold text-white tabular-nums mt-1">
-                    {orders.length}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-chip-dark p-4">
                   <p className="text-xs text-gray-300">待處理訂單</p>
-                  <p className="text-xl font-bold text-amber-300 tabular-nums mt-1">
+                  <p className="text-xl font-bold text-white tabular-nums mt-1">
                     {pendingOrders}
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">低庫存品項</p>
+                  <p className="text-xs text-gray-300">現有庫存品項</p>
                   <p
                     className={`text-xl font-bold tabular-nums mt-1 ${
                       lowStockCount > 0 ? 'text-amber-300' : 'text-white'

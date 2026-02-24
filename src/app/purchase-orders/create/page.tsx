@@ -7,7 +7,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PurchaseOrderService } from '@/services/database/purchaseOrders';
 import { ProductService } from '@/services/database/products';
 import { UserService } from '@/services/database/users';
-import { Product, User, UserRole, PurchaseOrderItem } from '@/types/models';
+import { OrderService } from '@/services/database/orders';
+import { Product, User, UserRole, PurchaseOrderItem, TransactionType, TransactionStatus } from '@/types/models';
 import Link from 'next/link';
 
 export default function CreatePurchaseOrderPage() {
@@ -80,6 +81,42 @@ export default function CreatePurchaseOrderPage() {
       ...prev,
       { productId: '', productName: '', quantity: 1, unitCost: 0 },
     ]);
+  }
+
+  async function loadFromPendingOrders() {
+    const targetId = role === UserRole.ADMIN ? userId : (user?.id ?? firebaseUser?.uid);
+    if (!targetId) return;
+    try {
+      const orders = await OrderService.getByFromUser(targetId, 100);
+      const pending = orders.filter(
+        (o) => o.transactionType === TransactionType.SALE && o.status === TransactionStatus.PENDING
+      );
+      const agg: Record<string, { productId: string; productName: string; quantity: number }> = {};
+      for (const o of pending) {
+        for (const it of o.items || []) {
+          if (!it.productId) continue;
+          const key = it.productId;
+          if (!agg[key]) {
+            agg[key] = { productId: it.productId, productName: it.productName || it.productId, quantity: 0 };
+          }
+          agg[key].quantity += it.quantity;
+        }
+      }
+      const loaded = Object.values(agg).map((a) => {
+        const p = products.find((x) => x.sku === a.productId);
+        return {
+          productId: a.productId,
+          productName: a.productName,
+          quantity: a.quantity,
+          unitCost: p?.costPrice ?? 0,
+        };
+      });
+      if (loaded.length > 0) {
+        setItems(loaded);
+      }
+    } catch (e) {
+      console.error('Load from orders failed:', e);
+    }
   }
 
   function removeItem(i: number) {
@@ -273,7 +310,7 @@ export default function CreatePurchaseOrderPage() {
                   type="text"
                   value={supplierName}
                   onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="請輸入供應商名稱"
+                  placeholder={role === UserRole.ADMIN ? '例如：台灣（總經銷商向台灣訂貨及進貨）' : '請輸入供應商名稱'}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -333,13 +370,22 @@ export default function CreatePurchaseOrderPage() {
           <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-200">進貨明細</h2>
-              <button
-                type="button"
-                onClick={addItem}
-                className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg"
-              >
-                + Add Item
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={loadFromPendingOrders}
+                  className="px-3 py-1 text-sm bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg"
+                >
+                  從待出貨訂單帶入
+                </button>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg"
+                >
+                  + Add Item
+                </button>
+              </div>
             </div>
             <div className="space-y-3">
               {items.map((item, i) => (
