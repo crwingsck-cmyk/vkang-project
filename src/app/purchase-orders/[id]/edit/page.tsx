@@ -24,6 +24,7 @@ export default function EditPurchaseOrderPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [poNumber, setPoNumber] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [userId, setUserId] = useState('');
   const [fromAdmin, setFromAdmin] = useState(false);
@@ -154,7 +155,9 @@ export default function EditPurchaseOrderPage() {
         unitCost: item.unitCost,
         total: item.quantity * item.unitCost,
       }));
+      const trimmedPoNumber = poNumber.trim();
       await PurchaseOrderService.update(poId, {
+        ...(trimmedPoNumber ? { poNumber: trimmedPoNumber } : {}),
         supplierName: fromAdmin ? (fromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined),
         fromUserId: fromAdmin ? fromUserId : undefined,
         userId: targetUserId,
@@ -240,6 +243,17 @@ export default function EditPurchaseOrderPage() {
               </label>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">發貨號碼</label>
+            <input
+              type="text"
+              value={poNumber}
+              onChange={(e) => setPoNumber(e.target.value)}
+              placeholder="選填，留空則維持原 PO 號碼；拿到台灣發貨號碼後可在此更新"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             {fromAdmin && role === UserRole.STOCKIST ? (

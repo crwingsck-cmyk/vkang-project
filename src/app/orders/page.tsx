@@ -154,7 +154,7 @@ export default function OrdersPage() {
               <thead className="bg-surface-2 border-b border-border">
                 <tr>
                   <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest whitespace-nowrap">日期</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest whitespace-nowrap">訂貨號碼</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest whitespace-nowrap">發貨號碼</th>
                   {role === UserRole.ADMIN && (
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">From / To</th>
                   )}

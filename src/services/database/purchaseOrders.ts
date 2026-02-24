@@ -233,7 +233,7 @@ export const PurchaseOrderService = {
    */
   async update(
     poId: string,
-    updates: Partial<Pick<PurchaseOrder, 'supplierName' | 'fromUserId' | 'userId' | 'useFifo' | 'notes' | 'items' | 'totals'>>
+    updates: Partial<Pick<PurchaseOrder, 'poNumber' | 'supplierName' | 'fromUserId' | 'userId' | 'useFifo' | 'notes' | 'items' | 'totals'>>
   ): Promise<void> {
     const po = await this.getById(poId);
     if (!po) throw new Error('進貨單不存在');

@@ -114,9 +114,11 @@ export const InventoryService = {
       status = InventoryStatus.LOW_STOCK;
     }
 
+    const newMarketValue = newQuantityOnHand * currentInventory.cost;
     return FirestoreService.update<Inventory>(COLLECTION, id, {
       quantityOnHand: newQuantityOnHand,
       quantityAvailable: newQuantityAvailable,
+      marketValue: newMarketValue,
       status,
       lastMovementDate: Date.now(),
       movements: [...(currentInventory.movements || []), movement],
@@ -183,9 +185,11 @@ export const InventoryService = {
       if (newAvailable <= 0) status = InventoryStatus.OUT_OF_STOCK;
       else if (inv.reorderLevel > 0 && newAvailable <= inv.reorderLevel)
         status = InventoryStatus.LOW_STOCK;
+      const newMarketValue = newOnHand * inv.cost;
       await this.update(inv.id, {
         quantityOnHand: newOnHand,
         quantityAvailable: newAvailable,
+        marketValue: newMarketValue,
         status,
         lastMovementDate: Date.now(),
         movements: [...(inv.movements || []), movement],

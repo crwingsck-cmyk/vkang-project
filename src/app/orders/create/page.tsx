@@ -167,7 +167,7 @@ export default function CreateOrderPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">訂貨號碼</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">發貨號碼</label>
                 <input
                   type="text"
                   value={orderNumber}

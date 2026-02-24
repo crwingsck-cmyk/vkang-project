@@ -192,7 +192,7 @@ export default function StockistDetailPage() {
                           日期
                         </th>
                         <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase whitespace-nowrap">
-                          訂貨號碼
+                          發貨號碼
                         </th>
                         <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
                           買方
