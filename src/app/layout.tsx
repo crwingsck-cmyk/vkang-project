@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${inter.variable} font-sans font-bold text-black`}>
         <AuthProvider>
           <ToastProvider>
             <ErrorBoundary>

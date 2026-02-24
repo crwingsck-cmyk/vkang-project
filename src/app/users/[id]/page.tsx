@@ -120,10 +120,10 @@ export default function UserDetailPage() {
         displayName: form.displayName.trim(),
         phoneNumber: form.phoneNumber.trim() || undefined,
         role: form.role as UserRole,
-        company: form.companyName.trim() ? { name: form.companyName.trim() } : (deleteField() as unknown),
+        company: form.companyName.trim() ? { name: form.companyName.trim() } : (deleteField() as any),
         creditLimit: form.creditLimit ? parseFloat(form.creditLimit) : undefined,
         isActive: form.isActive,
-        parentUserId: form.parentUserId.trim() || (deleteField() as unknown),
+        parentUserId: form.parentUserId.trim() || (deleteField() as any),
       });
       setSuccessMsg('使用者已更新。');
       setIsEditing(false);
