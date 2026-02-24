@@ -164,7 +164,7 @@ export default function ProductsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <Link
                             href={`/products/${product.sku}`}
-                            className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded transition-colors"
+                            className="px-2 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded transition-colors"
                             title="修改"
                           >
                             修改

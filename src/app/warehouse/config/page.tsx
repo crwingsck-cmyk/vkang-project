@@ -221,7 +221,7 @@ export default function WarehouseConfigPage() {
                         <td className="px-6 py-4 text-center">
                           <button
                             onClick={() => startEdit(s)}
-                            className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded"
+                            className="px-3 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded"
                           >
                             修改
                           </button>

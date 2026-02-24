@@ -160,17 +160,9 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-center">
-                      {user.role === UserRole.STOCKIST && (
-                        <Link
-                          href={`/stockists/${user.id || user.email}`}
-                          className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-accent/20 hover:bg-accent/30 text-accent-text border border-accent/40 rounded-md transition-colors uppercase tracking-wider mr-1"
-                        >
-                          營運
-                        </Link>
-                      )}
                       <Link
                         href={`/users/${user.id || user.email}`}
-                        className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-md transition-colors uppercase tracking-wider"
+                        className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-md transition-colors uppercase tracking-wider"
                       >
                         修改
                       </Link>

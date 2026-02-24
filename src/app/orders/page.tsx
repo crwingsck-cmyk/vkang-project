@@ -193,7 +193,7 @@ export default function OrdersPage() {
                       <div className="flex items-center justify-center gap-2">
                         <Link
                           href={`/orders/${order.id}`}
-                          className="inline-block px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg transition-colors"
+                          className="inline-block px-3 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-lg transition-colors"
                         >
                           修改
                         </Link>

@@ -149,7 +149,7 @@ export default function ProductDetailPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setIsEditing(true); setSuccessMsg(''); setError(''); }}
-                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg text-sm"
+                    className="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-lg text-sm"
                   >
                     修改
                   </button>
