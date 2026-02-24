@@ -26,7 +26,7 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
   return (
-    <aside className="w-60 border-r border-border bg-surface-base hidden sm:flex sm:flex-col">
+    <aside className="w-52 border-r border-border bg-surface-base hidden sm:flex sm:flex-col shrink-0">
       <nav className="p-2 space-y-0.5 flex-1 pt-3">
         {visibleItems.map((item) => {
           const isActive = pathname === item.href || (pathname?.startsWith(item.href + '/') ?? false);

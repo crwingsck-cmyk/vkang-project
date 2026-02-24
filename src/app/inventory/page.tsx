@@ -60,7 +60,7 @@ function EditModal({
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        {error && <div className="bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg text-xs">{error}</div>}
+        {error && <div className="msg-error px-3 py-2 text-xs">{error}</div>}
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-txt-secondary mb-1.5">補貨點 (Reorder Level)</label>
@@ -159,7 +159,7 @@ function AdjustModal({
         </div>
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg text-xs">{error}</div>
+          <div className="msg-error px-3 py-2 text-xs">{error}</div>
         )}
 
         <form onSubmit={handleAdjust} className="space-y-4">
@@ -265,9 +265,9 @@ export default function InventoryPage() {
   }
 
   const statusBadge: Record<InventoryStatus, string> = {
-    [InventoryStatus.IN_STOCK]:     'bg-success/10 text-success border border-success/20',
-    [InventoryStatus.LOW_STOCK]:    'bg-warning/10 text-warning border border-warning/20',
-    [InventoryStatus.OUT_OF_STOCK]: 'bg-error/10 text-error border border-error/20',
+    [InventoryStatus.IN_STOCK]:     'bg-chip-cyan text-gray-800 border border-cyan-200',
+    [InventoryStatus.LOW_STOCK]:    'bg-chip-yellow text-gray-800 border border-amber-200',
+    [InventoryStatus.OUT_OF_STOCK]: 'bg-chip-dark text-white border border-chip-dark',
   };
 
   const totalValue    = inventory.reduce((sum, item) => sum + (item.marketValue ?? item.cost * item.quantityOnHand), 0);
@@ -308,36 +308,36 @@ export default function InventoryPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-blue-50 border-blue-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total Value</p>
             <p className="text-2xl font-bold tabular-nums text-txt-primary">USD {totalValue.toFixed(0)}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-green-50 border-green-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">In Stock</p>
             <p className="text-2xl font-bold tabular-nums text-success">{inStockCount}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-amber-50 border-amber-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Low Stock</p>
             <p className="text-2xl font-bold tabular-nums text-warning">{lowStockCount}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-red-50 border-red-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Out of Stock</p>
             <p className="text-2xl font-bold tabular-nums text-error">{outCount}</p>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between gap-3 bg-surface-1 border border-border rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between gap-3 glass-panel px-4 py-3">
           <div className="flex items-center gap-3 flex-wrap">
             {role === UserRole.ADMIN && (
               <select
                 value={filterStockist}
                 onChange={(e) => setFilterStockist(e.target.value)}
-                className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+                className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent name-lowercase"
               >
                 <option value="">All</option>
                 {(user?.id ?? firebaseUser?.uid) && (
-                  <option value={user?.id ?? firebaseUser?.uid}>Myself (Admin)</option>
+                  <option value={user?.id ?? firebaseUser?.uid}>tan sun sun (Admin)</option>
                 )}
                 {stockists.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -376,7 +376,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center p-10">
               <p className="text-txt-subtle text-sm">Loading inventory...</p>
@@ -392,13 +392,16 @@ export default function InventoryPage() {
                   {role === UserRole.ADMIN && !filterStockist && (
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">經銷商</th>
                   )}
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Product</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[5.5rem]">Product</th>
                   <th className="px-5 py-3 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">On Hand</th>
                   <th className="px-5 py-3 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Available</th>
                   <th className="px-5 py-3 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Reorder Lvl</th>
-                  <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Status</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[5.5rem]">Status</th>
                   <th className="px-5 py-3 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Value</th>
-                  <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">成本方式</th>
+                  <th className="cost-method-cell px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[4rem]">
+                    <span className="block whitespace-nowrap">成本</span>
+                    <span className="block whitespace-nowrap">方式</span>
+                  </th>
                   <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
@@ -409,13 +412,13 @@ export default function InventoryPage() {
                       <td className="px-5 py-3.5 text-xs text-txt-subtle">
                         <Link
                           href={`/stockists/${item.userId}`}
-                          className="text-accent-text hover:underline"
+                          className="text-accent-text hover:underline name-lowercase"
                         >
                           {userMap[item.userId]?.displayName || item.userId}
                         </Link>
                       </td>
                     )}
-                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono">
+                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono whitespace-nowrap">
                       {item.productId}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-txt-secondary text-right tabular-nums">
@@ -427,22 +430,29 @@ export default function InventoryPage() {
                     <td className="px-5 py-3.5 text-xs text-txt-subtle text-right tabular-nums">
                       {item.reorderLevel}
                     </td>
-                    <td className="px-5 py-3.5 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusBadge[item.status]}`}>
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shrink-0 ${statusBadge[item.status]}`}>
                         {item.status}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-xs text-txt-secondary text-right tabular-nums">
                       USD {item.cost.toFixed(2)}
                     </td>
-                    <td className="px-5 py-3.5 text-center text-xs text-txt-subtle">
-                      {item.costingMethod === CostingMethod.FIFO ? 'FIFO' : '加權平均'}
+                    <td className="cost-method-cell px-5 py-3.5 text-center text-xs text-txt-subtle min-w-[4rem]">
+                      {item.costingMethod === CostingMethod.FIFO ? (
+                        'FIFO'
+                      ) : (
+                        <span className="inline-block text-center">
+                          <span className="block whitespace-nowrap">加權</span>
+                          <span className="block whitespace-nowrap">平均</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => setEditItem(item)}
-                          className="px-3 py-1 text-xs bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent-text rounded-lg transition-colors"
+                          className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg transition-colors"
                         >
                           修改
                         </button>

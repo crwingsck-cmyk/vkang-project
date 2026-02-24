@@ -27,6 +27,10 @@ export default function CreatePurchaseOrderPage() {
   const [fromUserId, setFromUserId] = useState('');
   const [useFifo, setUseFifo] = useState(false);
   const [notes, setNotes] = useState('');
+  const [orderDate, setOrderDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [poNumber, setPoNumber] = useState('');
   const [items, setItems] = useState<
     { productId: string; productName: string; quantity: number; unitCost: number }[]
   >([{ productId: '', productName: '', quantity: 1, unitCost: 0 }]);
@@ -135,6 +139,7 @@ export default function CreatePurchaseOrderPage() {
         unitCost: item.unitCost,
         total: item.quantity * item.unitCost,
       }));
+      const createdAt = new Date(orderDate).setHours(0, 0, 0, 0);
       await PurchaseOrderService.create({
         supplierName: fromAdmin ? (fromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined),
         fromUserId: fromAdmin ? fromUserId : undefined,
@@ -147,6 +152,8 @@ export default function CreatePurchaseOrderPage() {
         },
         notes: notes.trim() || undefined,
         createdBy: user.id,
+        poNumber: poNumber.trim() || undefined,
+        createdAt,
       });
       router.push('/purchase-orders');
     } catch (err) {
@@ -160,7 +167,7 @@ export default function CreatePurchaseOrderPage() {
 
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST]}>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link
             href="/purchase-orders"
@@ -171,20 +178,44 @@ export default function CreatePurchaseOrderPage() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">新增進貨單</h1>
+          <h1 className="text-3xl font-bold text-gray-900">新增進貨單</h1>
           <p className="text-gray-400 mt-1">建立批次進貨，每批可設定不同成本</p>
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="msg-error px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
 
         <form
           onSubmit={handleSubmit}
-          className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4"
+          className="space-y-4"
         >
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-200">進貨單</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">進貨日期</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">進貨號碼</label>
+                <input
+                  type="text"
+                  value={poNumber}
+                  onChange={(e) => setPoNumber(e.target.value)}
+                  placeholder="選填，留空則自動產生（如 PO-20260224-001）"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
           {role === UserRole.STOCKIST && (
             <div className="flex items-center gap-2 mb-4">
               <input
@@ -213,19 +244,19 @@ export default function CreatePurchaseOrderPage() {
                 <select
                   value={fromUserId}
                   onChange={(e) => setFromUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
                 >
                   <option value="">請選擇</option>
                   {recipientUser?.parentUserId && (
                     <option value={recipientUser.parentUserId}>
-                      上線：{parentUser?.displayName || parentUser?.email || recipientUser.parentUserId}
+                      上線：{parentUser?.displayName || recipientUser.parentUserId}
                     </option>
                   )}
                   {admins
                     .filter((a) => a.id !== recipientUser?.parentUserId)
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.displayName} ({a.email})
+                        {a.displayName}
                       </option>
                     ))}
                 </select>
@@ -236,18 +267,15 @@ export default function CreatePurchaseOrderPage() {
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {role === UserRole.ADMIN ? '供應商（如：台灣總部）' : '供應商名稱'}
+                  供應商
                 </label>
                 <input
                   type="text"
                   value={supplierName}
                   onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder={role === UserRole.ADMIN ? '請輸入供應商名稱，如：台灣總部' : '選填（外部供應商）'}
+                  placeholder="請輸入供應商名稱"
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
-                {role === UserRole.ADMIN && (
-                  <p className="text-xs text-gray-500 mt-1">向台灣或外部供應商進貨，收貨後庫存將加入所選收貨人</p>
-                )}
               </div>
             )}
             {role === UserRole.ADMIN && (
@@ -258,76 +286,72 @@ export default function CreatePurchaseOrderPage() {
                 <select
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
                 >
                   <option value="">請選擇</option>
                   {(user?.id ?? firebaseUser?.uid) && (
                     <option value={user?.id ?? firebaseUser?.uid!}>
-                      我自己（馬來西亞總經銷商）
+                      tan sun sun（馬來西亞總經銷商）
                     </option>
                   )}
                   {stockists.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.displayName} ({s.email})
+                      {s.displayName}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">選「我自己」= 向台灣進貨；選經銷商 = 出貨給下線</p>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="useFifo"
-              checked={useFifo}
-              onChange={(e) => setUseFifo(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
-            />
-            <label htmlFor="useFifo" className="text-sm text-gray-300">
-              使用 FIFO 成本計算（先進先出，可追蹤每批成本）
-            </label>
+          <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="useFifo"
+                  checked={useFifo}
+                  onChange={(e) => setUseFifo(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                />
+                <label htmlFor="useFifo" className="text-sm text-gray-300">
+                  使用 FIFO 成本計算（先進先出，可追蹤每批成本）
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">備註</label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="選填"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">備註</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="選填"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <div className="flex gap-2 mb-2">
-              <label className="block text-sm font-medium text-gray-300">
-                進貨明細
-              </label>
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-200">進貨明細</h2>
               <button
                 type="button"
                 onClick={addItem}
-                className="text-xs text-blue-400 hover:text-blue-300"
+                className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg"
               >
-                + 新增
+                + Add Item
               </button>
             </div>
             <div className="space-y-3">
               {items.map((item, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-12 gap-2 items-end bg-gray-700/50 rounded-lg p-3"
-                >
+                <div key={i} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5">
-                    <label className="block text-xs text-gray-400 mb-0.5">產品</label>
+                    {i === 0 && <label className="block text-xs text-gray-400 mb-1">產品</label>}
                     <select
                       value={item.productId}
                       onChange={(e) => updateItem(i, 'productId', e.target.value)}
-                      className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                     >
-                      <option value="">Select</option>
+                      <option value="">Select product...</option>
                       {products.map((p) => (
                         <option key={p.sku} value={p.sku}>
                           {p.name} ({p.sku})
@@ -336,7 +360,7 @@ export default function CreatePurchaseOrderPage() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-gray-400 mb-0.5">數量</label>
+                    {i === 0 && <label className="block text-xs text-gray-400 mb-1">數量</label>}
                     <input
                       type="number"
                       min="1"
@@ -344,11 +368,11 @@ export default function CreatePurchaseOrderPage() {
                       onChange={(e) =>
                         updateItem(i, 'quantity', parseInt(e.target.value) || 0)
                       }
-                      className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-gray-400 mb-0.5">單位成本</label>
+                    {i === 0 && <label className="block text-xs text-gray-400 mb-1">單位成本</label>}
                     <input
                       type="number"
                       min="0"
@@ -357,36 +381,38 @@ export default function CreatePurchaseOrderPage() {
                       onChange={(e) =>
                         updateItem(i, 'unitCost', parseFloat(e.target.value) || 0)
                       }
-                      className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
-                  <div className="col-span-2 text-sm text-gray-400">
-                    小計: {item.quantity * item.unitCost}
+                  <div className="col-span-2">
+                    {i === 0 && <label className="block text-xs text-gray-400 mb-1">小計</label>}
+                    <div className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 text-sm">
+                      USD {(item.quantity * item.unitCost).toFixed(2)}
+                    </div>
                   </div>
                   <div className="col-span-1">
                     {items.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeItem(i)}
-                        className="text-red-400 hover:text-red-300 text-xs"
+                        className="w-full px-2 py-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 rounded-lg text-sm"
                       >
-                        刪
+                        ✕
                       </button>
                     )}
                   </div>
                 </div>
               ))}
             </div>
+            <div className="border-t border-gray-700 pt-4 flex justify-end">
+              <div className="text-right">
+                <p className="text-gray-400 text-sm">Grand Total</p>
+                <p className="text-2xl font-bold text-gray-100">USD {subtotal.toFixed(2)}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-4 flex justify-between items-center">
-            <span className="text-gray-400">總計:</span>
-            <span className="text-xl font-bold text-gray-100">
-              USD {subtotal.toFixed(2)}
-            </span>
-          </div>
-
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3">
             <button
               type="submit"
               disabled={saving}

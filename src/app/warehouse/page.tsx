@@ -115,7 +115,7 @@ export default function WarehousePage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="bg-surface-1 rounded-xl border border-border p-5">
+        <div className="glass-card p-5">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-4">Quick Stats</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

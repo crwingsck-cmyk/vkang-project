@@ -70,7 +70,7 @@ export default function StockistsPage() {
             <p className="text-txt-subtle text-sm">載入中...</p>
           </div>
         ) : stockists.length === 0 ? (
-          <div className="bg-surface-1 rounded-xl border border-border p-12 text-center">
+          <div className="glass-card p-12 text-center">
             <p className="text-txt-subtle text-sm">尚無經銷商</p>
             <Link href="/users" className="mt-2 inline-block text-xs text-accent-text hover:underline">
               至使用者管理建立經銷商 →
@@ -78,17 +78,23 @@ export default function StockistsPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {stockists.map((s) => {
+            {stockists.map((s, idx) => {
               const st = stats[s.id!] ?? { invValue: 0, orderCount: 0, lowStock: 0 };
+              const cardColors = [
+                'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
+                'bg-blue-50 border-blue-200/60 hover:bg-blue-100/80',
+                'bg-red-50 border-red-200/60 hover:bg-red-100/80',
+              ];
+              const cardClass = cardColors[idx % 3];
               return (
                 <Link
                   key={s.id}
                   href={`/stockists/${s.id}`}
-                  className="block bg-surface-1 rounded-xl border border-border hover:border-accent/40 p-5 transition-colors"
+                  className={`block p-5 rounded-xl border ${cardClass} hover:border-accent/40 transition-all shadow-sm`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h2 className="font-semibold text-txt-primary">{s.displayName}</h2>
+                      <h2 className="font-semibold text-txt-primary name-lowercase">{s.displayName}</h2>
                       <p className="text-xs text-txt-subtle mt-0.5 truncate max-w-[200px]">
                         {s.email}
                       </p>
@@ -99,23 +105,23 @@ export default function StockistsPage() {
                     <span className="text-accent-text text-xs">查看 →</span>
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg bg-surface-2/50 py-2">
-                      <p className="text-[10px] text-txt-subtle uppercase">庫存價值</p>
-                      <p className="text-sm font-semibold text-txt-primary tabular-nums">
+                    <div className="rounded-lg bg-chip-dark py-2">
+                      <p className="text-xs text-gray-300">庫存價值</p>
+                      <p className="text-sm font-semibold text-white tabular-nums">
                         ${st.invValue.toFixed(0)}
                       </p>
                     </div>
-                    <div className="rounded-lg bg-surface-2/50 py-2">
-                      <p className="text-[10px] text-txt-subtle uppercase">訂單數</p>
-                      <p className="text-sm font-semibold text-txt-primary tabular-nums">
+                    <div className="rounded-lg bg-chip-dark py-2">
+                      <p className="text-xs text-gray-300">訂單數</p>
+                      <p className="text-sm font-semibold text-white tabular-nums">
                         {st.orderCount}
                       </p>
                     </div>
-                    <div className="rounded-lg bg-surface-2/50 py-2">
-                      <p className="text-[10px] text-txt-subtle uppercase">低庫存</p>
+                    <div className="rounded-lg bg-chip-dark py-2">
+                      <p className="text-xs text-gray-300">低庫存</p>
                       <p
                         className={`text-sm font-semibold tabular-nums ${
-                          st.lowStock > 0 ? 'text-warning' : 'text-txt-primary'
+                          st.lowStock > 0 ? 'text-amber-300' : 'text-white'
                         }`}
                       >
                         {st.lowStock}

@@ -9,40 +9,51 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        xs: ['0.8125rem', { lineHeight: '1.4' }],   // 13px
+        sm: ['0.9375rem', { lineHeight: '1.5' }],  // 15px
+        base: ['1rem', { lineHeight: '1.6' }],     // 16px
+        lg: ['1.125rem', { lineHeight: '1.6' }],   // 18px
+      },
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'monospace'],
       },
       colors: {
-        // Design system — Linear/Supabase inspired refined dark palette
+        // 白底黑字主題
         surface: {
-          base:    '#16161a',   // Deepest layer (page bg)
-          1:       '#1e1e26',   // Cards, panels
-          2:       '#252530',   // Elevated, hover states
-          3:       '#2d2d3a',   // Modals, dropdowns
+          base:    '#ffffff',   // 頁面背景（白）
+          1:       '#fafafa',   // 卡片、面板
+          2:       '#f5f5f5',   // 懸停、提升
+          3:       '#eeeeee',   // 彈窗、下拉
         },
         border: {
-          DEFAULT: '#27273a',   // Standard borders
-          muted:   '#1e1e2e',   // Subtle separators
-          strong:  '#3a3a50',   // Emphasized borders
+          DEFAULT: '#e5e5e5',   // 標準邊框
+          muted:   '#e0e0e0',   // 細分隔線
+          strong:  '#d4d4d4',   // 強調邊框
         },
         txt: {
-          primary:  '#e4e4e7',  // Main text
-          secondary:'#a1a1aa',  // Supporting text
-          subtle:   '#71717a',  // Labels, timestamps
-          disabled: '#52525b',  // Disabled states
+          primary:  '#171717',  // 主文字（黑）
+          secondary:'#525252',  // 輔助文字
+          subtle:   '#737373',  // 標籤、時間
+          disabled: '#a3a3a3',  // 禁用
         },
         accent: {
-          DEFAULT: '#5E6AD2',   // Linear purple-blue
-          hover:   '#6E7AE5',
-          text:    '#818cf8',   // Accent text on dark bg
-          muted:   '#1e1e3a',   // Subtle accent bg
+          DEFAULT: '#2563eb',   // 主色（藍）
+          hover:   '#1d4ed8',
+          text:    '#1d4ed8',   // Accent text
+          muted:   '#dbeafe',    // 淡藍背景
         },
-        // Keep semantic colors
-        'success': '#34d399',
-        'warning': '#fbbf24',
-        'error':   '#f87171',
-        'info':    '#60a5fa',
+        // 圓圈/四方元素：黑底白字、淡色
+        'chip-dark': '#1a1a1a',      // 黑底
+        'chip-yellow': '#fef9c3',    // 淡黃
+        'chip-cyan': '#ccfbf1',      // 淡青
+        'chip-blue': '#dbeafe',      // 淡藍
+        // 語意色（保留，用於狀態）
+        'success': '#22c55e',
+        'warning': '#eab308',
+        'error':   '#ef4444',
+        'info':    '#3b82f6',
       },
     },
   },

@@ -87,7 +87,7 @@ export default function WarehouseConfigPage() {
           </div>
         )}
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
+          <div className="msg-error px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -140,7 +140,7 @@ export default function WarehouseConfigPage() {
                   <tr key={s.id} className="hover:bg-gray-700/50">
                     {editingId === s.id ? (
                       <>
-                        <td className="px-6 py-3 text-sm text-gray-100 font-medium">{s.displayName}</td>
+                        <td className="px-6 py-3 text-sm text-gray-100 font-medium name-lowercase">{s.displayName}</td>
                         <td className="px-3 py-3">
                           <input
                             type="text"
@@ -173,7 +173,7 @@ export default function WarehouseConfigPage() {
                           USD {(s.creditUsed ?? 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-3 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.isActive ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.isActive ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
                             {s.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
@@ -199,7 +199,7 @@ export default function WarehouseConfigPage() {
                       <>
                         <td className="px-6 py-4 text-sm">
                           <div>
-                            <p className="text-gray-100 font-medium">{s.displayName}</p>
+                            <p className="text-gray-100 font-medium name-lowercase">{s.displayName}</p>
                             <p className="text-gray-500 text-xs">{s.email}</p>
                           </div>
                         </td>
@@ -214,16 +214,16 @@ export default function WarehouseConfigPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.isActive ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.isActive ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
                             {s.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button
                             onClick={() => startEdit(s)}
-                            className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+                            className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded"
                           >
-                            Edit
+                            修改
                           </button>
                         </td>
                       </>

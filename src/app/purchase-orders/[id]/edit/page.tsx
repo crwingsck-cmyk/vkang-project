@@ -187,7 +187,7 @@ export default function EditPurchaseOrderPage() {
           <Link href="/purchase-orders" className="text-gray-400 hover:text-gray-200 text-sm">
             &larr; 返回進貨單
           </Link>
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="msg-error px-4 py-3 rounded-lg">
             {error}
           </div>
         </div>
@@ -213,7 +213,7 @@ export default function EditPurchaseOrderPage() {
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="msg-error px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
@@ -253,14 +253,14 @@ export default function EditPurchaseOrderPage() {
                   <option value="">請選擇</option>
                   {recipientUser?.parentUserId && (
                     <option value={recipientUser.parentUserId}>
-                      上線：{parentUser?.displayName || parentUser?.email || recipientUser.parentUserId}
+                      上線：{parentUser?.displayName || recipientUser.parentUserId}
                     </option>
                   )}
                   {admins
                     .filter((a) => a.id !== recipientUser?.parentUserId)
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.displayName} ({a.email})
+                        {a.displayName}
                       </option>
                     ))}
                 </select>
@@ -285,17 +285,17 @@ export default function EditPurchaseOrderPage() {
                 <select
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
                 >
                   <option value="">請選擇</option>
                   {(user?.id ?? firebaseUser?.uid) && (
                     <option value={user?.id ?? firebaseUser?.uid!}>
-                      我自己（馬來西亞總經銷商）
+                      tan sun sun（馬來西亞總經銷商）
                     </option>
                   )}
                   {stockists.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.displayName} ({s.email})
+                      {s.displayName}
                     </option>
                   ))}
                 </select>

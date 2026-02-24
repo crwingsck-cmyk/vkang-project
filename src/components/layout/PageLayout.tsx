@@ -20,7 +20,7 @@ export function PageLayout({ children }: PageLayoutProps) {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative bg-white">
           <div className="px-6 py-6 lg:px-8">
             {children}
           </div>

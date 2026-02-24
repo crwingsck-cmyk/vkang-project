@@ -129,7 +129,7 @@ export default function PurchaseOrderDetailPage() {
         {loading ? (
           <div className="text-gray-400">載入中...</div>
         ) : !po ? (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="msg-error px-4 py-3 rounded-lg">
             進貨單不存在
           </div>
         ) : (
@@ -141,7 +141,7 @@ export default function PurchaseOrderDetailPage() {
                 </h1>
                 <p className="text-gray-400 mt-1">
                   狀態: {statusLabels[po.status]}
-                  {receiver && ` · 收貨人: ${receiver.displayName}`}
+                  {receiver && <> · 收貨人: <span className="name-lowercase">{receiver.displayName}</span></>}
                 </p>
               </div>
               {(isOwner || isAdmin) && (
@@ -178,7 +178,7 @@ export default function PurchaseOrderDetailPage() {
             </div>
 
             {error && (
-              <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+              <div className="msg-error px-4 py-3 rounded-lg">
                 {error}
               </div>
             )}
@@ -204,13 +204,13 @@ export default function PurchaseOrderDetailPage() {
                 </div>
                 <div>
                   <p className="text-gray-400">供應商</p>
-                  <p className="text-gray-100 font-medium">
+                  <p className="text-gray-100 font-medium name-lowercase">
                     {po.supplierName || '—'}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-400">收貨人</p>
-                  <p className="text-gray-100 font-medium">
+                  <p className="text-gray-100 font-medium name-lowercase">
                     {receiver?.displayName || po.userId}
                   </p>
                 </div>

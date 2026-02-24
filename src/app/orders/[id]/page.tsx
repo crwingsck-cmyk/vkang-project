@@ -147,7 +147,7 @@ export default function OrderDetailPage() {
         {loading ? (
           <div className="text-gray-400">Loading...</div>
         ) : error && !order ? (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
         ) : order ? (
           <>
             <div className="flex items-start justify-between">
@@ -193,7 +193,7 @@ export default function OrderDetailPage() {
             </div>
 
             {error && (
-              <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+              <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
             )}
             {successMsg && (
               <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>
@@ -205,14 +205,14 @@ export default function OrderDetailPage() {
               <div className="grid grid-cols-2 gap-6 text-sm">
                 <div>
                   <p className="text-gray-400 mb-1">From (Seller)</p>
-                  <p className="text-gray-100 font-medium">{order.fromUser?.userName || '-'}</p>
+                  <p className="text-gray-100 font-medium name-lowercase">{order.fromUser?.userName || '-'}</p>
                   {order.fromUser?.warehouse && (
                     <p className="text-gray-500">{order.fromUser.warehouse}</p>
                   )}
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">To (Customer)</p>
-                  <p className="text-gray-100 font-medium">{order.toUser?.userName || '-'}</p>
+                  <p className="text-gray-100 font-medium name-lowercase">{order.toUser?.userName || '-'}</p>
                 </div>
               </div>
             </div>

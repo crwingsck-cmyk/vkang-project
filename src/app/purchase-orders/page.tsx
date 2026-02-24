@@ -22,11 +22,11 @@ const statusLabels: Record<PurchaseOrderStatus, string> = {
 };
 
 const statusColors: Record<PurchaseOrderStatus, string> = {
-  [PurchaseOrderStatus.DRAFT]: 'bg-gray-600/30 text-gray-300',
-  [PurchaseOrderStatus.SUBMITTED]: 'bg-blue-600/30 text-blue-300',
-  [PurchaseOrderStatus.PARTIAL]: 'bg-yellow-600/30 text-yellow-300',
-  [PurchaseOrderStatus.RECEIVED]: 'bg-green-600/30 text-green-300',
-  [PurchaseOrderStatus.CANCELLED]: 'bg-red-600/30 text-red-300',
+  [PurchaseOrderStatus.DRAFT]: 'bg-chip-dark text-white border border-chip-dark',
+  [PurchaseOrderStatus.SUBMITTED]: 'bg-chip-dark text-white border border-chip-dark',
+  [PurchaseOrderStatus.PARTIAL]: 'bg-chip-dark text-white border border-chip-dark',
+  [PurchaseOrderStatus.RECEIVED]: 'bg-blue-800 text-white border border-blue-800',
+  [PurchaseOrderStatus.CANCELLED]: 'bg-red-600 text-white border border-red-600',
 };
 
 export default function PurchaseOrdersPage() {
@@ -62,6 +62,11 @@ export default function PurchaseOrdersPage() {
       userList.forEach((u) => {
         if (u.id) userMap[u.id] = u;
       });
+      // 收貨人為目前登入者時，顯示姓名而非 UID
+      const currentUserId = user?.id ?? firebaseUser?.uid;
+      if (role === UserRole.ADMIN && currentUserId && user) {
+        userMap[currentUserId] = user;
+      }
       setUsers(userMap);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入失敗');
@@ -93,11 +98,11 @@ export default function PurchaseOrdersPage() {
             <select
               value={filterStockist}
               onChange={(e) => setFilterStockist(e.target.value)}
-              className="px-3 py-1.5 bg-surface-1 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+              className="px-3 py-1.5 bg-surface-1 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent name-lowercase"
             >
               <option value="">All</option>
               {(user?.id ?? firebaseUser?.uid) && (
-                <option value={user?.id ?? firebaseUser?.uid}>Myself (Admin)</option>
+                <option value={user?.id ?? firebaseUser?.uid}>tan sun sun (Admin)</option>
               )}
               {stockists.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -125,7 +130,7 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="py-16 text-center">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3"></div>
@@ -133,7 +138,7 @@ export default function PurchaseOrdersPage() {
             </div>
           ) : error ? (
             <div className="py-16 text-center">
-              <p className="text-red-400 text-sm mb-2">{error}</p>
+              <div className="msg-error px-4 py-3 rounded-lg text-sm mb-4 inline-block">{error}</div>
               <button
                 onClick={load}
                 className="text-xs text-accent-text hover:underline"
@@ -155,7 +160,7 @@ export default function PurchaseOrdersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-base">
-                  <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
+                  <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[7.5rem]">
                     進貨單號
                   </th>
                   <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
@@ -166,7 +171,7 @@ export default function PurchaseOrdersPage() {
                       收貨人
                     </th>
                   )}
-                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
+                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[5.5rem]">
                     金額
                   </th>
                   <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
@@ -183,7 +188,7 @@ export default function PurchaseOrdersPage() {
               <tbody className="divide-y divide-border-muted">
                 {filtered.map((po) => (
                   <tr key={po.id} className="hover:bg-surface-2 transition-colors">
-                    <td className="px-5 py-3 font-mono text-xs text-accent-text">
+                    <td className="px-5 py-3 font-mono text-xs text-accent-text whitespace-nowrap">
                       <Link
                         href={`/purchase-orders/${po.id}`}
                         className="hover:underline"
@@ -191,7 +196,7 @@ export default function PurchaseOrdersPage() {
                         {po.poNumber}
                       </Link>
                     </td>
-                    <td className="px-5 py-3 text-txt-secondary">
+                    <td className="px-5 py-3 text-txt-secondary name-lowercase">
                       {po.fromUserId ? (
                         <span className="text-blue-400">上線（內部調撥）</span>
                       ) : (
@@ -199,29 +204,29 @@ export default function PurchaseOrdersPage() {
                       )}
                     </td>
                     {role === UserRole.ADMIN && (
-                      <td className="px-5 py-3 text-txt-secondary">
+                      <td className="px-5 py-3 text-txt-secondary name-lowercase">
                         {users[po.userId]?.displayName || po.userId}
                       </td>
                     )}
-                    <td className="px-5 py-3 text-txt-primary text-right tabular-nums font-medium">
+                    <td className="px-5 py-3 text-txt-primary text-right tabular-nums font-medium whitespace-nowrap">
                       USD {po.totals.grandTotal.toFixed(2)}
                     </td>
-                    <td className="px-5 py-3 text-center">
+                    <td className="px-5 py-3 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                        className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap ${
                           statusColors[po.status]
                         }`}
                       >
                         {statusLabels[po.status]}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-txt-subtle text-xs">
+                    <td className="px-5 py-3 text-txt-subtle text-xs whitespace-nowrap">
                       {po.createdAt
-                        ? new Date(po.createdAt).toLocaleString('zh-TW')
+                        ? new Date(po.createdAt).toLocaleDateString('zh-TW')
                         : '—'}
                     </td>
-                    <td className="px-5 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-5 py-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2 flex-nowrap">
                         <Link
                           href={`/purchase-orders/${po.id}`}
                           className="px-2 py-1 text-xs text-accent-text hover:underline"
@@ -231,7 +236,7 @@ export default function PurchaseOrdersPage() {
                         {(po.status === PurchaseOrderStatus.DRAFT || po.status === PurchaseOrderStatus.SUBMITTED) && (
                           <Link
                             href={`/purchase-orders/${po.id}/edit`}
-                            className="px-2 py-1 text-xs text-accent-text hover:underline"
+                            className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded transition-colors"
                           >
                             修改
                           </Link>
@@ -252,7 +257,7 @@ export default function PurchaseOrdersPage() {
                                 alert(err instanceof Error ? err.message : '刪除失敗');
                               }
                             }}
-                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                           >
                             刪除
                           </button>

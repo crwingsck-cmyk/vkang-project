@@ -122,7 +122,7 @@ function CreateLoanModal({
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-3 py-2 rounded-lg text-sm">{error}</div>
+          <div className="msg-error px-3 py-2 rounded-lg text-sm">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,7 +132,7 @@ function CreateLoanModal({
               <select
                 value={toUserId}
                 onChange={(e) => setToUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500 name-lowercase"
               >
                 <option value="">Select borrower...</option>
                 {stockists.filter((s) => s.id !== fromUser.id).map((s) => (

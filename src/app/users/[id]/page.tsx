@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { deleteField } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
@@ -45,7 +46,7 @@ export default function UserDetailPage() {
     loadUser();
   }, [userId]);
   useEffect(() => {
-    UserService.getAll().then(setAllUsers);
+    UserService.getAllForAdmin().then(setAllUsers);
   }, []);
 
   async function loadUser() {
@@ -67,8 +68,10 @@ export default function UserDetailPage() {
         isActive: data.isActive,
         parentUserId: data.parentUserId || '',
       });
-    } catch {
-      setError('Failed to load user.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`載入失敗：${msg}`);
+      console.error('Load user error:', err);
     } finally {
       setLoading(false);
     }
@@ -117,16 +120,18 @@ export default function UserDetailPage() {
         displayName: form.displayName.trim(),
         phoneNumber: form.phoneNumber.trim() || undefined,
         role: form.role as UserRole,
-        company: form.companyName.trim() ? { name: form.companyName.trim() } : undefined,
+        company: form.companyName.trim() ? { name: form.companyName.trim() } : (deleteField() as unknown),
         creditLimit: form.creditLimit ? parseFloat(form.creditLimit) : undefined,
         isActive: form.isActive,
-        parentUserId: form.parentUserId.trim() || undefined,
+        parentUserId: form.parentUserId.trim() || (deleteField() as unknown),
       });
-      setSuccessMsg('User updated successfully.');
+      setSuccessMsg('使用者已更新。');
       setIsEditing(false);
       await loadUser();
-    } catch {
-      setError('Failed to update user.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`更新失敗：${msg}`);
+      console.error('User update error:', err);
     } finally {
       setSaving(false);
     }
@@ -191,18 +196,18 @@ export default function UserDetailPage() {
         {loading ? (
           <div className="text-gray-400">Loading...</div>
         ) : error && !user ? (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
         ) : user ? (
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-100">{user.displayName}</h1>
+                <h1 className="text-3xl font-bold text-gray-100 name-lowercase">{user.displayName}</h1>
                 <p className="text-gray-400 mt-1">{user.email}</p>
                 <div className="mt-2 flex items-center gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
                     {user.role}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-900/30 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-600'}`}>
                     {user.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
@@ -217,9 +222,9 @@ export default function UserDetailPage() {
                   </Link>
                   <button
                     onClick={() => { setIsEditing(true); setSuccessMsg(''); setError(''); }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg text-sm"
                   >
-                    Edit
+                    修改
                   </button>
                   {user.isActive && (
                     <button
@@ -244,7 +249,7 @@ export default function UserDetailPage() {
             </div>
 
             {error && (
-              <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+              <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
             )}
             {successMsg && (
               <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>
@@ -327,7 +332,7 @@ export default function UserDetailPage() {
                     <option value="">無（頂層 / 總經銷商）</option>
                     {allUsers.filter((u) => u.id !== userId).map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.displayName} ({u.email}) - {u.role}
+                        <span className="name-lowercase">{u.displayName}</span> - {u.role}
                       </option>
                     ))}
                   </select>

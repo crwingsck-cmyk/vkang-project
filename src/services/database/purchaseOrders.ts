@@ -22,19 +22,25 @@ function generatePoNumber(): string {
 export const PurchaseOrderService = {
   /**
    * 建立進貨單
+   * @param po - 進貨單資料，可選 poNumber、createdAt 覆寫
    */
   async create(
-    po: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status' | 'createdAt' | 'updatedAt'>
+    input: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status' | 'createdAt' | 'updatedAt'> & {
+      poNumber?: string;
+      createdAt?: number;
+    }
   ): Promise<PurchaseOrder & { id: string }> {
-    const timestamp = Date.now();
+    const { poNumber: inputPoNumber, createdAt: inputCreatedAt, ...po } = input;
+    const timestamp = inputCreatedAt ?? Date.now();
     const items = po.items.map((item) => ({
       ...item,
       total: item.quantity * item.unitCost,
     }));
     const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+    const poNumber = (inputPoNumber?.trim() || generatePoNumber()).toUpperCase();
     const data: Omit<PurchaseOrder, 'id'> = {
       ...po,
-      poNumber: generatePoNumber(),
+      poNumber,
       status: PurchaseOrderStatus.DRAFT,
       items,
       totals: { subtotal, grandTotal: subtotal },

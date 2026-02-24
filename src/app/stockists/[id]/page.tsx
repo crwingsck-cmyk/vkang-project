@@ -101,7 +101,7 @@ export default function StockistDetailPage() {
             <p className="text-txt-subtle text-sm">載入中...</p>
           </div>
         ) : !stockist ? (
-          <div className="bg-surface-1 rounded-xl border border-border p-12 text-center">
+          <div className="glass-card p-12 text-center">
             <p className="text-txt-subtle text-sm">找不到此經銷商</p>
             <Link href="/stockists" className="mt-2 inline-block text-xs text-accent-text hover:underline">
               返回經銷商總覽
@@ -109,10 +109,10 @@ export default function StockistDetailPage() {
           </div>
         ) : (
           <>
-            <div className="bg-surface-1 rounded-xl border border-border p-6">
+            <div className="p-6 rounded-xl border border-border bg-gray-50/80 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-txt-primary">{stockist.displayName}</h1>
+                  <h1 className="text-2xl font-bold text-txt-primary name-lowercase">{stockist.displayName}</h1>
                   <p className="text-txt-subtle text-sm mt-0.5">{stockist.email}</p>
                   {stockist.company?.name && (
                     <p className="text-txt-subtle text-sm mt-0.5">{stockist.company.name}</p>
@@ -130,29 +130,29 @@ export default function StockistDetailPage() {
               </div>
 
               <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-lg bg-surface-2/50 p-4">
-                  <p className="text-[10px] text-txt-subtle uppercase tracking-widest">庫存價值</p>
-                  <p className="text-xl font-bold text-txt-primary tabular-nums mt-1">
+                <div className="rounded-lg bg-chip-dark p-4">
+                  <p className="text-xs text-gray-300">庫存價值</p>
+                  <p className="text-xl font-bold text-white tabular-nums mt-1">
                     USD {invValue.toFixed(0)}
                   </p>
                 </div>
-                <div className="rounded-lg bg-surface-2/50 p-4">
-                  <p className="text-[10px] text-txt-subtle uppercase tracking-widest">訂單數</p>
-                  <p className="text-xl font-bold text-txt-primary tabular-nums mt-1">
+                <div className="rounded-lg bg-chip-dark p-4">
+                  <p className="text-xs text-gray-300">訂單數</p>
+                  <p className="text-xl font-bold text-white tabular-nums mt-1">
                     {orders.length}
                   </p>
                 </div>
-                <div className="rounded-lg bg-surface-2/50 p-4">
-                  <p className="text-[10px] text-txt-subtle uppercase tracking-widest">待處理訂單</p>
-                  <p className="text-xl font-bold text-warning tabular-nums mt-1">
+                <div className="rounded-lg bg-chip-dark p-4">
+                  <p className="text-xs text-gray-300">待處理訂單</p>
+                  <p className="text-xl font-bold text-amber-300 tabular-nums mt-1">
                     {pendingOrders}
                   </p>
                 </div>
-                <div className="rounded-lg bg-surface-2/50 p-4">
-                  <p className="text-[10px] text-txt-subtle uppercase tracking-widest">低庫存品項</p>
+                <div className="rounded-lg bg-chip-dark p-4">
+                  <p className="text-xs text-gray-300">低庫存品項</p>
                   <p
                     className={`text-xl font-bold tabular-nums mt-1 ${
-                      lowStockCount > 0 ? 'text-warning' : 'text-txt-primary'
+                      lowStockCount > 0 ? 'text-amber-300' : 'text-white'
                     }`}
                   >
                     {lowStockCount}
@@ -181,7 +181,7 @@ export default function StockistDetailPage() {
             </div>
 
             {activeTab === 'orders' && (
-              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+              <div className="glass-panel overflow-hidden">
                 {orders.length === 0 ? (
                   <div className="p-12 text-center text-txt-subtle text-sm">尚無訂單</div>
                 ) : (
@@ -245,7 +245,7 @@ export default function StockistDetailPage() {
             )}
 
             {activeTab === 'inventory' && (
-              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+              <div className="glass-panel overflow-hidden">
                 {inventory.length === 0 ? (
                   <div className="p-12 text-center text-txt-subtle text-sm">尚無庫存</div>
                 ) : (
@@ -272,7 +272,7 @@ export default function StockistDetailPage() {
                     <tbody className="divide-y divide-border-muted">
                       {inventory.map((i) => (
                         <tr key={i.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 font-mono text-xs text-txt-primary">
+                          <td className="px-5 py-3 font-mono text-xs text-txt-primary whitespace-nowrap">
                             {i.productId}
                           </td>
                           <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
@@ -281,9 +281,9 @@ export default function StockistDetailPage() {
                           <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
                             {i.quantityAvailable}
                           </td>
-                          <td className="px-5 py-3 text-center">
+                          <td className="px-5 py-3 text-center whitespace-nowrap">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap shrink-0 ${
                                 i.status === InventoryStatus.IN_STOCK
                                   ? 'bg-success/10 text-success'
                                   : i.status === InventoryStatus.LOW_STOCK
@@ -306,20 +306,20 @@ export default function StockistDetailPage() {
             )}
 
             {activeTab === 'purchase' && (
-              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+              <div className="glass-panel overflow-hidden">
                 {purchaseOrders.length === 0 ? (
                   <div className="p-12 text-center text-txt-subtle text-sm">尚無進貨單</div>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-surface-base">
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
+                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase min-w-[7.5rem]">
                           進貨單號
                         </th>
                         <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
                           供應商 / 來源
                         </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">
+                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase min-w-[5.5rem]">
                           金額
                         </th>
                         <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase">
@@ -336,39 +336,39 @@ export default function StockistDetailPage() {
                     <tbody className="divide-y divide-border-muted">
                       {purchaseOrders.map((po) => (
                         <tr key={po.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 font-mono text-xs text-accent-text">
+                          <td className="px-5 py-3 font-mono text-xs text-accent-text whitespace-nowrap">
                             <Link href={`/purchase-orders/${po.id}`} className="hover:underline">
                               {po.poNumber}
                             </Link>
                           </td>
-                          <td className="px-5 py-3 text-txt-secondary text-xs">
+                          <td className="px-5 py-3 text-txt-secondary text-xs name-lowercase">
                             {po.fromUserId ? '上線（內部調撥）' : po.supplierName || '—'}
                           </td>
-                          <td className="px-5 py-3 text-txt-primary text-right tabular-nums font-medium">
+                          <td className="px-5 py-3 text-txt-primary text-right tabular-nums font-medium whitespace-nowrap">
                             USD {po.totals.grandTotal.toFixed(2)}
                           </td>
-                          <td className="px-5 py-3 text-center">
+                          <td className="px-5 py-3 text-center whitespace-nowrap">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                po.status === PurchaseOrderStatus.RECEIVED
-                                  ? 'bg-green-600/20 text-green-300'
-                                  : po.status === PurchaseOrderStatus.CANCELLED
-                                    ? 'bg-red-600/20 text-red-300'
-                                    : 'bg-gray-600/20 text-gray-300'
+                              className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
+                                po.status === PurchaseOrderStatus.CANCELLED
+                                  ? 'bg-red-600 text-white'
+                                  : po.status === PurchaseOrderStatus.RECEIVED
+                                    ? 'bg-blue-800 text-white'
+                                    : 'bg-chip-dark text-white'
                               }`}
                             >
                               {poStatusLabels[po.status]}
                             </span>
                           </td>
-                          <td className="px-5 py-3 text-txt-subtle text-xs">
+                          <td className="px-5 py-3 text-txt-subtle text-xs whitespace-nowrap">
                             {po.createdAt
-                              ? new Date(po.createdAt).toLocaleString('zh-TW')
+                              ? new Date(po.createdAt).toLocaleDateString('zh-TW')
                               : '—'}
                           </td>
-                          <td className="px-5 py-3 text-center">
+                          <td className="px-5 py-3 text-center whitespace-nowrap">
                             <Link
                               href={`/purchase-orders/${po.id}`}
-                              className="text-accent-text hover:underline text-xs"
+                              className="text-accent-text hover:underline text-xs inline"
                             >
                               查看
                             </Link>

@@ -9,9 +9,9 @@ import { Transaction, UserRole, TransactionStatus, User } from '@/types/models';
 import Link from 'next/link';
 
 const statusBadge: Record<TransactionStatus, string> = {
-  [TransactionStatus.PENDING]:   'bg-warning/10 text-warning border border-warning/20',
-  [TransactionStatus.COMPLETED]: 'bg-success/10 text-success border border-success/20',
-  [TransactionStatus.CANCELLED]: 'bg-error/10 text-error border border-error/20',
+  [TransactionStatus.PENDING]:   'bg-chip-yellow text-gray-800 border border-amber-200',
+  [TransactionStatus.COMPLETED]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
+  [TransactionStatus.CANCELLED]: 'bg-chip-dark text-white border border-chip-dark',
 };
 
 export default function OrdersPage() {
@@ -75,36 +75,36 @@ export default function OrdersPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-blue-50 border-blue-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total</p>
             <p className="text-2xl font-bold tabular-nums text-txt-primary">{orders.length}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-amber-50 border-amber-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Pending</p>
             <p className="text-2xl font-bold tabular-nums text-warning">{pendingCount}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-green-50 border-green-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Completed</p>
             <p className="text-2xl font-bold tabular-nums text-success">{completedCount}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-red-50 border-red-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Cancelled</p>
             <p className="text-2xl font-bold tabular-nums text-error">{cancelledCount}</p>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between gap-3 bg-surface-1 border border-border rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between gap-3 glass-panel px-4 py-3">
           <div className="flex items-center gap-3 flex-wrap">
             {role === UserRole.ADMIN && (
               <select
                 value={filterStockist}
                 onChange={(e) => setFilterStockist(e.target.value)}
-                className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+                className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent name-lowercase"
               >
                 <option value="">All</option>
                 {(user?.id ?? firebaseUser?.uid) && (
-                  <option value={user?.id ?? firebaseUser?.uid}>Myself (Admin)</option>
+                  <option value={user?.id ?? firebaseUser?.uid}>tan sun sun (Admin)</option>
                 )}
                 {stockists.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -135,7 +135,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center p-10">
               <p className="text-txt-subtle text-sm">Loading orders...</p>
@@ -166,7 +166,7 @@ export default function OrdersPage() {
               <tbody className="divide-y divide-border">
                 {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-surface-2/50 transition-colors">
-                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono">
+                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono whitespace-nowrap">
                       {order.id}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-txt-subtle">
@@ -174,9 +174,9 @@ export default function OrdersPage() {
                     </td>
                     {role === UserRole.ADMIN && (
                       <td className="px-5 py-3.5 text-xs text-txt-subtle">
-                        <span className="text-txt-secondary">{order.fromUser?.userName || '-'}</span>
+                        <span className="text-txt-secondary name-lowercase">{order.fromUser?.userName || '-'}</span>
                         {' → '}
-                        <span className="text-txt-secondary">{order.toUser?.userName || '-'}</span>
+                        <span className="text-txt-secondary name-lowercase">{order.toUser?.userName || '-'}</span>
                       </td>
                     )}
                     <td className="px-5 py-3.5 text-xs text-txt-secondary text-right font-medium tabular-nums">
@@ -191,7 +191,7 @@ export default function OrdersPage() {
                       <div className="flex items-center justify-center gap-2">
                         <Link
                           href={`/orders/${order.id}`}
-                          className="inline-block px-3 py-1 text-xs bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent-text rounded-lg transition-colors"
+                          className="inline-block px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg transition-colors"
                         >
                           修改
                         </Link>
@@ -207,7 +207,7 @@ export default function OrdersPage() {
                                 alert(err instanceof Error ? err.message : '刪除失敗');
                               }
                             }}
-                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                           >
                             刪除
                           </button>

@@ -112,7 +112,7 @@ export default function ProductDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete "${product?.name}"? This action cannot be undone.`)) return;
+    if (!confirm(`確定要刪除「${product?.name}」嗎？此操作無法復原。`)) return;
     setDeleting(true);
     try {
       await ProductService.delete(productId);
@@ -137,7 +137,7 @@ export default function ProductDetailPage() {
         {loading ? (
           <div className="text-gray-400">Loading...</div>
         ) : error && !product ? (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
         ) : product ? (
           <>
             <div className="flex items-start justify-between">
@@ -149,7 +149,7 @@ export default function ProductDetailPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setIsEditing(true); setSuccessMsg(''); setError(''); }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-lg text-sm"
                   >
                     修改
                   </button>
@@ -165,7 +165,7 @@ export default function ProductDetailPage() {
             </div>
 
             {error && (
-              <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+              <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
             )}
             {successMsg && (
               <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>

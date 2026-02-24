@@ -59,7 +59,7 @@ export const UserService = {
   },
 
   /**
-   * Get all users (admin only)
+   * Get all users (admin only) - active only
    */
   async getAll(pageLimit = 100) {
     const constraints = [
@@ -68,6 +68,18 @@ export const UserService = {
       firestoreLimit(pageLimit),
     ];
     
+    return FirestoreService.query<User>(COLLECTION, constraints);
+  },
+
+  /**
+   * Get all users including inactive (for admin edit form parent dropdown)
+   */
+  async getAllForAdmin(pageLimit = 200) {
+    const constraints = [
+      where('isActive', 'in', [true, false]),
+      orderBy('createdAt', 'desc'),
+      firestoreLimit(pageLimit),
+    ];
     return FirestoreService.query<User>(COLLECTION, constraints);
   },
 

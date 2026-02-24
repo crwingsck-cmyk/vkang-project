@@ -4,11 +4,14 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 16px;
 }
 
 body {
-  background-color: #16161a;
-  color: #e4e4e7;
+  background-color: #ffffff;
+  color: #171717;
+  font-size: 1rem;
+  line-height: 1.6;
   font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -23,27 +26,28 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #16161a;
+  background-color: #f5f5f5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #3a3a50;
+  background-color: #d4d4d4;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #4a4a62;
+  background-color: #a3a3a3;
 }
 
-/* Form inputs — dark surface style */
+/* Form inputs — 白底 */
 input,
 textarea,
 select {
-  background-color: #1e1e26;
-  color: #e4e4e7;
-  border: 1px solid #27273a;
+  background-color: #ffffff;
+  color: #171717;
+  border: 1px solid #e5e5e5;
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
+  font-size: 1rem;
   transition: border-color 0.15s ease;
 }
 
@@ -51,13 +55,13 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: #5E6AD2;
-  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #52525b;
+  color: #a3a3a3;
 }
 
 /* Monospace for IDs, codes, numbers */
@@ -71,4 +75,55 @@ pre {
 /* Tabular numbers for amounts */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* 人名顯示為小寫，單行不換行 */
+.name-lowercase {
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+/* 成本方式、加權平均：兩個字一行，不拆單字 */
+.cost-method-cell span {
+  word-break: keep-all;
+}
+
+/* 錯誤訊息：紅底白字 */
+.msg-error {
+  background-color: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+  border-radius: 0.5rem;
+}
+
+/* 卡片/面板 — 白底淺灰 */
+.glass-card {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem;
+}
+
+.glass-card:hover {
+  border-color: #d4d4d4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.glass-panel {
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 0.75rem;
+}
+
+.glass-button {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.glass-button:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }

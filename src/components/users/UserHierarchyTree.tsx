@@ -11,9 +11,9 @@ interface TreeNode {
 }
 
 const roleBadge: Record<UserRole, string> = {
-  [UserRole.ADMIN]: 'bg-error/10 text-error border border-error/20',
-  [UserRole.STOCKIST]: 'bg-info/10 text-info border border-info/20',
-  [UserRole.CUSTOMER]: 'bg-success/10 text-success border border-success/20',
+  [UserRole.ADMIN]: 'bg-chip-dark text-white border border-chip-dark',
+  [UserRole.STOCKIST]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
+  [UserRole.CUSTOMER]: 'bg-chip-yellow text-gray-800 border border-amber-200',
 };
 
 function buildTree(users: User[], parentId: string | null): TreeNode[] {
@@ -26,39 +26,40 @@ function buildTree(users: User[], parentId: string | null): TreeNode[] {
     .sort((a, b) => (a.user.displayName || '').localeCompare(b.user.displayName || ''));
 }
 
+const INDENT_PER_LEVEL = 28;
+
 function TreeNodeComponent({ node, level }: { node: TreeNode; level: number }) {
   const [expanded, setExpanded] = useState(level < 2);
   const hasChildren = node.children.length > 0;
-  const indent = level * 24;
+  const paddingLeft = level * INDENT_PER_LEVEL + 16;
 
   return (
     <div className="select-none">
       <div
-        className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-surface-2 transition-colors group"
-        style={{ paddingLeft: `${indent + 12}px` }}
+        className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-surface-2 transition-colors group min-h-[40px]"
+        style={{ paddingLeft: `${paddingLeft}px` }}
       >
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="w-5 h-5 flex items-center justify-center text-txt-subtle hover:text-txt-primary shrink-0"
+          className="w-6 h-6 flex items-center justify-center rounded text-txt-subtle hover:text-txt-primary hover:bg-surface-3 shrink-0"
         >
           {hasChildren ? (
-            <span className="text-xs">{expanded ? '▼' : '▶'}</span>
+            <span className="text-xs font-medium">{expanded ? '▼' : '▶'}</span>
           ) : (
-            <span className="w-5 inline-block" />
+            <span className="w-6 inline-block" />
           )}
         </button>
         <Link
           href={`/users/${node.user.id || node.user.email}`}
           className="flex-1 min-w-0 flex items-center gap-2"
         >
-          <span className="font-medium text-txt-primary truncate">{node.user.displayName || '—'}</span>
-          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${roleBadge[node.user.role as UserRole] || 'bg-gray-500/10 text-gray-400'}`}>
+          <span className="font-medium text-txt-primary truncate name-lowercase">{node.user.displayName || '—'}</span>
+          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${roleBadge[node.user.role as UserRole] || 'bg-chip-blue text-gray-800 border border-blue-200'}`}>
             {node.user.role}
           </span>
-          <span className="text-txt-subtle text-xs truncate hidden sm:inline">{node.user.email || ''}</span>
         </Link>
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Link href={`/users/create?parent=${node.user.id || ''}`} className="px-2 py-1 text-[10px] text-success hover:underline">
             + 下線
           </Link>
@@ -68,7 +69,7 @@ function TreeNodeComponent({ node, level }: { node: TreeNode; level: number }) {
         </div>
       </div>
       {expanded && hasChildren && (
-        <div className="border-l border-border-muted ml-5">
+        <div className="border-l-2 border-border-muted ml-5">
           {node.children.map((child, idx) => (
             <TreeNodeComponent key={child.user.id || child.user.email || idx} node={child} level={level + 1} />
           ))}
@@ -119,13 +120,13 @@ export default function UserHierarchyTree() {
   }
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden bg-surface-1">
+    <div className="glass-panel overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-surface-base">
         <p className="text-xs text-txt-subtle">
           金三角架構：總經銷商 → 下線 → 下線的下線，點擊 ▼/▶ 展開/收合
         </p>
       </div>
-      <div className="divide-y divide-border-muted">
+      <div className="divide-y divide-border-muted px-4 py-2">
         {roots.map((node, idx) => (
           <TreeNodeComponent key={node.user.id || node.user.email || idx} node={node} level={0} />
         ))}

@@ -81,14 +81,14 @@ function AddRecordModal({
       onClick={onClose}
     >
       <div
-        className="bg-surface-1 rounded-2xl border border-border-strong w-full max-w-md p-6 space-y-5 shadow-2xl"
+        className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md p-6 space-y-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-txt-primary">Add Financial Record</h2>
+          <h2 className="text-base font-bold text-gray-100">Add Financial Record</h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-txt-subtle hover:text-txt-primary hover:bg-surface-2 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -97,30 +97,30 @@ function AddRecordModal({
         </div>
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg text-xs">{error}</div>
+          <div className="msg-error px-3 py-2 rounded-lg text-xs">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-txt-secondary mb-1.5">Type</label>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">Type</label>
               <select
                 name="type"
                 value={form.type}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
               >
                 <option value={FinancialType.INCOME}>Income</option>
                 <option value={FinancialType.EXPENSE}>Expense</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-txt-secondary mb-1.5">Category</label>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">Category</label>
               <select
                 name="category"
                 value={form.category}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
               >
                 <option value={FinancialCategory.SALES}>Sales</option>
                 <option value={FinancialCategory.PURCHASE}>Purchase</option>
@@ -132,8 +132,8 @@ function AddRecordModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-txt-secondary mb-1.5">
-              Amount (USD) <span className="text-error">*</span>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">
+              Amount (USD) <span className="text-red-400">*</span>
             </label>
             <input
               type="number"
@@ -143,29 +143,29 @@ function AddRecordModal({
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-txt-primary text-sm placeholder-txt-subtle focus:outline-none focus:border-accent"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-txt-secondary mb-1.5">Description</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">Description</label>
             <input
               type="text"
               name="description"
               value={form.description}
               onChange={handleChange}
               placeholder="Optional"
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-txt-primary text-sm placeholder-txt-subtle focus:outline-none focus:border-accent"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-txt-secondary mb-1.5">Payment Status</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">Payment Status</label>
             <select
               name="paymentStatus"
               value={form.paymentStatus}
               onChange={handleChange}
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
             >
               <option value={PaymentStatus.PAID}>Paid</option>
               <option value={PaymentStatus.PENDING}>Pending</option>
@@ -185,7 +185,7 @@ function AddRecordModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary rounded-lg text-xs font-medium transition-colors"
+              className="px-5 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-200 rounded-lg text-xs font-medium transition-colors"
             >
               Cancel
             </button>
@@ -252,15 +252,15 @@ export default function FinancialsPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-green-50 border-green-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total Income</p>
             <p className="text-2xl font-bold tabular-nums text-success">USD {summary.totalIncome.toFixed(2)}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-red-50 border-red-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total Expense</p>
             <p className="text-2xl font-bold tabular-nums text-error">USD {summary.totalExpense.toFixed(2)}</p>
           </div>
-          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+          <div className="p-4 rounded-xl border shadow-sm bg-blue-50 border-blue-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Net P&amp;L</p>
             <p className={`text-2xl font-bold tabular-nums ${summary.net >= 0 ? 'text-success' : 'text-error'}`}>
               USD {summary.net.toFixed(2)}
@@ -290,7 +290,7 @@ export default function FinancialsPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center p-10">
               <p className="text-txt-subtle text-sm">Loading records...</p>

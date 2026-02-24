@@ -66,11 +66,11 @@ export default function SettingsPage() {
         </div>
 
         {/* Profile Section */}
-        <div className="bg-surface-1 rounded-xl border border-border p-5 space-y-4">
+        <div className="glass-card p-5 space-y-4">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Profile</p>
 
           {error && (
-            <div className="bg-error/10 border border-error/20 text-error px-3 py-2.5 rounded-lg text-xs">{error}</div>
+            <div className="msg-error px-3 py-2.5 text-xs">{error}</div>
           )}
           {successMsg && (
             <div className="bg-success/10 border border-success/20 text-success px-3 py-2.5 rounded-lg text-xs">{successMsg}</div>
@@ -136,7 +136,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Account Info */}
-        <div className="bg-surface-1 rounded-xl border border-border p-5 space-y-3">
+        <div className="glass-card p-5 space-y-3">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Account Info</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-surface-2 rounded-lg px-3 py-2.5">
@@ -145,7 +145,7 @@ export default function SettingsPage() {
             </div>
             <div className="bg-surface-2 rounded-lg px-3 py-2.5">
               <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Status</p>
-              <p className={`text-xs font-semibold ${user?.isActive ? 'text-success' : 'text-error'}`}>
+              <p className={`text-xs font-semibold ${user?.isActive ? 'text-blue-600' : 'text-error'}`}>
                 {user?.isActive ? 'Active' : 'Inactive'}
               </p>
             </div>
@@ -176,7 +176,7 @@ export default function SettingsPage() {
 
         {/* System Info (Admin only) */}
         {role === UserRole.ADMIN && (
-          <div className="bg-surface-1 rounded-xl border border-border p-5 space-y-3">
+          <div className="glass-card p-5 space-y-3">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">System</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface-2 rounded-lg px-3 py-2.5">
@@ -204,7 +204,7 @@ export default function SettingsPage() {
                 清空所有產品、庫存、進貨單、訂單、財務紀錄。使用者帳號會保留。
               </p>
               {clearResult && (
-                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('錯誤') ? 'bg-error/10 border border-error/20 text-error' : 'bg-success/10 border border-success/20 text-success'}`}>
+                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('錯誤') ? 'msg-error' : 'bg-success/10 border border-success/20 text-success'}`}>
                   {clearResult}
                 </div>
               )}

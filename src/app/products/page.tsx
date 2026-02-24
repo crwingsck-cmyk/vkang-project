@@ -41,7 +41,7 @@ export default function ProductsPage() {
   const categoryCount = new Set(products.map((p) => p.category)).size;
 
   async function handleDelete(sku: string, name: string) {
-    if (!confirm(`確定要刪除「${name}」(SKU: ${sku}) 嗎？`)) return;
+    if (!confirm(`確定要刪除「${name}」(SKU: ${sku}) 嗎？此操作無法復原。`)) return;
     try {
       await ProductService.delete(sku);
       await loadProducts();
@@ -86,14 +86,14 @@ export default function ProductsPage() {
             </span>
             <div className="flex gap-2">
               <StatChip label="Total" value={products.length} color="text-txt-primary" />
-              <StatChip label="Active" value={products.length} color="text-success" />
+              <StatChip label="Active" value={products.length} color="text-blue-600" />
               <StatChip label="Categories" value={categoryCount} color="text-info" />
             </div>
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="py-16 text-center">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3"></div>
@@ -134,7 +134,7 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-border-muted">
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-surface-2 transition-colors">
-                    <td className="px-5 py-3 font-mono text-xs text-accent-text">
+                    <td className="px-5 py-3 font-mono text-xs text-accent-text whitespace-nowrap">
                       <Link href={`/products/${product.sku}`} className="hover:underline">
                         {product.sku}
                       </Link>
@@ -155,7 +155,7 @@ export default function ProductsPage() {
                       {product.priceNote || '—'}
                     </td>
                     <td className="px-5 py-3 text-center">
-                      <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-success/10 text-success border border-success/20">
+                      <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
                         Active
                       </span>
                     </td>
@@ -164,14 +164,14 @@ export default function ProductsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <Link
                             href={`/products/${product.sku}`}
-                            className="px-2 py-1 text-xs text-accent-text hover:underline"
+                            className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded transition-colors"
                             title="修改"
                           >
                             修改
                           </Link>
                           <button
                             onClick={() => handleDelete(product.sku, product.name)}
-                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                             title="刪除"
                           >
                             刪除

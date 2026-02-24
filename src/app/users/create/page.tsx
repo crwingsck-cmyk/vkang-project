@@ -88,12 +88,12 @@ function CreateUserForm() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Add User</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Add User</h1>
           <p className="text-gray-400 mt-1">Create a new system user account</p>
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="msg-error px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
@@ -199,7 +199,7 @@ function CreateUserForm() {
               <option value="">無（頂層 / 總經銷商）</option>
               {allUsers.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.displayName} ({u.email}) - {u.role}
+                  <span className="name-lowercase">{u.displayName}</span> - {u.role}
                 </option>
               ))}
             </select>

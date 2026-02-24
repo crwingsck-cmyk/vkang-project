@@ -83,7 +83,7 @@ export default function CreateOrderPage() {
 
     const sellerId = role === UserRole.ADMIN ? fromUserId : user?.id;
     if (!sellerId) { setError('請選擇經銷商（賣方）。'); return; }
-    if (!toUserId) { setError('請選擇顧客（買方）。'); return; }
+    if (!toUserId) { setError('請選擇顧客（買方）'); return; }
     if (items.some((i) => !i.productId)) { setError('請為每筆明細選擇產品。'); return; }
     if (items.some((i) => i.quantity <= 0)) { setError('數量必須大於 0。'); return; }
 
@@ -135,12 +135,12 @@ export default function CreateOrderPage() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">建立訂單</h1>
+          <h1 className="text-3xl font-bold text-gray-900">建立訂單</h1>
           <p className="text-gray-400 mt-1">建立銷售訂單（經銷商 → 顧客）</p>
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -155,12 +155,12 @@ export default function CreateOrderPage() {
                 <select
                   value={fromUserId}
                   onChange={(e) => setFromUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
                 >
                   <option value="">請選擇...</option>
                   {(user?.id ?? firebaseUser?.uid) && (
                     <option value={user?.id ?? firebaseUser?.uid}>
-                      我自己（總經銷商）
+                      tan sun sun（總經銷商）
                     </option>
                   )}
                   {admins.filter((a) => a.id !== (user?.id ?? firebaseUser?.uid)).map((a) => (
@@ -185,14 +185,21 @@ export default function CreateOrderPage() {
               <select
                 value={toUserId}
                 onChange={(e) => setToUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 name-lowercase"
               >
                 <option value="">請選擇顧客...</option>
-                {customers.filter((c) => c.role === UserRole.CUSTOMER).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.displayName} ({c.email})
+                {role === UserRole.ADMIN && (user?.id ?? firebaseUser?.uid) && (
+                  <option value={user?.id ?? firebaseUser?.uid}>
+                    tan sun sun
                   </option>
-                ))}
+                )}
+                {customers
+                  .filter((c) => !(role === UserRole.ADMIN && c.id === (user?.id ?? firebaseUser?.uid)))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.displayName}
+                    </option>
+                  ))}
               </select>
             </div>
 

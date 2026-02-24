@@ -107,14 +107,14 @@ export default function DashboardPage() {
   return (
     <div className="space-y-5">
       {/* Welcome Banner — subtle gradient, not overwhelming */}
-      <div className="bg-gradient-to-r from-surface-1 to-accent-muted rounded-xl p-6 border border-border">
+      <div className="glass-card p-6">
         <p className="text-[10px] font-semibold text-accent-text uppercase tracking-[0.15em] mb-1">
           {role === UserRole.ADMIN    && 'Administrator Dashboard'}
           {role === UserRole.STOCKIST && 'Stockist Console'}
           {role === UserRole.CUSTOMER && 'Customer Portal'}
         </p>
         <h1 className="text-2xl font-bold text-txt-primary">
-          Welcome back, <span className="text-accent-text">{user?.displayName}</span>
+          Welcome back, <span className="text-accent-text name-lowercase">{user?.displayName}</span>
         </h1>
       </div>
 
@@ -122,7 +122,7 @@ export default function DashboardPage() {
       {statsLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-surface-1 rounded-xl p-5 border border-border animate-pulse">
+            <div key={i} className="glass-card p-5 animate-pulse">
               <div className="h-2.5 bg-surface-2 rounded w-20 mb-4"></div>
               <div className="h-7 bg-surface-2 rounded w-16"></div>
             </div>
@@ -132,30 +132,30 @@ export default function DashboardPage() {
         <>
           {role === UserRole.ADMIN && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <StatCard title="Total Products"    value={String(stats.totalProducts ?? 0)}       textColor="text-info" />
-              <StatCard title="Active Stockists"  value={String(stats.activeStockists ?? 0)}      textColor="text-success" />
-              <StatCard title="Total Revenue"     value={String(stats.monthlyRevenue ?? 'USD 0')} textColor="text-accent-text" />
-              <StatCard title="Pending Orders"    value={String(stats.pendingOrders ?? 0)}        textColor="text-warning" />
+              <StatCard title="Total Products"    value={String(stats.totalProducts ?? 0)}       textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
+              <StatCard title="Active Stockists"  value={String(stats.activeStockists ?? 0)}      textColor="text-success" bgClass="bg-green-50 border-green-200" />
+              <StatCard title="Total Revenue"     value={String(stats.monthlyRevenue ?? 'USD 0')} textColor="text-accent-text" bgClass="bg-amber-50 border-amber-200" />
+              <StatCard title="Pending Orders"    value={String(stats.pendingOrders ?? 0)}        textColor="text-warning" bgClass="bg-cyan-50 border-cyan-200" />
             </div>
           )}
           {role === UserRole.STOCKIST && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <StatCard title="Inventory Value"    value={String(stats.inventoryValue ?? 'USD 0')} textColor="text-info" />
-              <StatCard title="Low / Out of Stock" value={String(stats.lowStockItems ?? 0)}        textColor="text-warning" />
-              <StatCard title="Sales (30d)"        value={String(stats.recentSales ?? 'USD 0')}    textColor="text-success" />
+              <StatCard title="Inventory Value"    value={String(stats.inventoryValue ?? 'USD 0')} textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
+              <StatCard title="Low / Out of Stock" value={String(stats.lowStockItems ?? 0)}        textColor="text-warning" bgClass="bg-amber-50 border-amber-200" />
+              <StatCard title="Sales (30d)"        value={String(stats.recentSales ?? 'USD 0')}    textColor="text-success" bgClass="bg-green-50 border-green-200" />
             </div>
           )}
           {role === UserRole.CUSTOMER && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <StatCard title="Active Orders"   value={String(stats.activeOrders ?? 0)}           textColor="text-info" />
-              <StatCard title="Total Purchased" value={String(stats.totalPurchased ?? 'USD 0')}   textColor="text-success" />
+              <StatCard title="Active Orders"   value={String(stats.activeOrders ?? 0)}           textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
+              <StatCard title="Total Purchased" value={String(stats.totalPurchased ?? 'USD 0')}   textColor="text-success" bgClass="bg-green-50 border-green-200" />
             </div>
           )}
         </>
       )}
 
       {/* Quick Actions */}
-      <div className="bg-surface-1 rounded-xl p-5 border border-border">
+      <div className="glass-card p-5">
         <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-3">Quick Actions</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <ActionButton href="/products"   label="Products" />
@@ -170,7 +170,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Orders — Supabase Table Editor style */}
-      <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+      <div className="glass-panel overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Recent Orders</p>
           <Link href="/orders" className="text-xs text-accent-text hover:text-accent transition-colors font-medium">
@@ -224,9 +224,9 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ title, value, textColor }: { title: string; value: string; textColor: string }) {
+function StatCard({ title, value, textColor, bgClass }: { title: string; value: string; textColor: string; bgClass?: string }) {
   return (
-    <div className="bg-surface-1 rounded-xl p-5 border border-border hover:border-border-strong transition-colors">
+    <div className={`p-5 rounded-xl border shadow-sm transition-colors ${bgClass ?? 'bg-surface-1 border-border'}`}>
       <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-2">{title}</p>
       <p className={`text-2xl font-bold tabular-nums ${textColor}`}>{value}</p>
     </div>
@@ -246,9 +246,9 @@ function ActionButton({ href, label }: { href: string; label: string }) {
 
 function StatusBadge({ status }: { status: TransactionStatus }) {
   const styles = {
-    [TransactionStatus.COMPLETED]: 'bg-success/10 text-success border border-success/20',
-    [TransactionStatus.CANCELLED]: 'bg-error/10 text-error border border-error/20',
-    [TransactionStatus.PENDING]:   'bg-warning/10 text-warning border border-warning/20',
+[TransactionStatus.COMPLETED]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
+  [TransactionStatus.CANCELLED]: 'bg-chip-dark text-white border border-chip-dark',
+  [TransactionStatus.PENDING]:   'bg-chip-yellow text-gray-800 border border-amber-200',
   };
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${styles[status] ?? 'bg-surface-2 text-txt-subtle'}`}>

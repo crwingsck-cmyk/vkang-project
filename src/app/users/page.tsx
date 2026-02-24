@@ -36,9 +36,9 @@ export default function UsersPage() {
   }
 
   const roleBadge: Record<UserRole, string> = {
-    [UserRole.ADMIN]:    'bg-error/10 text-error border border-error/20',
-    [UserRole.STOCKIST]: 'bg-info/10 text-info border border-info/20',
-    [UserRole.CUSTOMER]: 'bg-success/10 text-success border border-success/20',
+    [UserRole.ADMIN]:    'bg-chip-dark text-white border border-chip-dark',
+    [UserRole.STOCKIST]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
+    [UserRole.CUSTOMER]: 'bg-chip-yellow text-gray-800 border border-amber-200',
   };
 
   return (
@@ -115,7 +115,7 @@ export default function UsersPage() {
           <UserHierarchyTree />
         ) : (
         /* Table */
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           {loading ? (
             <div className="py-16 text-center">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3"></div>
@@ -141,10 +141,10 @@ export default function UsersPage() {
               <tbody className="divide-y divide-border-muted">
                 {users.map((user) => (
                   <tr key={user.id || user.email} className="hover:bg-surface-2 transition-colors">
-                    <td className="px-5 py-3 font-semibold text-txt-primary">{user.displayName}</td>
+                    <td className="px-5 py-3 font-semibold text-txt-primary name-lowercase">{user.displayName}</td>
                     <td className="px-5 py-3 text-txt-secondary font-mono text-xs">{user.email}</td>
                     <td className="px-5 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${roleBadge[user.role as UserRole] || 'bg-gray-500/10 text-gray-400'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${roleBadge[user.role as UserRole] || 'bg-chip-blue text-gray-800 border border-blue-200'}`}>
                         {user.role}
                       </span>
                     </td>
@@ -153,8 +153,8 @@ export default function UsersPage() {
                     <td className="px-5 py-3 text-center">
                       <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${
                         user.isActive
-                          ? 'bg-success/10 text-success border border-success/20'
-                          : 'bg-error/10 text-error border border-error/20'
+                          ? 'bg-chip-blue text-gray-800 border border-blue-200'
+                          : 'bg-chip-dark text-white border border-chip-dark'
                       }`}>
                         {user.isActive ? 'Active' : 'Inactive'}
                       </span>
@@ -170,7 +170,7 @@ export default function UsersPage() {
                       )}
                       <Link
                         href={`/users/${user.id || user.email}`}
-                        className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-surface-2 hover:bg-surface-3 text-txt-secondary hover:text-txt-primary border border-border rounded-md transition-colors uppercase tracking-wider"
+                        className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-md transition-colors uppercase tracking-wider"
                       >
                         修改
                       </Link>

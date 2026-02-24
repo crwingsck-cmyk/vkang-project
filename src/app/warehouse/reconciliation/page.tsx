@@ -129,7 +129,7 @@ export default function ReconciliationPage() {
           </div>
         )}
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
+          <div className="msg-error px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -177,7 +177,7 @@ export default function ReconciliationPage() {
               <select
                 value={filterStockist}
                 onChange={(e) => setFilterStockist(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500 name-lowercase"
               >
                 <option value="">All Stockists</option>
                 {stockists.map((s) => (
@@ -233,7 +233,7 @@ export default function ReconciliationPage() {
                       {adjustingId === item.id ? (
                         <>
                           <td className="px-6 py-3 text-sm text-gray-100 font-medium">{item.productId}</td>
-                          <td className="px-6 py-3 text-sm text-gray-300">{stockist?.displayName || item.userId}</td>
+                          <td className="px-6 py-3 text-sm text-gray-300 name-lowercase">{stockist?.displayName || item.userId}</td>
                           <td className="px-3 py-3" colSpan={2}>
                             <div className="space-y-2">
                               <div>
@@ -296,7 +296,7 @@ export default function ReconciliationPage() {
                               <p className="text-gray-500 text-xs">{item.productId}</p>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-300">
+                          <td className="px-6 py-4 text-sm text-gray-300 name-lowercase">
                             {stockist?.displayName || item.userId}
                             {stockist?.company?.name && (
                               <span className="text-gray-500 text-xs ml-1">({stockist.company.name})</span>
@@ -306,8 +306,8 @@ export default function ReconciliationPage() {
                           <td className="px-6 py-4 text-sm text-gray-300 text-right">{item.quantityAvailable}</td>
                           <td className="px-6 py-4 text-sm text-gray-400 text-right">{item.quantityAllocated}</td>
                           <td className="px-6 py-4 text-sm text-gray-400 text-right">{item.reorderLevel}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[item.status]}`}>
+                          <td className="px-6 py-4 text-center whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap shrink-0 ${statusColors[item.status]}`}>
                               {item.status}
                             </span>
                           </td>
