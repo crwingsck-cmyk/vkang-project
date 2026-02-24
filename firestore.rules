@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    function isStockist() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'STOCKIST';
+    }
+
+    function isOwnData(userId) {
+      return request.auth.uid == userId || isAdmin();
+    }
+
+    // ========== PRODUCTS COLLECTION ==========
+    match /products/{productId} {
+      // Anyone authenticated can read products
+      allow read: if isAuthenticated();
+      // Only admins can write products
+      allow write: if isAdmin();
+    }
+
+    // ========== USERS COLLECTION ==========
+    match /users/{userId} {
+      // Users can read their own data, admins can read all
+      allow read: if isOwnData(userId);
+      // Users can update their own profile, admins can update anyone
+      allow update: if isOwnData(userId);
+      // Users can create their own document on registration, admins can create anyone
+      allow create: if request.auth.uid == userId || isAdmin();
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ========== INVENTORY COLLECTION ==========
+    // Critical: Each stockist can only see their own inventory
+    match /inventory/{inventoryId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      allow write: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow create: if isAdmin() || (
+        isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // ========== TRANSACTIONS COLLECTION ==========
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.fromUser.userId == request.auth.uid ||
+        resource.data.toUser.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Users can create transactions
+      allow create: if isAuthenticated();
+      
+      // Only admins can update/delete
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ========== FINANCIALS COLLECTION ==========
+    match /financials/{financialId} {
+      allow read: if isAuthenticated() && (
+        resource.data.relatedUser.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ========== WAREHOUSES COLLECTION ==========
+    match /warehouses/{warehouseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ========== AUDIT LOGS COLLECTION ==========
+    // Immutable: Only admins can read, no writes allowed after creation
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();  // System can log actions
+      allow update, delete: if false;       // Never allow modifications
+    }
+
+    // ========== SYSTEM CONFIG COLLECTION ==========
+    match /systemConfig/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ========== ROLES COLLECTION ==========
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ========== INVENTORY BATCHES (庫存批次 FIFO) ==========
+    match /inventoryBatches/{batchId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ========== PURCHASE ORDERS (進貨單) ==========
+    match /purchaseOrders/{poId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+  }
+}

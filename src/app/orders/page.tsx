@@ -1,0 +1,226 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { OrderService } from '@/services/database/orders';
+import { UserService } from '@/services/database/users';
+import { Transaction, UserRole, TransactionStatus, User } from '@/types/models';
+import Link from 'next/link';
+
+const statusBadge: Record<TransactionStatus, string> = {
+  [TransactionStatus.PENDING]:   'bg-warning/10 text-warning border border-warning/20',
+  [TransactionStatus.COMPLETED]: 'bg-success/10 text-success border border-success/20',
+  [TransactionStatus.CANCELLED]: 'bg-error/10 text-error border border-error/20',
+};
+
+export default function OrdersPage() {
+  const { user, role, firebaseUser } = useAuth();
+  const [orders, setOrders] = useState<Transaction[]>([]);
+  const [stockists, setStockists] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<TransactionStatus | ''>('');
+  const [filterStockist, setFilterStockist] = useState('');
+
+  useEffect(() => {
+    if (user?.id) loadOrders();
+  }, [user?.id, filterStatus, filterStockist]);
+
+  useEffect(() => {
+    if (role === UserRole.ADMIN) {
+      UserService.getStockists().then(setStockists).catch(console.error);
+    }
+  }, [role]);
+
+  async function loadOrders() {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      let data: Transaction[];
+      if (role === UserRole.ADMIN && filterStockist) {
+        data = await OrderService.getByFromUser(filterStockist);
+      } else if (filterStatus) {
+        data = await OrderService.getByStatus(filterStatus as TransactionStatus);
+      } else if (role === UserRole.ADMIN) {
+        data = await OrderService.getAll();
+      } else if (role === UserRole.STOCKIST) {
+        data = await OrderService.getByFromUser(user.id);
+      } else {
+        data = await OrderService.getByToUser(user.id);
+      }
+      if (filterStatus && data.length > 0) {
+        data = data.filter((o) => o.status === filterStatus);
+      }
+      setOrders(data);
+    } catch (err) {
+      console.error('Error loading orders:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const pendingCount   = orders.filter((o) => o.status === TransactionStatus.PENDING).length;
+  const completedCount = orders.filter((o) => o.status === TransactionStatus.COMPLETED).length;
+  const cancelledCount = orders.filter((o) => o.status === TransactionStatus.CANCELLED).length;
+
+  return (
+    <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST, UserRole.CUSTOMER]}>
+      <div className="space-y-5">
+
+        {/* Page Header */}
+        <div>
+          <h1 className="text-xl font-bold text-txt-primary tracking-tight">Orders</h1>
+          <p className="text-sm text-txt-subtle mt-0.5">Manage and track your orders</p>
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+            <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total</p>
+            <p className="text-2xl font-bold tabular-nums text-txt-primary">{orders.length}</p>
+          </div>
+          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+            <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Pending</p>
+            <p className="text-2xl font-bold tabular-nums text-warning">{pendingCount}</p>
+          </div>
+          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+            <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Completed</p>
+            <p className="text-2xl font-bold tabular-nums text-success">{completedCount}</p>
+          </div>
+          <div className="bg-surface-1 rounded-xl p-4 border border-border hover:border-border-strong transition-colors">
+            <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Cancelled</p>
+            <p className="text-2xl font-bold tabular-nums text-error">{cancelledCount}</p>
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-3 bg-surface-1 border border-border rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {role === UserRole.ADMIN && (
+              <select
+                value={filterStockist}
+                onChange={(e) => setFilterStockist(e.target.value)}
+                className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+              >
+                <option value="">All</option>
+                {(user?.id ?? firebaseUser?.uid) && (
+                  <option value={user?.id ?? firebaseUser?.uid}>Myself (Admin)</option>
+                )}
+                {stockists.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.displayName}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as TransactionStatus | '')}
+              className="px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent"
+            >
+              <option value="">All Status</option>
+              <option value={TransactionStatus.PENDING}>Pending</option>
+              <option value={TransactionStatus.COMPLETED}>Completed</option>
+              <option value={TransactionStatus.CANCELLED}>Cancelled</option>
+            </select>
+          </div>
+          {role !== UserRole.CUSTOMER && (
+            <Link
+              href="/orders/create"
+              className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              + Create Order
+            </Link>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center p-10">
+              <p className="text-txt-subtle text-sm">Loading orders...</p>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-14 gap-3">
+              <p className="text-txt-subtle text-sm">No orders found</p>
+              {role !== UserRole.CUSTOMER && (
+                <Link href="/orders/create" className="text-accent-text hover:underline text-xs">
+                  Create your first order
+                </Link>
+              )}
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-surface-2 border-b border-border">
+                <tr>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Order ID</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Date</th>
+                  {role === UserRole.ADMIN && (
+                    <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">From / To</th>
+                  )}
+                  <th className="px-5 py-3 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Total</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Status</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-surface-2/50 transition-colors">
+                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono">
+                      {order.id}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-txt-subtle">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
+                    </td>
+                    {role === UserRole.ADMIN && (
+                      <td className="px-5 py-3.5 text-xs text-txt-subtle">
+                        <span className="text-txt-secondary">{order.fromUser?.userName || '-'}</span>
+                        {' → '}
+                        <span className="text-txt-secondary">{order.toUser?.userName || '-'}</span>
+                      </td>
+                    )}
+                    <td className="px-5 py-3.5 text-xs text-txt-secondary text-right font-medium tabular-nums">
+                      USD {order.totals.grandTotal.toFixed(2)}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${statusBadge[order.status]}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="inline-block px-3 py-1 text-xs bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent-text rounded-lg transition-colors"
+                        >
+                          修改
+                        </Link>
+                        {role !== UserRole.CUSTOMER && order.status !== TransactionStatus.CANCELLED && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`確定要刪除（取消）訂單 ${order.id} 嗎？此操作無法復原。`)) return;
+                              try {
+                                await OrderService.cancel(order.id!);
+                                await loadOrders();
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : '刪除失敗');
+                              }
+                            }}
+                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                          >
+                            刪除
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </ProtectedRoute>
+  );
+}
