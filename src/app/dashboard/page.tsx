@@ -189,9 +189,9 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-base">
-                <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Order ID</th>
+                <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">日期</th>
+                <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">訂貨號碼</th>
                 <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Type</th>
-                <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Date</th>
                 <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Total</th>
                 <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Status</th>
               </tr>
@@ -199,15 +199,15 @@ export default function DashboardPage() {
             <tbody className="divide-y divide-border-muted">
               {recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-surface-2 transition-colors group">
+                  <td className="px-5 py-3 text-txt-subtle tabular-nums whitespace-nowrap">
+                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString('zh-TW') : '—'}
+                  </td>
                   <td className="px-5 py-3 font-mono text-xs">
                     <Link href={`/orders/${order.id}`} className="text-accent-text hover:underline">
                       {order.id}
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-txt-secondary capitalize">{order.transactionType}</td>
-                  <td className="px-5 py-3 text-txt-subtle tabular-nums">
-                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}
-                  </td>
                   <td className="px-5 py-3 text-txt-primary text-right font-semibold tabular-nums">
                     USD {order.totals.grandTotal.toFixed(2)}
                   </td>

@@ -188,11 +188,11 @@ export default function StockistDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-surface-base">
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
-                          訂單 ID
-                        </th>
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
+                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase whitespace-nowrap">
                           日期
+                        </th>
+                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase whitespace-nowrap">
+                          訂貨號碼
                         </th>
                         <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
                           買方
@@ -211,9 +211,13 @@ export default function StockistDetailPage() {
                     <tbody className="divide-y divide-border-muted">
                       {orders.map((o) => (
                         <tr key={o.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 font-mono text-xs text-txt-primary">{o.id}</td>
-                          <td className="px-5 py-3 text-txt-subtle text-xs">
-                            {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : '-'}
+                          <td className="px-5 py-3 text-txt-subtle text-xs tabular-nums whitespace-nowrap">
+                            {o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-TW') : '-'}
+                          </td>
+                          <td className="px-5 py-3 font-mono text-xs text-txt-primary">
+                            <Link href={`/orders/${o.id}`} className="text-accent-text hover:underline">
+                              {o.id}
+                            </Link>
                           </td>
                           <td className="px-5 py-3 text-txt-secondary text-xs">
                             {o.toUser?.userName || '-'}

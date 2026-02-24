@@ -153,8 +153,8 @@ export default function OrdersPage() {
             <table className="w-full">
               <thead className="bg-surface-2 border-b border-border">
                 <tr>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Order ID</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Date</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest whitespace-nowrap">日期</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest whitespace-nowrap">訂貨號碼</th>
                   {role === UserRole.ADMIN && (
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">From / To</th>
                   )}
@@ -166,11 +166,13 @@ export default function OrdersPage() {
               <tbody className="divide-y divide-border">
                 {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-surface-2/50 transition-colors">
-                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono whitespace-nowrap">
-                      {order.id}
+                    <td className="px-5 py-3.5 text-xs text-txt-subtle tabular-nums whitespace-nowrap">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString('zh-TW') : '-'}
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-txt-subtle">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
+                    <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono whitespace-nowrap">
+                      <Link href={`/orders/${order.id}`} className="text-accent-text hover:underline">
+                        {order.id}
+                      </Link>
                     </td>
                     {role === UserRole.ADMIN && (
                       <td className="px-5 py-3.5 text-xs text-txt-subtle">

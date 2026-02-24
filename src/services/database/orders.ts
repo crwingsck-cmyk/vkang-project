@@ -15,15 +15,24 @@ const COLLECTION = 'transactions';
 export const OrderService = {
   /**
    * Create a new order (SALE transaction)
+   * @param order - Order data
+   * @param options - Optional custom order ID and/or createdAt timestamp
    */
-  async create(order: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
-    const timestamp = Date.now();
+  async create(
+    order: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>,
+    options?: { customId?: string; createdAt?: number }
+  ) {
+    const timestamp = options?.createdAt ?? Date.now();
+    const customId = options?.customId?.trim();
+    const docId = customId
+      ? customId.replace(/\s+/g, '-').replace(/\//g, '-')
+      : `TXN-${timestamp}`;
     const data: Transaction = {
       ...order,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    return FirestoreService.set(COLLECTION, `TXN-${timestamp}`, data);
+    return FirestoreService.set(COLLECTION, docId, data);
   },
 
   /**

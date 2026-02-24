@@ -23,6 +23,11 @@ export default function CreateOrderPage() {
 
   const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
+  const [orderDate, setOrderDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  });
+  const [orderNumber, setOrderNumber] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: number }[]>([
@@ -116,7 +121,11 @@ export default function CreateOrderPage() {
         createdBy: user?.id!,
       });
 
-      await OrderService.create(orderData);
+      const createdAt = orderDate ? new Date(orderDate).setHours(0, 0, 0, 0) : Date.now();
+      await OrderService.create(orderData, {
+        createdAt,
+        customId: orderNumber.trim() || undefined,
+      });
       router.push('/orders');
     } catch (err: any) {
       setError(err?.message || 'Failed to create order.');
@@ -146,6 +155,28 @@ export default function CreateOrderPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-200">Order Details</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">日期</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">訂貨號碼</label>
+                <input
+                  type="text"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
+                  placeholder="留空則自動產生（TXN-時間戳）"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
 
             {role === UserRole.ADMIN && (
               <div>

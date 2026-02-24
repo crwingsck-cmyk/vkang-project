@@ -1,8 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { UserRole } from '@/types/models';
+import { UserRole, TransactionStatus, TransactionType } from '@/types/models';
+import { UserService } from '@/services/database/users';
+import { OrderService } from '@/services/database/orders';
 import Link from 'next/link';
 
 const hubItems = [
@@ -61,7 +64,38 @@ const hubItems = [
 ];
 
 export default function WarehousePage() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
+  const [warehouseCount, setWarehouseCount] = useState(0);
+  const [activeTransfers, setActiveTransfers] = useState(0);
+  const [pendingLoans, setPendingLoans] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      setLoading(true);
+      try {
+        const [stockists, transfers, loans] = await Promise.all([
+          UserService.getStockists(),
+          OrderService.getByType(TransactionType.TRANSFER),
+          OrderService.getByType(TransactionType.LOAN),
+        ]);
+        setWarehouseCount(stockists.length);
+        const transfersFiltered = role === UserRole.ADMIN
+          ? transfers
+          : transfers.filter((t) => t.fromUser?.userId === user?.id || t.toUser?.userId === user?.id);
+        const loansFiltered = role === UserRole.ADMIN
+          ? loans
+          : loans.filter((t) => t.fromUser?.userId === user?.id || t.toUser?.userId === user?.id);
+        setActiveTransfers(transfersFiltered.filter((t) => t.status === TransactionStatus.PENDING).length);
+        setPendingLoans(loansFiltered.filter((l) => l.status === TransactionStatus.PENDING).length);
+      } catch (err) {
+        console.error('Error loading warehouse stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, [user?.id, role]);
 
   const visibleItems = hubItems.filter((item) => item.roles.includes(role || ''));
 
@@ -120,15 +154,15 @@ export default function WarehousePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Warehouses</p>
-              <p className="text-2xl font-bold tabular-nums text-txt-primary">3</p>
+              <p className="text-2xl font-bold tabular-nums text-txt-primary">{loading ? '...' : warehouseCount}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Active Transfers</p>
-              <p className="text-2xl font-bold tabular-nums text-info">2</p>
+              <p className="text-2xl font-bold tabular-nums text-info">{loading ? '...' : activeTransfers}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Pending Loans</p>
-              <p className="text-2xl font-bold tabular-nums text-accent-text">1</p>
+              <p className="text-2xl font-bold tabular-nums text-accent-text">{loading ? '...' : pendingLoans}</p>
             </div>
           </div>
         </div>
