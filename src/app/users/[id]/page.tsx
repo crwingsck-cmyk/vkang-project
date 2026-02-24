@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
@@ -15,6 +17,8 @@ const roleColors: Record<UserRole, string> = {
 
 export default function UserDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user: currentUser } = useAuth();
   const userId = (params?.id ?? '') as string;
 
   const [user, setUser] = useState<User | null>(null);
@@ -24,7 +28,9 @@ export default function UserDetailPage() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
+    email: '',
     displayName: '',
     phoneNumber: '',
     role: UserRole.CUSTOMER,
@@ -52,6 +58,7 @@ export default function UserDetailPage() {
       }
       setUser(data);
       setForm({
+        email: data.email || '',
         displayName: data.displayName,
         phoneNumber: data.phoneNumber || '',
         role: data.role,
@@ -79,9 +86,34 @@ export default function UserDetailPage() {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+    if (!form.email.trim()) {
+      setError('Email 為必填');
+      return;
+    }
     setSaving(true);
     try {
+      const newEmail = form.email.trim().toLowerCase();
+      if (newEmail && newEmail !== (user?.email || '').toLowerCase()) {
+        const token = await getCurrentToken(true);
+        if (!token) {
+          setError('請重新登入後再試');
+          setSaving(false);
+          return;
+        }
+        const res = await fetch('/api/users/update-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ uid: userId, newEmail }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Email 更新失敗');
+          setSaving(false);
+          return;
+        }
+      }
       await UserService.update(userId, {
+        email: form.email.trim() || undefined,
         displayName: form.displayName.trim(),
         phoneNumber: form.phoneNumber.trim() || undefined,
         role: form.role as UserRole,
@@ -111,6 +143,39 @@ export default function UserDetailPage() {
       setError('Failed to deactivate user.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    const msg = `確定要永久刪除使用者「${user?.displayName}」嗎？\n\n將一併刪除：\n• 此帳號（Firebase Auth）\n• 庫存、進貨單、訂單等所有相關資料\n\n此操作無法復原。`;
+    if (!confirm(msg)) return;
+    if (!confirm('請再次確認：此操作將永久刪除該使用者及其所有資料。')) return;
+    setDeleting(true);
+    setError('');
+    try {
+      const token = await getCurrentToken(true);
+      if (!token) {
+        setError('請重新登入後再試');
+        setDeleting(false);
+        return;
+      }
+      const res = await fetch('/api/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ uid: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '刪除失敗');
+        setDeleting(false);
+        return;
+      }
+      setSuccessMsg('使用者已刪除。');
+      setTimeout(() => router.push('/users'), 1500);
+    } catch {
+      setError('刪除失敗');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -165,6 +230,15 @@ export default function UserDetailPage() {
                       Deactivate
                     </button>
                   )}
+                  {currentUser?.id !== userId && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-red-600 text-red-400 disabled:opacity-50 rounded-lg text-sm"
+                    >
+                      {deleting ? '刪除中...' : '刪除'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -179,6 +253,19 @@ export default function UserDetailPage() {
             {isEditing ? (
               <form onSubmit={handleSave} className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
                 <h2 className="text-lg font-semibold text-gray-200">Edit User</h2>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="user@example.com"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">修改後，該使用者需使用新 Email 登入</p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Display Name</label>

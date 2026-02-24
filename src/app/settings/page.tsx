@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
+import { clearAllData } from '@/services/database/dataClear';
 import { UserRole } from '@/types/models';
 
 export default function SettingsPage() {
   const { user, role, setUser } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearResult, setClearResult] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [error, setError] = useState('');
 
@@ -192,6 +195,51 @@ export default function SettingsPage() {
                 <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Timezone</p>
                 <p className="text-xs text-txt-primary">Asia/Kuala_Lumpur</p>
               </div>
+            </div>
+
+            {/* 清空所有資料 - 危險操作 */}
+            <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-2">危險操作</p>
+              <p className="text-xs text-txt-subtle mb-3">
+                清空所有產品、庫存、進貨單、訂單、財務紀錄。使用者帳號會保留。
+              </p>
+              {clearResult && (
+                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('錯誤') ? 'bg-error/10 border border-error/20 text-error' : 'bg-success/10 border border-success/20 text-success'}`}>
+                  {clearResult}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  const msg = '確定要清空所有資料嗎？此操作無法復原。將刪除：產品、庫存、進貨單、訂單、財務紀錄。';
+                  if (!confirm(msg)) return;
+                  const confirmAgain = '請再次確認：此操作將永久刪除所有業務資料。';
+                  if (!confirm(confirmAgain)) return;
+                  setClearing(true);
+                  setError('');
+                  setSuccessMsg('');
+                  setClearResult('');
+                  try {
+                    const { cleared, error: err } = await clearAllData();
+                    if (err) {
+                      setClearResult(`錯誤：${err}`);
+                    } else {
+                      const summary = Object.entries(cleared)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(', ');
+                      setClearResult(`已清空：${summary}`);
+                    }
+                  } catch (e) {
+                    setClearResult(e instanceof Error ? e.message : '清空失敗');
+                  } finally {
+                    setClearing(false);
+                  }
+                }}
+                disabled={clearing}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                {clearing ? '清空中...' : '清空所有資料'}
+              </button>
             </div>
           </div>
         )}
