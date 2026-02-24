@@ -377,10 +377,12 @@ export default function CreatePurchaseOrderPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      value={item.unitCost}
-                      onChange={(e) =>
-                        updateItem(i, 'unitCost', parseFloat(e.target.value) || 0)
-                      }
+                      value={item.unitCost === 0 ? '' : item.unitCost}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const num = val === '' ? 0 : parseFloat(val);
+                        updateItem(i, 'unitCost', isNaN(num) ? 0 : num);
+                      }}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>

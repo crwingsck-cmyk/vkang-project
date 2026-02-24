@@ -135,12 +135,12 @@ export default function ProductsPage() {
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-surface-2 transition-colors">
                     <td className="px-5 py-3 font-mono text-xs text-accent-text whitespace-nowrap">
-                      <Link href={`/products/${product.sku}`} className="hover:underline">
+                      <Link href={`/products/${encodeURIComponent(product.id || product.sku)}`} className="hover:underline">
                         {product.sku}
                       </Link>
                     </td>
                     <td className="px-5 py-3 font-medium text-txt-primary">
-                      <Link href={`/products/${product.sku}`} className="hover:text-accent-text transition-colors">
+                      <Link href={`/products/${encodeURIComponent(product.id || product.sku)}`} className="hover:text-accent-text transition-colors">
                         {product.name}
                       </Link>
                     </td>
@@ -163,14 +163,14 @@ export default function ProductsPage() {
                       <td className="px-5 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <Link
-                            href={`/products/${product.sku}`}
+                            href={`/products/${encodeURIComponent(product.id || product.sku)}`}
                             className="px-2 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded transition-colors"
                             title="修改"
                           >
                             修改
                           </Link>
                           <button
-                            onClick={() => handleDelete(product.sku, product.name)}
+                            onClick={() => handleDelete(product.id || product.sku, product.name)}
                             className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                             title="刪除"
                           >

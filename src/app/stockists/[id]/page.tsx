@@ -330,7 +330,7 @@ export default function StockistDetailPage() {
                           狀態
                         </th>
                         <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
-                          建立時間
+                          進貨日期
                         </th>
                         <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase w-20">
                           操作

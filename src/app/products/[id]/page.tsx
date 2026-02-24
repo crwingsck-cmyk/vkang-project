@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ProductService } from '@/services/database/products';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { Product, UserRole } from '@/types/models';
 import Link from 'next/link';
 
@@ -42,13 +43,32 @@ export default function ProductDetailPage() {
   });
 
   useEffect(() => {
+    if (!productId) {
+      setLoading(false);
+      setError('無效的產品網址');
+      return;
+    }
     loadProduct();
   }, [productId]);
 
   async function loadProduct() {
+    if (!productId) return;
     setLoading(true);
+    setError('');
     try {
-      const data = await ProductService.getById(productId);
+      let data: Product | null = null;
+      const token = await getCurrentToken(true);
+      if (token) {
+        const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      }
+      if (!data) {
+        data = await ProductService.getById(productId);
+      }
       if (!data) {
         setError('Product not found.');
         return;
@@ -84,23 +104,43 @@ export default function ProductDetailPage() {
     setSuccessMsg('');
     setSaving(true);
     try {
-      await ProductService.update(productId, {
-        name: form.name.trim(),
-        category: form.category,
-        description: form.description.trim() || undefined,
-        unitPrice: parseFloat(form.unitPrice),
-        costPrice: parseFloat(form.costPrice),
-        priceNote: form.priceNote.trim() || undefined,
-        unit: form.unit,
-        reorderLevel: parseInt(form.reorderLevel),
-        reorderQuantity: parseInt(form.reorderQuantity),
-        packsPerBox: (() => {
-          const raw = String(form.packsPerBox || '').trim();
-          const num = raw ? parseInt(raw.replace(/\D/g, ''), 10) : undefined;
-          return num && num > 0 ? num : undefined;
-        })(),
-        barcode: form.barcode.trim() || undefined,
+      const token = await getCurrentToken(true);
+      if (!token) {
+        setError('登入已過期，請重新登入');
+        setSaving(false);
+        return;
+      }
+      const packsPerBoxVal = (() => {
+        const raw = String(form.packsPerBox || '').trim();
+        const num = raw ? parseInt(raw.replace(/\D/g, ''), 10) : undefined;
+        return num && num > 0 ? num : undefined;
+      })();
+      const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          category: form.category,
+          description: form.description.trim(),
+          unitPrice: parseFloat(form.unitPrice),
+          costPrice: parseFloat(form.costPrice),
+          priceNote: form.priceNote.trim(),
+          unit: form.unit,
+          reorderLevel: parseInt(form.reorderLevel),
+          reorderQuantity: parseInt(form.reorderQuantity),
+          packsPerBox: packsPerBoxVal,
+          barcode: form.barcode.trim(),
+        }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || '更新失敗');
+        setSaving(false);
+        return;
+      }
       setSuccessMsg('Product updated successfully.');
       setIsEditing(false);
       await loadProduct();

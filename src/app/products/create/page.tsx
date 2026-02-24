@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { ProductService } from '@/services/database/products';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { UserRole } from '@/types/models';
 import Link from 'next/link';
 
@@ -58,9 +58,9 @@ export default function CreateProductPage() {
 
     setSaving(true);
     try {
-      const existing = await ProductService.getById(skuClean);
-      if (existing && existing.isActive) {
-        setError('此 SKU 已存在');
+      const token = await getCurrentToken(true);
+      if (!token) {
+        setError('登入已過期，請重新登入');
         setSaving(false);
         return;
       }
@@ -71,22 +71,35 @@ export default function CreateProductPage() {
         return num && num > 0 ? num : undefined;
       })();
 
-      await ProductService.create({
-        sku: skuClean,
-        name: form.name.trim(),
-        category: form.category,
-        description: form.description.trim() || undefined,
-        unitPrice: parseFloat(form.unitPrice),
-        costPrice: parseFloat(form.costPrice),
-        priceNote: form.priceNote.trim() || undefined,
-        unit: form.unit,
-        reorderLevel: parseInt(form.reorderLevel),
-        reorderQuantity: parseInt(form.reorderQuantity),
-        packsPerBox: packsPerBoxVal,
-        barcode: form.barcode.trim() || undefined,
-        isActive: true,
+      const res = await fetch('/api/products/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sku: skuClean,
+          name: form.name.trim(),
+          category: form.category,
+          description: form.description.trim() || undefined,
+          unitPrice: parseFloat(form.unitPrice),
+          costPrice: parseFloat(form.costPrice),
+          priceNote: form.priceNote.trim() || undefined,
+          unit: form.unit,
+          reorderLevel: parseInt(form.reorderLevel),
+          reorderQuantity: parseInt(form.reorderQuantity),
+          packsPerBox: packsPerBoxVal,
+          barcode: form.barcode.trim() || undefined,
+          isActive: true,
+        }),
       });
-      router.push('/products');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || `儲存失敗 (${res.status})`);
+        setSaving(false);
+        return;
+      }
+      router.push(`/products/${encodeURIComponent(skuClean)}`);
     } catch (err: unknown) {
       console.error('Create product error:', err);
       const msg = err instanceof Error ? err.message : '未知錯誤';

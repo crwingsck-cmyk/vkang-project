@@ -215,7 +215,7 @@ export default function PurchaseOrderDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-400">建立時間</p>
+                  <p className="text-gray-400">進貨日期</p>
                   <p className="text-gray-100 font-medium">
                     {po.createdAt
                       ? new Date(po.createdAt).toLocaleString('zh-TW')
