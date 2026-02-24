@@ -74,10 +74,9 @@ export default function StockistDetailPage() {
 
   if (role !== UserRole.ADMIN) return null;
 
-  const invValue = inventory.reduce(
-    (s, i) => s + (i.marketValue ?? i.cost * i.quantityOnHand),
-    0
-  );
+  const invItemValue = (i: { quantityOnHand: number; marketValue?: number; cost: number }) =>
+    i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand);
+  const invValue = inventory.reduce((s, i) => s + invItemValue(i), 0);
   const lowStockCount = inventory.filter(
     (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
   ).length;
@@ -299,7 +298,7 @@ export default function StockistDetailPage() {
                             </span>
                           </td>
                           <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
-                            USD {(i.marketValue ?? i.cost * i.quantityOnHand).toFixed(2)}
+                            USD {invItemValue(i).toFixed(2)}
                           </td>
                         </tr>
                       ))}

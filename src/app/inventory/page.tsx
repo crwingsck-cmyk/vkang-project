@@ -270,7 +270,8 @@ export default function InventoryPage() {
     [InventoryStatus.OUT_OF_STOCK]: 'bg-chip-dark text-white border border-chip-dark',
   };
 
-  const totalValue    = inventory.reduce((sum, item) => sum + (item.marketValue ?? item.cost * item.quantityOnHand), 0);
+  const invItemValue = (i: Inventory) => (i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand));
+  const totalValue    = inventory.reduce((sum, item) => sum + invItemValue(item), 0);
   const inStockCount  = inventory.filter((item) => item.status === InventoryStatus.IN_STOCK).length;
   const lowStockCount = inventory.filter((item) => item.status === InventoryStatus.LOW_STOCK).length;
   const outCount      = inventory.filter((item) => item.status === InventoryStatus.OUT_OF_STOCK).length;
@@ -436,7 +437,7 @@ export default function InventoryPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-xs text-txt-secondary text-right tabular-nums">
-                      USD {item.cost.toFixed(2)}
+                      USD {invItemValue(item).toFixed(2)}
                     </td>
                     <td className="cost-method-cell px-5 py-3.5 text-center text-xs text-txt-subtle min-w-[4rem]">
                       {item.costingMethod === CostingMethod.FIFO ? (

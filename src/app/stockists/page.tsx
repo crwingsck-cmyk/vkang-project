@@ -35,7 +35,10 @@ export default function StockistsPage() {
               InventoryService.getByUser(u.id, 200),
               OrderService.getByFromUser(u.id, 50),
             ]);
-            const invValue = inv.reduce((sum, i) => sum + (i.marketValue ?? i.cost * i.quantityOnHand), 0);
+            const invValue = inv.reduce(
+                (sum, i) => sum + (i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand)),
+                0
+              );
             const sales = orders.filter((o) => o.transactionType === TransactionType.SALE);
             const lowStock = inv.filter(
               (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
