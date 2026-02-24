@@ -233,10 +233,10 @@ export default function InventoryPage() {
 
   useEffect(() => {
     if (role === UserRole.ADMIN) {
-      UserService.getStockists().then((list) => {
-        setStockists(list);
+      Promise.all([UserService.getStockists(), UserService.getAdmins()]).then(([stockistList, adminList]) => {
+        setStockists(stockistList);
         const m: Record<string, User> = {};
-        list.forEach((u) => { if (u.id) m[u.id] = u; });
+        [...adminList, ...stockistList].forEach((u) => { if (u.id) m[u.id] = u; });
         setUserMap(m);
       }).catch(console.error);
     }
