@@ -348,7 +348,7 @@ export const PurchaseOrderService = {
     await FirestoreService.update(COLLECTION, poId, {
       status: PurchaseOrderStatus.SUBMITTED,
       receivedAt: deleteField(),
-    } as Partial<PurchaseOrder>);
+    } as unknown as Partial<PurchaseOrder>);
   },
 
   /**
