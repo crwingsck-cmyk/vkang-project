@@ -137,7 +137,24 @@ export default function ProductDetailPage() {
         {loading ? (
           <div className="text-gray-400">Loading...</div>
         ) : error && !product ? (
-          <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
+          <div className="space-y-4">
+            <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
+            <p className="text-gray-400 text-sm">此產品可能已被刪除或不存在。您可以返回產品列表或建立新產品。</p>
+            <div className="flex gap-3">
+              <Link
+                href="/products"
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm font-medium"
+              >
+                返回產品列表
+              </Link>
+              <Link
+                href="/products/create"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium"
+              >
+                建立新產品
+              </Link>
+            </div>
+          </div>
         ) : product ? (
           <>
             <div className="flex items-start justify-between">

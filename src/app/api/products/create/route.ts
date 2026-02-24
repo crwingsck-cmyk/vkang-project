@@ -79,11 +79,16 @@ export async function POST(request: NextRequest) {
     const db = getAdminDb();
     const docRef = db.collection('products').doc(skuClean);
     const existSnap = await docRef.get();
+    // 若已存在且為啟用狀態，則不允許重複
     if (existSnap.exists) {
-      return NextResponse.json(
-        { error: '此 SKU 已存在' },
-        { status: 409 }
-      );
+      const existing = existSnap.data();
+      if (existing?.isActive !== false) {
+        return NextResponse.json(
+          { error: '此 SKU 已存在' },
+          { status: 409 }
+        );
+      }
+      // 已軟刪除的產品：允許覆蓋並重新啟用
     }
 
     const cleanData = Object.fromEntries(
