@@ -12,7 +12,7 @@ import { Product, User, UserRole, PaymentMethod, TransactionItem, TransactionSta
 import { sortByNameEnglishFirst } from '@/lib/sortUsers';
 import Link from 'next/link';
 
-type MainItem = { date: string; poNumber: string; productId: string; productName: string; quantity: number; unitPrice: number };
+type MainItem = { date: string; quantity: number };
 type AllocItem = { date: string; poNumber: string; productId: string; productName: string; quantity: number; unitPrice: number };
 
 type DownlineAlloc = {
@@ -58,7 +58,7 @@ export default function CreateBulkOrderPage() {
 
   const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
-  const [mainItems, setMainItems] = useState<MainItem[]>([{ date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
+  const [mainItems, setMainItems] = useState<MainItem[]>([{ date: new Date().toISOString().slice(0, 10), quantity: 0 }]);
   const [buyerSelfUseItems, setBuyerSelfUseItems] = useState<AllocItem[]>([]);
 
   const [downlineAllocs, setDownlineAllocs] = useState<DownlineAlloc[]>([]);
@@ -114,10 +114,8 @@ export default function CreateBulkOrderPage() {
       .filter((u) => u.parentUserId === userId)
       .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
 
-  const mainQtyByProduct = sumByProduct(mainItems.filter((i) => i.productId && i.quantity > 0));
-  const totalMainQty = Object.values(mainQtyByProduct).reduce((a, b) => a + b, 0);
-  const mainProductIds = Object.keys(mainQtyByProduct);
-  const mainProductOptions = products.filter((p) => mainProductIds.includes(p.sku));
+  const totalMainQty = mainItems.filter((i) => i.quantity > 0).reduce((a, i) => a + i.quantity, 0);
+  const mainProductOptions = products;
   const getDownlineProductOptions = (d: DownlineAlloc) => {
     const ids = [...new Set(d.items.filter((i) => i.productId).map((i) => i.productId))];
     return products.filter((p) => ids.includes(p.sku));
@@ -147,12 +145,10 @@ export default function CreateBulkOrderPage() {
   }
 
   const allocQtyByProduct = getAllocQtyByProduct();
-  const allocValid = totalMainQty > 0 && Object.entries(mainQtyByProduct).every(([pid, qty]) => (allocQtyByProduct[pid] ?? 0) <= qty);
-  const remainderByProduct: Record<string, number> = {};
-  for (const [pid, qty] of Object.entries(mainQtyByProduct)) {
-    remainderByProduct[pid] = qty - (allocQtyByProduct[pid] ?? 0);
-  }
-  const hasRemainder = Object.values(remainderByProduct).some((q) => q > 0);
+  const totalAllocQty = Object.values(allocQtyByProduct).reduce((a, b) => a + b, 0);
+  const allocValid = totalMainQty > 0 && totalAllocQty <= totalMainQty;
+  const remainderQty = Math.max(0, totalMainQty - totalAllocQty);
+  const hasRemainder = remainderQty > 0;
 
   const subAllocsValid = downlineAllocs.every((d) => {
     if (!d.expanded || !d.items.length) return true;
@@ -172,23 +168,11 @@ export default function CreateBulkOrderPage() {
   const formValid = allocValid && subAllocsValid;
 
   function addMainItem() {
-    setMainItems((prev) => [...prev, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
+    setMainItems((prev) => [...prev, { date: new Date().toISOString().slice(0, 10), quantity: 0 }]);
   }
   function updateMainItem(index: number, field: keyof MainItem, value: string | number) {
     setMainItems((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item;
-        if (field === 'productId') {
-          const product = products.find((p) => p.sku === value);
-          return {
-            ...item,
-            productId: product?.sku || '',
-            productName: product?.name || '',
-            unitPrice: product?.unitPrice ?? 0,
-          };
-        }
-        return { ...item, [field]: value };
-      })
+      prev.map((item, i) => (i !== index ? item : { ...item, [field]: value }))
     );
   }
   function removeMainItem(index: number) {
@@ -255,22 +239,13 @@ export default function CreateBulkOrderPage() {
       setError('請填寫完整：賣方、買方');
       return;
     }
-    const validMainItems = mainItems.filter((i) => i.productId && i.quantity > 0);
+    const validMainItems = mainItems.filter((i) => i.quantity > 0);
     if (validMainItems.length === 0) {
-      setError('請至少新增一筆主訂單品項（日期、發貨號碼、產品、數量）');
+      setError('請至少新增一筆主訂單品項（日期、數量）');
       return;
     }
     if (!allocValid) {
-      const over = Object.entries(mainQtyByProduct).filter(([pid, qty]) => (allocQtyByProduct[pid] ?? 0) > qty);
-      if (over.length > 0) {
-        const msgs = over.map(([pid, qty]) => {
-          const p = products.find((x) => x.sku === pid);
-          return `${p?.name || pid}：下線分配 ${allocQtyByProduct[pid]} 超過主訂單 ${qty}`;
-        });
-        setError('自用與下線分配不可超過主訂單數量：' + msgs.join('；'));
-      } else {
-        setError('請至少填寫一筆主訂單品項（產品、數量）');
-      }
+      setError(`自用與下線分配總數量（${totalAllocQty}）不可超過主訂單總數量（${totalMainQty}）`);
       return;
     }
     if (!subAllocsValid) {
@@ -299,11 +274,24 @@ export default function CreateBulkOrderPage() {
       let orderSeq = 0;
       const baseCreatedAt = Date.now();
 
-      // 主訂單：每列（日期+發貨號碼+產品）建立一筆訂單
+      // 主訂單：每列（日期+數量）建立一筆訂單，使用第一個產品作為 placeholder（主訂單不分產品）
+      const placeholderProduct = products[0];
+      if (!placeholderProduct) {
+        setError('請先新增產品');
+        setSaving(false);
+        return;
+      }
+      const toPlaceholderItem = (qty: number): TransactionItem => ({
+        productId: placeholderProduct.sku,
+        productName: '批量進貨',
+        quantity: qty,
+        unitPrice: placeholderProduct.unitPrice ?? 0,
+        total: qty * (placeholderProduct.unitPrice ?? 0),
+      });
       for (const row of validMainItems) {
-        const txItem = toTxItem(row);
+        const txItem = toPlaceholderItem(row.quantity);
         const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
-        const mainOrderData = { ...OrderService.buildSaleOrder({
+        const mainOrderData = OrderService.buildSaleOrder({
           fromUserId: fromUser.id!,
           fromUserName: fromUser.displayName,
           toUserId: toUser.id!,
@@ -312,7 +300,7 @@ export default function CreateBulkOrderPage() {
           paymentMethod: PaymentMethod.CASH,
           notes: '批量進貨（含分配）',
           createdBy,
-        }), poNumber: row.poNumber.trim() || undefined };
+        });
         const mainOrder = await OrderService.create(mainOrderData, { customId: `TXN-${baseCreatedAt}-${orderSeq}`, createdAt: rowCreatedAt });
         await InventorySyncService.onSaleCompleted(fromUser.id!, toUser.id!, [txItem], mainOrder.id!);
         await OrderService.updateStatus(mainOrder.id!, TransactionStatus.COMPLETED);
@@ -340,16 +328,8 @@ export default function CreateBulkOrderPage() {
       }
 
       // 剩餘列為買方庫存（庫存待賣出）
-      const today = new Date().toISOString().slice(0, 10);
-      const remainderItems: AllocItem[] = [];
-      for (const [productId, qty] of Object.entries(remainderByProduct)) {
-        if (qty > 0) {
-          const p = products.find((x) => x.sku === productId);
-          remainderItems.push({ date: today, poNumber: '', productId, productName: p?.name || '', quantity: qty, unitPrice: p?.unitPrice ?? 0 });
-        }
-      }
-      if (remainderItems.length > 0) {
-        const stockTxItems = toTxItems(remainderItems);
+      if (remainderQty > 0 && placeholderProduct) {
+        const stockTxItems = [toPlaceholderItem(remainderQty)];
         const stockOrderData = OrderService.buildSaleOrder({
           fromUserId: toUser.id!,
           fromUserName: toUser.displayName,
@@ -462,7 +442,7 @@ export default function CreateBulkOrderPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-100">批量進貨與分配</h1>
           <p className="text-gray-400 mt-1">
-            買方於主訂單填寫向賣方訂購的貨品，下線分配給直屬下線，剩餘自動列為買方庫存
+            主訂單填寫台灣訂購數量（日期+數量）；自用與下線分配需填產品、日期、發貨號碼、數量，總和不可超過主訂單
           </p>
         </div>
 
@@ -494,21 +474,14 @@ export default function CreateBulkOrderPage() {
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-300">品項（每列：日期 + 發貨號碼 + 產品 + 數量）</label>
+                <label className="block text-sm font-medium text-gray-300">品項（每列：日期 + 數量，台灣訂購總數）</label>
                 <button type="button" onClick={addMainItem} className="px-4 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg">+ 新增品項</button>
               </div>
               <div className="space-y-2">
                 {mainItems.map((item, i) => (
                   <div key={i} className="flex gap-2 items-center flex-wrap">
                     <input type="date" value={item.date} onChange={(e) => updateMainItem(i, 'date', e.target.value)} className="px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" />
-                    <input type="text" value={item.poNumber} onChange={(e) => updateMainItem(i, 'poNumber', e.target.value)} placeholder="發貨號碼" className="w-32 px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" />
-                    <select value={item.productId} onChange={(e) => updateMainItem(i, 'productId', e.target.value)} className="flex-1 min-w-[140px] px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm">
-                      <option value="">請選擇產品...</option>
-                      {products.map((p) => (
-                        <option key={p.sku} value={p.sku}>{p.name} (USD {p.unitPrice})</option>
-                      ))}
-                    </select>
-                    <input type="number" min="0" value={item.quantity ?? ''} onChange={(e) => updateMainItem(i, 'quantity', parseInt(e.target.value, 10) || 0)} className="w-20 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" placeholder="數量" />
+                    <input type="number" min="0" value={item.quantity ?? ''} onChange={(e) => updateMainItem(i, 'quantity', parseInt(e.target.value, 10) || 0)} className="w-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" placeholder="數量" />
                     <button type="button" onClick={() => removeMainItem(i)} className="px-2 py-1 text-red-400 hover:bg-red-900/30 rounded">✕</button>
                   </div>
                 ))}
@@ -517,18 +490,18 @@ export default function CreateBulkOrderPage() {
                 <span className="text-sm font-medium text-gray-200">訂購總數量：</span>
                 <span className="text-lg font-bold text-green-400 ml-2">{totalMainQty}</span>
                 {hasRemainder && formValid && (
-                  <span className="text-xs text-gray-400 ml-2">（剩餘 {Object.values(remainderByProduct).reduce((a, b) => a + b, 0)} 列為買方庫存）</span>
+                  <span className="text-xs text-gray-400 ml-2">（剩餘 {remainderQty} 列為買方庫存）</span>
                 )}
               </div>
             </div>
           </div>
 
           {/* 買方自用 */}
-          {toUserId && mainProductIds.length > 0 && (
+          {toUserId && totalMainQty > 0 && (
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-200">買方自己用的</h2>
               <p className="text-xs text-gray-500">
-                買方自留使用的發貨訂單（日期、發貨號碼、產品、數量），產品僅能從主訂單中選擇。
+                買方自留使用的發貨訂單（日期、發貨號碼、產品、數量），總數量不可超過主訂單。
               </p>
               <div>
                 <button type="button" onClick={() => setBuyerSelfUseItems((prev) => [...prev, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }])} className="px-4 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg">+ 新增品項</button>
@@ -556,7 +529,7 @@ export default function CreateBulkOrderPage() {
           <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-200">下線分配</h2>
             <p className="text-xs text-gray-500">
-              下線分配總和須 ≤ 主訂單各品項數量；若有剩餘將列為買方庫存。產品僅能從主訂單中選擇。每筆分配可選日期、產品、數量、發貨號碼。
+              下線分配總數量須 ≤ 主訂單總數量；若有剩餘將列為買方庫存。每筆分配需填日期、發貨號碼、產品、數量。
             </p>
 
             {/* 下線 */}
