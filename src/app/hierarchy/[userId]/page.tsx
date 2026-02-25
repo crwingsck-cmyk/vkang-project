@@ -76,7 +76,7 @@ export default function StockLedgerPage() {
         for (const item of txn.items ?? []) {
           const amount = item.total ?? (item.unitPrice ?? 0) * (item.quantity ?? 0);
           flat.push({
-            kind: isIn ? 'order' : 'shipment',
+            kind: isOut ? 'shipment' : 'order',
             date,
             refId: txn.poNumber ?? txnId ?? '',
             transactionId: txnId,
@@ -357,19 +357,16 @@ function AddMovementModal({
           { id: userId, displayName: '自用' },
           ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' })),
         ]);
-        setUpstreams([
-          { id: 'system', displayName: '手動調整' },
-          ...allUsers.filter((u) => (u.id ?? u.email) !== userId).map((u) => ({
-            id: u.id ?? u.email ?? '',
-            displayName: u.displayName ?? '—',
-          })),
-        ]);
+        const upstreamList = allUsers
+          .filter((u) => (u.id ?? u.email) !== userId)
+          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' }));
+        setUpstreams(upstreamList);
         setForm((f) => ({
           ...f,
           productId: productList[0]?.sku ?? '',
           productName: productList[0]?.name ?? '',
-          upstreamId: 'system',
-          upstreamName: '手動調整',
+          upstreamId: upstreamList[0]?.id ?? '',
+          upstreamName: upstreamList[0]?.displayName ?? '—',
           downlineId: userId,
           downlineName: '自用',
         }));
@@ -412,6 +409,11 @@ function AddMovementModal({
       return;
     }
 
+    if (form.direction === 'in' && !form.upstreamId) {
+      onError('請選擇進貨來源（上游）');
+      return;
+    }
+
     // 統籌計算：入貨數量 > 出貨數量，出貨前驗證庫存足夠
     if (form.direction === 'out') {
       const inv = await InventoryService.getByUserAndProduct(userId, productId);
@@ -435,9 +437,7 @@ function AddMovementModal({
       if (form.direction === 'in') {
         const dateMs = new Date(form.orderDate).getTime();
         const refId = `ORD-${dateMs}`;
-        const fromUser = form.upstreamId === 'system'
-          ? { userId: 'system', userName: '手動調整' }
-          : { userId: form.upstreamId, userName: form.upstreamName };
+        const fromUser = { userId: form.upstreamId, userName: form.upstreamName };
         const toUser = { userId, userName };
 
         await OrderService.create(
@@ -547,12 +547,19 @@ function AddMovementModal({
             {form.direction === 'in' ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商（上游）</label>
+                  <p className="text-sm font-medium text-txt-subtle mb-1">入貨人（經銷商）</p>
+                  <p className="px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base">
+                    {userName}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">進貨來源（上游）</label>
                   <select
                     value={form.upstreamId}
                     onChange={(e) => handleUpstreamChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
+                    <option value="">請選擇</option>
                     {upstreams.map((u) => (
                       <option key={u.id} value={u.id}>{u.displayName}</option>
                     ))}
@@ -771,17 +778,22 @@ function EditMovementModal({
           { id: userId, displayName: '自用' },
           ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' })),
         ]);
-        setUpstreams([
-          { id: 'system', displayName: '手動調整' },
-          ...allUsers.filter((u) => (u.id ?? u.email) !== userId).map((u) => ({
-            id: u.id ?? u.email ?? '',
-            displayName: u.displayName ?? '—',
-          })),
-        ]);
+        const upstreamListEdit = allUsers
+          .filter((u) => (u.id ?? u.email) !== userId)
+          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' }));
+        setUpstreams(upstreamListEdit);
         const dateStr = t.createdAt
           ? new Date(t.createdAt).toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10);
         const isSelfUse = isOut && t.toUser?.userId === userId;
+        const fromId = t.fromUser?.userId;
+        const fromName = t.fromUser?.userName ?? '—';
+        const upstreamIdForEdit = isIn && fromId && fromId !== 'system'
+          ? fromId
+          : upstreamListEdit[0]?.id ?? '';
+        const upstreamNameForEdit = isIn && fromId && fromId !== 'system'
+          ? fromName
+          : upstreamListEdit[0]?.displayName ?? '—';
         setTxnMeta({
           type: t.transactionType ?? '',
           fromUserId: t.fromUser?.userId ?? '',
@@ -790,8 +802,8 @@ function EditMovementModal({
         });
         setForm({
           direction: isIn ? 'in' : 'out',
-          upstreamId: isIn ? (t.fromUser?.userId === 'system' ? 'system' : t.fromUser?.userId ?? 'system') : 'system',
-          upstreamName: isIn ? (t.fromUser?.userName ?? '手動調整') : '',
+          upstreamId: isIn ? upstreamIdForEdit : '',
+          upstreamName: isIn ? upstreamNameForEdit : '',
           orderDate: dateStr,
           orderQty: item.quantity,
           orderPrice: item.unitPrice ?? 0,
@@ -840,6 +852,11 @@ function EditMovementModal({
       return;
     }
 
+    if (form.direction === 'in' && !form.upstreamId) {
+      onError('請選擇進貨來源（上游）');
+      return;
+    }
+
     if (form.direction === 'out') {
       const inv = await InventoryService.getByUserAndProduct(userId, productId);
       const have = inv?.quantityOnHand ?? 0;
@@ -883,7 +900,7 @@ function EditMovementModal({
         : new Date(form.shipDate).getTime();
       const refId = form.direction === 'in' ? `ORD-${dateMs}` : (form.refId.trim() || `SHIP-${dateMs}`);
       const fromUser = form.direction === 'in'
-        ? (form.upstreamId === 'system' ? { userId: 'system', userName: '手動調整' } : { userId: form.upstreamId, userName: form.upstreamName })
+        ? { userId: form.upstreamId, userName: form.upstreamName }
         : { userId, userName };
       const toUser = form.direction === 'in'
         ? { userId, userName }
@@ -935,12 +952,19 @@ function EditMovementModal({
             {form.direction === 'in' ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商（上游）</label>
+                  <p className="text-sm font-medium text-txt-subtle mb-1">入貨人（經銷商）</p>
+                  <p className="px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base">
+                    {userName}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">進貨來源（上游）</label>
                   <select
                     value={form.upstreamId}
                     onChange={(e) => handleUpstreamChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
+                    <option value="">請選擇</option>
                     {upstreams.map((u) => (
                       <option key={u.id} value={u.id}>{u.displayName}</option>
                     ))}
