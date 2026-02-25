@@ -33,14 +33,6 @@ function toTxItem(item: AllocItem): TransactionItem {
     total: item.quantity * item.unitPrice,
   };
 }
-function sumByProduct(items: AllocItem[]): Record<string, number> {
-  const m: Record<string, number> = {};
-  for (const i of items) {
-    if (i.productId) m[i.productId] = (m[i.productId] ?? 0) + i.quantity;
-  }
-  return m;
-}
-
 export default function CreateBulkOrderPage() {
   const { user, role, firebaseUser } = useAuth();
   const router = useRouter();
@@ -112,10 +104,7 @@ export default function CreateBulkOrderPage() {
 
   const totalMainQty = mainItems.filter((i) => i.quantity > 0).reduce((a, i) => a + i.quantity, 0);
   const mainProductOptions = products;
-  const getDownlineProductOptions = (d: DownlineAlloc) => {
-    const ids = [...new Set(d.items.filter((i) => i.productId).map((i) => i.productId))];
-    return products.filter((p) => ids.includes(p.sku));
-  };
+  const getDownlineProductOptions = () => products;
 
   function getAllocQtyByProduct(): Record<string, number> {
     const m: Record<string, number> = {};
@@ -148,17 +137,13 @@ export default function CreateBulkOrderPage() {
 
   const subAllocsValid = downlineAllocs.every((d) => {
     if (!d.expanded || !d.items.length) return true;
-    const dQty = sumByProduct(d.items);
-    const subSum: Record<string, number> = {};
-    for (const i of d.selfUseItems ?? []) {
-      if (i.productId) subSum[i.productId] = (subSum[i.productId] ?? 0) + i.quantity;
-    }
+    const dTotalQty = d.items.reduce((s, i) => s + (i.quantity || 0), 0);
+    let subTotalQty = 0;
+    for (const i of d.selfUseItems ?? []) subTotalQty += i.quantity || 0;
     for (const s of d.subAllocs ?? []) {
-      for (const i of s.items) {
-        if (i.productId) subSum[i.productId] = (subSum[i.productId] ?? 0) + i.quantity;
-      }
+      for (const i of s.items) subTotalQty += i.quantity || 0;
     }
-    return Object.entries(dQty).every(([pid, q]) => (subSum[pid] ?? 0) <= q);
+    return subTotalQty <= dTotalQty;
   });
 
   const formValid = allocValid && subAllocsValid;
@@ -590,7 +575,7 @@ export default function CreateBulkOrderPage() {
                                 <input type="text" value={item.poNumber} onChange={(e) => { const next = [...(d.selfUseItems ?? [])]; next[j] = { ...next[j], poNumber: e.target.value }; updateDownline(i, 'selfUseItems', next); }} placeholder="發貨號" className="w-24 px-1 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
                                 <select value={item.productId} onChange={(e) => { const p = products.find((x) => x.sku === e.target.value); const next = [...(d.selfUseItems ?? [])]; next[j] = { ...next[j], productId: p?.sku || '', productName: p?.name || '', unitPrice: p?.unitPrice ?? 0 }; updateDownline(i, 'selfUseItems', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" style={{ minWidth: 80 }}>
                                   <option value="">產品</option>
-                                  {getDownlineProductOptions(d).map((p) => (
+                                  {getDownlineProductOptions().map((p) => (
                                     <option key={p.sku} value={p.sku}>{p.name}</option>
                                   ))}
                                 </select>
@@ -624,7 +609,7 @@ export default function CreateBulkOrderPage() {
                                     <input type="text" value={item.poNumber} onChange={(e) => { const next = [...(d.subAllocs ?? [])]; next[j].items[k] = { ...next[j].items[k], poNumber: e.target.value }; updateDownline(i, 'subAllocs', next); }} placeholder="發貨號" className="w-24 px-1 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
                                     <select value={item.productId} onChange={(e) => { const p = products.find((x) => x.sku === e.target.value); const next = [...(d.subAllocs ?? [])]; next[j].items[k] = { ...next[j].items[k], productId: p?.sku || '', productName: p?.name || '', unitPrice: p?.unitPrice ?? 0 }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" style={{ minWidth: 80 }}>
                                       <option value="">產品</option>
-                                      {getDownlineProductOptions(d).map((p) => (
+                                      {getDownlineProductOptions().map((p) => (
                                         <option key={p.sku} value={p.sku}>{p.name}</option>
                                       ))}
                                     </select>
