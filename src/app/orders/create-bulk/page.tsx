@@ -29,7 +29,15 @@ export default function CreateBulkOrderPage() {
   const [totalQty, setTotalQty] = useState(0);
   const [unitPrice, setUnitPrice] = useState(0);
   const [selfUseQty, setSelfUseQty] = useState(0);
-  const [downlineAllocs, setDownlineAllocs] = useState<{ userId: string; userName: string; qty: number }[]>([]);
+  type DownlineAlloc = {
+    userId: string;
+    userName: string;
+    qty: number;
+    expanded?: boolean;
+    selfUseQty?: number;
+    subAllocs?: { userId: string; userName: string; qty: number }[];
+  };
+  const [downlineAllocs, setDownlineAllocs] = useState<DownlineAlloc[]>([]);
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [buyerOptions, setBuyerOptions] = useState<User[]>([]);
 
@@ -81,8 +89,18 @@ export default function CreateBulkOrderPage() {
     ? allUsers.filter((u) => u.parentUserId === toUserId).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
     : [];
 
+  const getDirectDownlines = (userId: string) =>
+    allUsers
+      .filter((u) => u.parentUserId === userId)
+      .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+
   const allocSum = selfUseQty + downlineAllocs.reduce((s, d) => s + d.qty, 0);
-  const allocValid = totalQty > 0 && allocSum === totalQty;
+  const subAllocsValid = downlineAllocs.every((d) => {
+    if (!d.expanded || !d.subAllocs?.length) return true;
+    const subSum = (d.selfUseQty ?? 0) + (d.subAllocs?.reduce((s, x) => s + x.qty, 0) ?? 0);
+    return subSum === d.qty;
+  });
+  const allocValid = totalQty > 0 && allocSum === totalQty && subAllocsValid;
 
   function addDownline() {
     if (directDownlines.length === 0) return;
@@ -101,12 +119,86 @@ export default function CreateBulkOrderPage() {
   function setDownlineUser(index: number, userId: string) {
     const u = allUsers.find((x) => x.id === userId);
     setDownlineAllocs((prev) =>
-      prev.map((d, i) => (i === index ? { userId: userId, userName: u?.displayName || '', qty: d.qty } : d))
+      prev.map((d, i) =>
+        i === index ? { ...d, userId, userName: u?.displayName || '', expanded: false, selfUseQty: undefined, subAllocs: undefined } : d
+      )
     );
   }
 
   function removeDownline(index: number) {
     setDownlineAllocs((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function toggleSubAlloc(index: number) {
+    setDownlineAllocs((prev) =>
+      prev.map((d, i) => {
+        if (i !== index) return d;
+        const next = !d.expanded;
+        return {
+          ...d,
+          expanded: next,
+          selfUseQty: next ? (d.selfUseQty ?? 0) : undefined,
+          subAllocs: next ? (d.subAllocs ?? []) : undefined,
+        };
+      })
+    );
+  }
+
+  function setDownlineSelfUse(index: number, qty: number) {
+    setDownlineAllocs((prev) =>
+      prev.map((d, i) => (i === index ? { ...d, selfUseQty: qty } : d))
+    );
+  }
+
+  function addSubDownline(parentIndex: number) {
+    const d = downlineAllocs[parentIndex];
+    if (!d?.userId) return;
+    const subDownlines = getDirectDownlines(d.userId);
+    const first = subDownlines.find((u) => !d.subAllocs?.some((s) => s.userId === u.id));
+    if (first) {
+      setDownlineAllocs((prev) =>
+        prev.map((p, i) =>
+          i === parentIndex
+            ? { ...p, subAllocs: [...(p.subAllocs ?? []), { userId: first.id!, userName: first.displayName || '', qty: 0 }] }
+            : p
+        )
+      );
+    }
+  }
+
+  function updateSubDownline(parentIndex: number, subIndex: number, qty: number) {
+    setDownlineAllocs((prev) =>
+      prev.map((p, i) =>
+        i === parentIndex
+          ? {
+              ...p,
+              subAllocs: (p.subAllocs ?? []).map((s, j) => (j === subIndex ? { ...s, qty } : s)),
+            }
+          : p
+      )
+    );
+  }
+
+  function setSubDownlineUser(parentIndex: number, subIndex: number, userId: string) {
+    const u = allUsers.find((x) => x.id === userId);
+    setDownlineAllocs((prev) =>
+      prev.map((p, i) =>
+        i === parentIndex
+          ? {
+              ...p,
+              subAllocs: (p.subAllocs ?? []).map((s, j) => (j === subIndex ? { ...s, userId, userName: u?.displayName || '' } : s)),
+            }
+          : p
+      )
+    );
+  }
+
+  function removeSubDownline(parentIndex: number, subIndex: number) {
+    setDownlineAllocs((prev) =>
+      prev.map((p, i) =>
+        i === parentIndex ? { ...p, subAllocs: (p.subAllocs ?? []).filter((_, j) => j !== subIndex) } : p
+      )
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -117,6 +209,10 @@ export default function CreateBulkOrderPage() {
       return;
     }
     if (!allocValid) {
+      if (!subAllocsValid) {
+        setError('部分下線的多層分配總和與該列數量不符，請檢查「繼續分配」區塊');
+        return;
+      }
       setError(`分配總和必須等於總數量：自用 ${selfUseQty} + 下線 ${downlineAllocs.reduce((s, d) => s + d.qty, 0)} = ${allocSum}，應為 ${totalQty}`);
       return;
     }
@@ -189,11 +285,14 @@ export default function CreateBulkOrderPage() {
         await OrderService.updateStatus(selfOrder.id!, TransactionStatus.COMPLETED);
       }
 
-      // 3. 下線訂單
+      // 3. 下線訂單（含多層分配）
+      let orderSeq = 2;
       for (const d of downlineAllocs) {
         if (d.qty <= 0) continue;
         const downUser = allUsers.find((u) => u.id === d.userId);
         if (!downUser) continue;
+
+        // 3a. 買方 → 該下線（主訂單）
         const downOrderData = OrderService.buildSaleOrder({
           fromUserId: toUser.id!,
           fromUserName: toUser.displayName,
@@ -201,12 +300,49 @@ export default function CreateBulkOrderPage() {
           toUserName: downUser.displayName,
           items: makeItem(d.qty),
           paymentMethod: PaymentMethod.CASH,
-          notes: `分配至 ${downUser.displayName}`,
+          notes: d.expanded && (d.subAllocs?.length || (d.selfUseQty ?? 0) > 0) ? `分配至 ${downUser.displayName}（含多層分配）` : `分配至 ${downUser.displayName}`,
           createdBy,
         });
-        const downOrder = await OrderService.create(downOrderData, { createdAt: createdAt + 2 });
+        const downOrder = await OrderService.create(downOrderData, { createdAt: createdAt + orderSeq++ });
         await InventorySyncService.onSaleCompleted(toUser.id!, downUser.id!, makeItem(d.qty), downOrder.id!);
         await OrderService.updateStatus(downOrder.id!, 'COMPLETED' as any);
+
+        // 3b. 若有多層分配：該下線 → 自用 / 該下線的下線
+        if (d.expanded && (d.subAllocs?.length || (d.selfUseQty ?? 0) > 0)) {
+          if ((d.selfUseQty ?? 0) > 0) {
+            const selfOrderData = OrderService.buildSaleOrder({
+              fromUserId: downUser.id!,
+              fromUserName: downUser.displayName,
+              toUserId: downUser.id!,
+              toUserName: downUser.displayName,
+              items: makeItem(d.selfUseQty!),
+              paymentMethod: PaymentMethod.CASH,
+              notes: '自用',
+              createdBy,
+            });
+            const selfOrder = await OrderService.create(selfOrderData, { createdAt: createdAt + orderSeq++ });
+            await InventorySyncService.onSaleCompleted(downUser.id!, downUser.id!, makeItem(d.selfUseQty!), selfOrder.id!);
+            await OrderService.updateStatus(selfOrder.id!, TransactionStatus.COMPLETED);
+          }
+          for (const sub of d.subAllocs ?? []) {
+            if (sub.qty <= 0) continue;
+            const subUser = allUsers.find((u) => u.id === sub.userId);
+            if (!subUser) continue;
+            const subOrderData = OrderService.buildSaleOrder({
+              fromUserId: downUser.id!,
+              fromUserName: downUser.displayName,
+              toUserId: subUser.id!,
+              toUserName: subUser.displayName,
+              items: makeItem(sub.qty),
+              paymentMethod: PaymentMethod.CASH,
+              notes: `分配至 ${subUser.displayName}`,
+              createdBy,
+            });
+            const subOrder = await OrderService.create(subOrderData, { createdAt: createdAt + orderSeq++ });
+            await InventorySyncService.onSaleCompleted(downUser.id!, subUser.id!, makeItem(sub.qty), subOrder.id!);
+            await OrderService.updateStatus(subOrder.id!, TransactionStatus.COMPLETED);
+          }
+        }
       }
 
       router.push('/orders');
@@ -330,7 +466,7 @@ export default function CreateBulkOrderPage() {
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              自用 + 下線分配總和必須等於總數量。下線僅能選買方的直屬下線。若要分配至下線的下線（多層），請先完成本筆，再以該下線為買方建立另一筆批量進貨。
+              自用 + 下線分配總和必須等於總數量。下線僅能選買方的直屬下線。若要分配至下線的下線（多層），請在該列點「繼續分配」。
             </p>
 
             <div>
@@ -338,8 +474,8 @@ export default function CreateBulkOrderPage() {
               <input
                 type="number"
                 min="0"
-                value={selfUseQty || ''}
-                onChange={(e) => setSelfUseQty(parseInt(e.target.value) || 0)}
+                value={selfUseQty ?? ''}
+                onChange={(e) => setSelfUseQty(parseInt(e.target.value, 10) || 0)}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 max-w-[120px]"
               />
             </div>
@@ -357,36 +493,115 @@ export default function CreateBulkOrderPage() {
                 </button>
               </div>
               <div className="space-y-2">
-                {downlineAllocs.map((d, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select
-                      value={d.userId}
-                      onChange={(e) => setDownlineUser(i, e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
-                    >
-                      {directDownlines.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.displayName}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      value={d.qty || ''}
-                      onChange={(e) => updateDownline(i, parseInt(e.target.value) || 0)}
-                      className="w-20 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
-                      placeholder="數量"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeDownline(i)}
-                      className="px-2 py-1 text-red-400 hover:bg-red-900/30 rounded"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                {downlineAllocs.map((d, i) => {
+                  const subDownlines = getDirectDownlines(d.userId);
+                  const subSum = (d.selfUseQty ?? 0) + (d.subAllocs?.reduce((s, x) => s + x.qty, 0) ?? 0);
+                  const subValid = !d.expanded || subSum === d.qty;
+                  return (
+                    <div key={i} className="border border-gray-600 rounded-lg p-3 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={d.userId}
+                          onChange={(e) => setDownlineUser(i, e.target.value)}
+                          className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
+                        >
+                          {directDownlines.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.displayName}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          value={d.qty ?? ''}
+                          onChange={(e) => updateDownline(i, parseInt(e.target.value, 10) || 0)}
+                          className="w-20 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
+                          placeholder="數量"
+                        />
+                        {subDownlines.length > 0 && d.qty > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSubAlloc(i)}
+                            className={`px-3 py-1 text-xs rounded-lg ${d.expanded ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}`}
+                          >
+                            {d.expanded ? '收起' : '繼續分配'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeDownline(i)}
+                          className="px-2 py-1 text-red-400 hover:bg-red-900/30 rounded"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {d.expanded && subDownlines.length > 0 && (
+                        <div className="ml-4 pl-4 border-l-2 border-gray-600 space-y-2">
+                          <p className="text-xs text-gray-500">
+                            {d.userName} 的自用 + 下線分配 = {subSum} / {d.qty}
+                            {!subValid && <span className="text-amber-400 ml-1">（需等於 {d.qty}）</span>}
+                          </p>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">自用數量</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={d.selfUseQty ?? ''}
+                              onChange={(e) => setDownlineSelfUse(i, parseInt(e.target.value, 10) || 0)}
+                              className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="text-xs text-gray-400">分配至 {d.userName} 的下線</label>
+                              <button
+                                type="button"
+                                onClick={() => addSubDownline(i)}
+                                disabled={subDownlines.length === 0 || (d.subAllocs?.length ?? 0) >= subDownlines.length}
+                                className="text-xs px-2 py-0.5 bg-gray-600 hover:bg-gray-500 text-gray-300 rounded disabled:opacity-50"
+                              >
+                                + 新增
+                              </button>
+                            </div>
+                            <div className="space-y-1">
+                              {(d.subAllocs ?? []).map((s, j) => (
+                                <div key={j} className="flex gap-2 items-center">
+                                  <select
+                                    value={s.userId}
+                                    onChange={(e) => setSubDownlineUser(i, j, e.target.value)}
+                                    className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm"
+                                  >
+                                    {subDownlines.map((u) => (
+                                      <option key={u.id} value={u.id}>
+                                        {u.displayName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={s.qty ?? ''}
+                                    onChange={(e) => updateSubDownline(i, j, parseInt(e.target.value, 10) || 0)}
+                                    className="w-16 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm"
+                                    placeholder="數量"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSubDownline(i, j)}
+                                    className="px-1 py-0.5 text-red-400 hover:bg-red-900/30 rounded text-xs"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
