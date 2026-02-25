@@ -28,7 +28,25 @@ export async function POST(request: NextRequest) {
     const db = getAdminDb();
     const shortages: { productId: string; productName: string; need: number; have: number; shortageAt: string; shortageUserId: string }[] = [];
 
-    for (const item of items) {
+    const bulkItems = items.filter((i) => i.productName === '批量進貨');
+    const normalItems = items.filter((i) => i.productName !== '批量進貨');
+
+    if (bulkItems.length > 0) {
+      const bulkNeed = bulkItems.reduce((s, i) => s + i.quantity, 0);
+      const shortageNode = await findShortageNodeByTotal(db, sellerUserId, bulkNeed);
+      if (shortageNode) {
+        shortages.push({
+          productId: bulkItems[0].productId,
+          productName: '批量進貨',
+          need: bulkNeed,
+          have: shortageNode.totalHave,
+          shortageAt: shortageNode.displayName,
+          shortageUserId: shortageNode.userId,
+        });
+      }
+    }
+
+    for (const item of normalItems) {
       const { productId, productName, quantity } = item;
       const need = quantity;
 
@@ -81,6 +99,43 @@ async function findShortageNode(
 
     if (have < need) {
       lastShortage = { userId: currentUserId, displayName };
+    } else {
+      break;
+    }
+
+    if (!userData) break;
+    const parentId = userData.parentUserId ?? null;
+    if (!parentId) break;
+    currentUserId = parentId;
+  }
+
+  return lastShortage;
+}
+
+async function findShortageNodeByTotal(
+  db: ReturnType<typeof getAdminDb>,
+  startUserId: string,
+  need: number
+): Promise<{ userId: string; displayName: string; totalHave: number } | null> {
+  let currentUserId: string | null = startUserId;
+  let lastShortage: { userId: string; displayName: string; totalHave: number } | null = null;
+
+  while (currentUserId) {
+    const invSnap = await db.collection('inventory').where('userId', '==', currentUserId).get();
+    const totalHave = invSnap.docs.reduce((s, d) => s + (d.data()?.quantityOnHand ?? 0), 0);
+
+    let userData: { displayName?: string; parentUserId?: string } | null = null;
+    const userDoc: DocumentSnapshot = await db.collection('users').doc(currentUserId).get();
+    if (userDoc.exists) {
+      userData = userDoc.data()!;
+    } else {
+      const byEmail: QuerySnapshot = await db.collection('users').where('email', '==', currentUserId).limit(1).get();
+      if (!byEmail.empty) userData = byEmail.docs[0].data();
+    }
+    const displayName = userData?.displayName || currentUserId;
+
+    if (totalHave < need) {
+      lastShortage = { userId: currentUserId, displayName, totalHave };
     } else {
       break;
     }

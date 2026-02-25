@@ -14,13 +14,31 @@ import { TransactionItem, InventoryStatus, CostingMethod } from '@/types/models'
 export const InventorySyncService = {
   /**
    * 檢查賣方庫存是否足夠，不足則拋錯
+   * 「批量進貨」：檢查總庫存（不分產品），與經銷商總覽的庫存總數一致
    */
   async validateSaleInventory(
     fromUserId: string,
     items: TransactionItem[]
   ): Promise<{ ok: boolean; insufficient: { productId: string; productName: string; need: number; have: number }[] }> {
     const insufficient: { productId: string; productName: string; need: number; have: number }[] = [];
-    for (const item of items) {
+    const bulkItems = items.filter((i) => i.productName === '批量進貨');
+    const normalItems = items.filter((i) => i.productName !== '批量進貨');
+
+    if (bulkItems.length > 0) {
+      const bulkNeed = bulkItems.reduce((s, i) => s + i.quantity, 0);
+      const allInv = await InventoryService.getByUser(fromUserId, 200);
+      const totalHave = allInv.reduce((s, i) => s + (i.quantityOnHand ?? 0), 0);
+      if (totalHave < bulkNeed) {
+        insufficient.push({
+          productId: bulkItems[0].productId,
+          productName: '批量進貨',
+          need: bulkNeed,
+          have: totalHave,
+        });
+      }
+    }
+
+    for (const item of normalItems) {
       const inv = await InventoryService.getByUserAndProduct(fromUserId, item.productId);
       const have = inv?.quantityOnHand ?? 0;
       if (have < item.quantity) {
@@ -48,9 +66,11 @@ export const InventorySyncService = {
         .join('；');
       throw new Error(`賣方庫存不足：${msg}。請先至「進貨」補貨（總經銷商向台灣進貨、經銷商向總經銷商進貨）。`);
     }
-    await _deduct(fromUserId, items, `SALE: ${transactionId}`);
+    const ref = `SALE: ${transactionId}`;
+    await _replenishPlaceholderForBulk(fromUserId, items, ref);
+    await _deduct(fromUserId, items, ref);
     if (toUserId && toUserId !== fromUserId) {
-      await _add(toUserId, items, `SALE: ${transactionId}`);
+      await _add(toUserId, items, ref);
     }
   },
 
@@ -102,6 +122,51 @@ export const InventorySyncService = {
     await _deduct(toUserId, items, ref);
   },
 };
+
+async function _replenishPlaceholderForBulk(userId: string, items: TransactionItem[], reference: string) {
+  const bulkItems = items.filter((i) => i.productName === '批量進貨');
+  if (bulkItems.length === 0) return;
+  const bulkNeed = bulkItems.reduce((s, i) => s + i.quantity, 0);
+  const placeholderProductId = bulkItems[0].productId;
+  let placeholderInv = await InventoryService.getByUserAndProduct(userId, placeholderProductId);
+  const placeholderHave = placeholderInv?.quantityOnHand ?? 0;
+  if (placeholderHave >= bulkNeed) return;
+
+  let toMove = bulkNeed - placeholderHave;
+  const allInv = await InventoryService.getByUser(userId, 200);
+  const others = allInv
+    .filter((i) => i.productId !== placeholderProductId && (i.quantityOnHand ?? 0) > 0)
+    .sort((a, b) => (b.quantityOnHand ?? 0) - (a.quantityOnHand ?? 0));
+
+  for (const inv of others) {
+    if (toMove <= 0 || !inv.id) break;
+    const moveQty = Math.min(inv.quantityOnHand ?? 0, toMove);
+    if (moveQty <= 0) continue;
+    await InventoryService.deduct(userId, inv.productId, moveQty, `${reference}-replenish`);
+    placeholderInv = await InventoryService.getByUserAndProduct(userId, placeholderProductId);
+    if (placeholderInv?.id) {
+      await InventoryService.adjust(placeholderInv.id, moveQty, `${reference}-replenish`, placeholderInv);
+    } else {
+      const unitCost = inv.cost ?? 0;
+      await InventoryService.create({
+        userId,
+        productId: placeholderProductId,
+        quantityOnHand: moveQty,
+        quantityAllocated: 0,
+        quantityAvailable: moveQty,
+        quantityBorrowed: 0,
+        quantityLent: 0,
+        reorderLevel: 10,
+        cost: unitCost,
+        marketValue: moveQty * unitCost,
+        status: InventoryStatus.IN_STOCK,
+        lastMovementDate: Date.now(),
+        movements: [{ date: Date.now(), type: 'adjustment', quantity: moveQty, reference: `${reference}-replenish` }],
+      });
+    }
+    toMove -= moveQty;
+  }
+}
 
 async function _deduct(userId: string, items: TransactionItem[], reference: string) {
   for (const item of items) {
