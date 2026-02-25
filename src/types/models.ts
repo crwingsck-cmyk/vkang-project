@@ -193,6 +193,7 @@ export interface TransactionItem {
 
 export interface Transaction {
   id?: string;
+  poNumber?: string; // 發貨號碼（顯示用，可自訂）
   transactionType: TransactionType;
   status: TransactionStatus;
   description?: string;

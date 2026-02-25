@@ -109,6 +109,38 @@ export const OrderService = {
   },
 
   /**
+   * Update order (poNumber, items, status, paymentDetails)
+   * 僅限 pending 訂單可編輯
+   */
+  async updateOrder(
+    id: string,
+    updates: Partial<Pick<Transaction, 'poNumber' | 'items' | 'status' | 'paymentDetails'>>
+  ) {
+    const po = await this.getById(id);
+    if (!po) throw new Error('訂單不存在');
+    if (po.status !== TransactionStatus.PENDING) {
+      throw new Error('僅待處理訂單可編輯');
+    }
+    const data: Partial<Transaction> = { ...updates };
+    if (updates.items) {
+      const itemsWithTotal: TransactionItem[] = updates.items.map((i) => ({
+        ...i,
+        total: i.quantity * i.unitPrice,
+      }));
+      const subtotal = itemsWithTotal.reduce((s, i) => s + i.total, 0);
+      data.items = itemsWithTotal;
+      data.totals = { ...po.totals, subtotal, grandTotal: subtotal };
+      if (data.paymentDetails === undefined && po.paymentDetails) {
+        data.paymentDetails = { ...po.paymentDetails, amount: subtotal };
+      }
+    }
+    if (updates.paymentDetails && !updates.items && po.paymentDetails) {
+      data.paymentDetails = { ...po.paymentDetails, ...updates.paymentDetails };
+    }
+    return FirestoreService.update<Transaction>(COLLECTION, id, data);
+  },
+
+  /**
    * Update shipping status
    */
   async updateShipping(

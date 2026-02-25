@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { OrderService } from '@/services/database/orders';
 import { Transaction, UserRole, TransactionStatus, TransactionType } from '@/types/models';
 import { InventorySyncService } from '@/services/database/inventorySync';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
 
@@ -27,6 +28,7 @@ export default function OrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [shortageMsg, setShortageMsg] = useState('');
 
   useEffect(() => {
     loadOrder();
@@ -55,10 +57,55 @@ export default function OrderDetailPage() {
         }
       }
       setOrder(data);
+      setShortageMsg('');
+      if (
+        data.status === TransactionStatus.PENDING &&
+        data.transactionType === TransactionType.SALE &&
+        data.fromUser?.userId &&
+        data.items?.length
+      ) {
+        loadShortageInfo(data.fromUser.userId, data.items);
+      }
     } catch {
       setError('Failed to load order.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadShortageInfo(sellerUserId: string, items: { productId: string; productName: string; quantity: number }[]) {
+    try {
+      const token = await getCurrentToken();
+      if (!token) return;
+      const res = await fetch('/api/supply-chain/shortage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          sellerUserId,
+          items: items.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity,
+            unitPrice: 0,
+            total: 0,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.shortages?.length) {
+        const bySupplier = new Map<string, string[]>();
+        for (const s of data.shortages) {
+          const list = bySupplier.get(s.shortageAt) || [];
+          list.push(`${s.productName} 需要 ${s.need}，庫存僅 ${s.have}`);
+          bySupplier.set(s.shortageAt, list);
+        }
+        const msg = Array.from(bySupplier.entries())
+          .map(([name, items]) => `${name} 缺貨：${items.join('；')}`)
+          .join('。');
+        setShortageMsg(msg);
+      }
+    } catch {
+      // 忽略短缺檢查失敗
     }
   }
 
@@ -152,7 +199,7 @@ export default function OrderDetailPage() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-100 font-mono">{order.id}</h1>
+                <h1 className="text-2xl font-bold text-gray-100 font-mono">{order.poNumber ?? order.id}</h1>
                 <p className="text-gray-400 mt-1">
                   {order.createdAt ? new Date(order.createdAt).toLocaleString() : '-'}
                 </p>
@@ -163,8 +210,20 @@ export default function OrderDetailPage() {
                 </div>
               </div>
 
-              {isAdmin && order.status === TransactionStatus.PENDING && (
+              {order.status === TransactionStatus.PENDING &&
+                order.transactionType === TransactionType.SALE &&
+                (isAdmin ||
+                  (role === UserRole.STOCKIST && order.fromUser?.userId === user?.id) ||
+                  (role === UserRole.CUSTOMER && order.toUser?.userId === user?.id)) && (
                 <div className="flex gap-2">
+                  <Link
+                    href={`/orders/${orderId}/edit`}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm"
+                  >
+                    Edit
+                  </Link>
+                  {isAdmin && (
+                    <>
                   <button
                     onClick={() => handleStatusUpdate(TransactionStatus.COMPLETED)}
                     disabled={updating}
@@ -179,6 +238,8 @@ export default function OrderDetailPage() {
                   >
                     Cancel
                   </button>
+                    </>
+                  )}
                 </div>
               )}
               {isAdmin && order.status === TransactionStatus.COMPLETED && order.transactionType === TransactionType.SALE && (
@@ -197,6 +258,15 @@ export default function OrderDetailPage() {
             )}
             {successMsg && (
               <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>
+            )}
+            {shortageMsg && order.status === TransactionStatus.PENDING && (
+              <div className="bg-amber-900/40 border border-amber-600 text-amber-200 px-4 py-3 rounded-lg">
+                <p className="font-medium">供應鏈缺貨</p>
+                <p className="text-sm mt-1">{shortageMsg}</p>
+                <p className="text-xs text-amber-300/80 mt-2">
+                  賣方可向上線下進貨單補貨；若上線也缺貨，上線需向總經銷商進貨；總經銷商可向台灣訂貨。
+                </p>
+              </div>
             )}
 
             {/* Parties */}
