@@ -149,7 +149,7 @@ export default function EditOrderPage() {
       if (status === TransactionStatus.CANCELLED) {
         await OrderService.cancel(orderId);
       } else if (status === TransactionStatus.COMPLETED && order?.fromUser?.userId) {
-        await InventorySyncService.onSaleCompleted(order.fromUser.userId, txItems, orderId);
+        await InventorySyncService.onSaleCompleted(order.fromUser.userId, order.toUser?.userId, txItems, orderId);
         await OrderService.updateStatus(orderId, TransactionStatus.COMPLETED);
       }
       router.push(`/orders/${orderId}`);

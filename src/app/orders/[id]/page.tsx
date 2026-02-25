@@ -121,7 +121,7 @@ export default function OrderDetailPage() {
         order?.transactionType === TransactionType.SALE &&
         order.fromUser?.userId
       ) {
-        await InventorySyncService.onSaleCompleted(order.fromUser.userId, order.items, orderId);
+        await InventorySyncService.onSaleCompleted(order.fromUser.userId, order.toUser?.userId, order.items, orderId);
       }
       await OrderService.updateStatus(orderId, status);
       toast.success(`Order status updated to ${status}.`);
@@ -148,7 +148,7 @@ export default function OrderDetailPage() {
         order?.transactionType === TransactionType.SALE &&
         order.fromUser?.userId
       ) {
-        await InventorySyncService.onSaleReverted(order.fromUser.userId, order.items, orderId);
+        await InventorySyncService.onSaleReverted(order.fromUser.userId, order.toUser?.userId, order.items, orderId);
       }
       await OrderService.updateStatus(orderId, TransactionStatus.PENDING);
       toast.success('訂單已改回待處理。');

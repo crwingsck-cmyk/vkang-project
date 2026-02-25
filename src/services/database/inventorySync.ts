@@ -6,7 +6,7 @@ import { TransactionItem, InventoryStatus, CostingMethod } from '@/types/models'
  * Handles automatic inventory movements triggered by transaction status changes.
  *
  * Rules:
- *   SALE completed      → deduct from seller (fromUser)
+ *   SALE completed      → deduct from seller (fromUser), add to buyer (toUser)
  *   TRANSFER completed  → deduct from sender (fromUser), add to receiver (toUser)
  *   LOAN created        → deduct from lender (fromUser), add to borrower (toUser)
  *   LOAN returned       → add back to lender (fromUser), deduct from borrower (toUser)
@@ -37,6 +37,7 @@ export const InventorySyncService = {
 
   async onSaleCompleted(
     fromUserId: string,
+    toUserId: string | undefined,
     items: TransactionItem[],
     transactionId: string
   ) {
@@ -48,17 +49,24 @@ export const InventorySyncService = {
       throw new Error(`賣方庫存不足：${msg}。請先至「進貨」補貨（總經銷商向台灣進貨、經銷商向總經銷商進貨）。`);
     }
     await _deduct(fromUserId, items, `SALE: ${transactionId}`);
+    if (toUserId && toUserId !== fromUserId) {
+      await _add(toUserId, items, `SALE: ${transactionId}`);
+    }
   },
 
   /**
-   * 訂單從完成改回待處理時，恢復賣方庫存
+   * 訂單從完成改回待處理時，恢復賣方庫存、扣除買方庫存
    */
   async onSaleReverted(
     fromUserId: string,
+    toUserId: string | undefined,
     items: TransactionItem[],
     transactionId: string
   ) {
     await _add(fromUserId, items, `SALE-REVERT: ${transactionId}`);
+    if (toUserId && toUserId !== fromUserId) {
+      await _deduct(toUserId, items, `SALE-REVERT: ${transactionId}`);
+    }
   },
 
   async onTransferCompleted(
