@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { clearAllData } from '@/services/database/dataClear';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { UserRole } from '@/types/models';
 
 export default function SettingsPage() {
@@ -220,11 +220,21 @@ export default function SettingsPage() {
                   setSuccessMsg('');
                   setClearResult('');
                   try {
-                    const { cleared, error: err } = await clearAllData();
-                    if (err) {
-                      setClearResult(`錯誤：${err}`);
+                    const token = await getCurrentToken(true);
+                    if (!token) {
+                      setClearResult('錯誤：請重新登入後再試');
+                      setClearing(false);
+                      return;
+                    }
+                    const res = await fetch('/api/data/clear', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      setClearResult(`錯誤：${data.error || '清空失敗'}`);
                     } else {
-                      const summary = Object.entries(cleared)
+                      const summary = Object.entries(data.cleared || {})
                         .map(([k, v]) => `${k}: ${v}`)
                         .join(', ');
                       setClearResult(`已清空：${summary}`);
