@@ -39,7 +39,7 @@ export default function StockLedgerPage() {
   const userId = (params?.userId ?? '') as string;
   useAuth();
 
-  const [user, setUser] = useState<{ displayName: string } | null>(null);
+  const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -57,7 +57,12 @@ export default function StockLedgerPage() {
         UserService.getById(userId),
         OrderService.getByUserRelated(userId, 300),
       ]);
-      setUser(u ? { displayName: u.displayName } : null);
+      let upstreamDisplayName = '';
+      if (u?.parentUserId) {
+        const parent = await UserService.getById(u.parentUserId);
+        upstreamDisplayName = parent?.displayName ?? '';
+      }
+      setUser(u ? { displayName: u.displayName ?? '', upstreamDisplayName } : null);
 
       const flat: Omit<StockLedgerRow, 'runningInventory'>[] = [];
       for (const t of txList) {
@@ -91,7 +96,7 @@ export default function StockLedgerPage() {
           });
         }
       }
-      // 依日期升序以正確計算庫存累計
+      // 依日期升序以正確計算庫存累計（公式：當前列庫存 = 前一列庫存 + (入 ? +數量 : -數量)，不小於 0）
       flat.sort((a, b) => a.date - b.date);
 
       let running = 0;
@@ -116,7 +121,7 @@ export default function StockLedgerPage() {
               ← 返回金三角架構
             </Link>
             <h1 className="text-xl font-bold text-txt-primary tracking-tight">
-              {user?.displayName ?? '—'} 庫存表
+              {user?.displayName ?? ''} 庫存表
             </h1>
             <p className="text-sm text-txt-subtle mt-0.5">經銷商訂貨、下線/自用發貨、庫存累計</p>
           </div>
@@ -140,7 +145,7 @@ export default function StockLedgerPage() {
         {showAddModal && (
           <AddMovementModal
             userId={userId}
-            userName={user?.displayName ?? '—'}
+            userName={user?.displayName ?? ''}
             error={addError}
             onClose={() => { setShowAddModal(false); setAddError(''); }}
             onDone={() => { setShowAddModal(false); setAddError(''); load(); }}
@@ -151,7 +156,7 @@ export default function StockLedgerPage() {
           <EditMovementModal
             transactionId={editTransactionId}
             userId={userId}
-            userName={user?.displayName ?? '—'}
+            userName={user?.displayName ?? ''}
             error={addError}
             onClose={() => { setEditTransactionId(null); setAddError(''); }}
             onDone={() => { setEditTransactionId(null); setAddError(''); load(); }}
@@ -171,6 +176,9 @@ export default function StockLedgerPage() {
                 <tr className="border-b border-border bg-emerald-800/80 text-white">
                   <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider whitespace-nowrap">
                     經銷商
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider whitespace-nowrap">
+                    經銷商的上游
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider whitespace-nowrap">
                     下線/自用
@@ -210,7 +218,7 @@ export default function StockLedgerPage() {
               <tbody className="divide-y divide-border-muted">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-4 py-12 text-center text-txt-subtle text-base">
+                    <td colSpan={13} className="px-4 py-12 text-center text-txt-subtle text-base">
                       尚無庫存異動紀錄
                     </td>
                   </tr>
@@ -228,6 +236,9 @@ export default function StockLedgerPage() {
                     >
                       <td className="px-4 py-3 text-txt-primary whitespace-nowrap text-[15px]">
                         {distributorDisplay}
+                      </td>
+                      <td className="px-4 py-3 text-txt-primary whitespace-nowrap text-[15px]">
+                        {user?.upstreamDisplayName ?? ''}
                       </td>
                       <td className="px-4 py-3 text-txt-primary whitespace-nowrap text-[15px]">
                         {downlineDisplay}
@@ -294,7 +305,7 @@ function getTypeLabel(type: string): string {
     return: '歸還',
     adjustment: '調整',
   };
-  return labels[type?.toLowerCase()] ?? type ?? '—';
+  return labels[type?.toLowerCase()] ?? type ?? '';
 }
 
 type ProductOption = { sku: string; name: string };
@@ -351,18 +362,18 @@ function AddMovementModal({
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
         setDownlines([
           { id: userId, displayName: '自用' },
-          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' })),
+          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
         ]);
         const upstreamList = allUsers
           .filter((u) => (u.id ?? u.email) !== userId)
-          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' }));
+          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
         setUpstreams(upstreamList);
         setForm((f) => ({
           ...f,
           productId: productList[0]?.sku ?? '',
           productName: productList[0]?.name ?? '',
           upstreamId: upstreamList[0]?.id ?? '',
-          upstreamName: upstreamList[0]?.displayName ?? '—',
+          upstreamName: upstreamList[0]?.displayName ?? '',
           downlineId: userId,
           downlineName: '自用',
         }));
@@ -772,24 +783,24 @@ function EditMovementModal({
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
         setDownlines([
           { id: userId, displayName: '自用' },
-          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' })),
+          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
         ]);
         const upstreamListEdit = allUsers
           .filter((u) => (u.id ?? u.email) !== userId)
-          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' }));
+          .map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
         setUpstreams(upstreamListEdit);
         const dateStr = t.createdAt
           ? new Date(t.createdAt).toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10);
         const isSelfUse = isOut && t.toUser?.userId === userId;
         const fromId = t.fromUser?.userId;
-        const fromName = t.fromUser?.userName ?? '—';
+        const fromName = t.fromUser?.userName ?? '';
         const upstreamIdForEdit = isIn && fromId && fromId !== 'system'
           ? fromId
           : upstreamListEdit[0]?.id ?? '';
         const upstreamNameForEdit = isIn && fromId && fromId !== 'system'
           ? fromName
-          : upstreamListEdit[0]?.displayName ?? '—';
+          : upstreamListEdit[0]?.displayName ?? '';
         setTxnMeta({
           type: t.transactionType ?? '',
           fromUserId: t.fromUser?.userId ?? '',
