@@ -46,7 +46,8 @@ export function getAdminDb() {
   return admin.firestore();
 }
 
-export async function verifyAdminToken(idToken: string): Promise<{ uid: string; role: string; error?: string } | null> {
+/** 驗證 token 並回傳使用者 uid 與 role（支援 UID 或 email 作為 doc ID） */
+export async function verifyToken(idToken: string): Promise<{ uid: string; role: string; error?: string } | null> {
   try {
     initializeFirebaseAdmin();
     const decoded = await admin.auth().verifyIdToken(idToken);
@@ -57,19 +58,23 @@ export async function verifyAdminToken(idToken: string): Promise<{ uid: string; 
       if (!byEmail.empty) userDoc = byEmail.docs[0];
     }
     if (!userDoc.exists) {
-      console.warn('[verifyAdminToken] User document not found. uid:', decoded.uid, 'email:', decoded.email);
       return { uid: decoded.uid, role: '', error: 'USER_NOT_FOUND' };
     }
     const data = userDoc.data() || {};
-    const roleRaw = data.role ?? data.permissions?.role ?? (typeof data.permissions === 'object' ? data.permissions?.role : null);
+    const roleRaw = data.role ?? data.permissions?.role;
     const role = String(roleRaw ?? '').toUpperCase();
-    if (role !== 'ADMIN') {
-      console.warn('[verifyAdminToken] User role is not ADMIN. uid:', decoded.uid, 'data:', JSON.stringify(data));
-      return { uid: decoded.uid, role: role || 'NONE', error: 'ROLE_NOT_ADMIN' };
-    }
-    return { uid: decoded.uid, role: 'ADMIN' };
+    return { uid: decoded.uid, role: role || 'NONE' };
   } catch (err) {
-    console.error('[verifyAdminToken] Error:', err);
+    console.error('[verifyToken] Error:', err);
     return { uid: '', role: '', error: 'TOKEN_INVALID' };
   }
+}
+
+export async function verifyAdminToken(idToken: string): Promise<{ uid: string; role: string; error?: string } | null> {
+  const result = await verifyToken(idToken);
+  if (!result || result.error) return result;
+  if (result.role !== 'ADMIN') {
+    return { uid: result.uid, role: result.role, error: 'ROLE_NOT_ADMIN' };
+  }
+  return { uid: result.uid, role: 'ADMIN' };
 }

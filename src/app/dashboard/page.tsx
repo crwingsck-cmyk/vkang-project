@@ -181,8 +181,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <ActionButton href="/products"   label="Products" />
           <ActionButton href="/orders"     label="Orders" />
-          {role !== UserRole.CUSTOMER && role !== UserRole.TAIWAN && <ActionButton href="/purchase-orders" label="Purchase" />}
-          {(role === UserRole.ADMIN || role === UserRole.TAIWAN) && <ActionButton href="/taiwan-orders" label="台灣訂單" />}
+          {(role === UserRole.ADMIN || role === UserRole.TAIWAN) && <ActionButton href="/taiwan-orders" label="Taiwan Orders" />}
           {role === UserRole.ADMIN        && <ActionButton href="/users"      label="Users" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/financials" label="Financials" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/warehouse"  label="Warehouse" />}
@@ -194,7 +193,7 @@ export default function DashboardPage() {
       <div className="glass-panel overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
-            {role === UserRole.TAIWAN ? '台灣訂單總覽' : 'Recent Orders'}
+            {role === UserRole.TAIWAN ? 'Taiwan Orders Overview' : 'Recent Orders'}
           </p>
           <Link
             href={role === UserRole.TAIWAN ? '/taiwan-orders' : '/orders'}
@@ -213,7 +212,7 @@ export default function DashboardPage() {
               href="/taiwan-orders"
               className="inline-block px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg"
             >
-              前往台灣訂單
+              View Taiwan Orders
             </Link>
           </div>
         ) : statsLoading ? (

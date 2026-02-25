@@ -16,9 +16,8 @@ const statusBadge: Record<TransactionStatus, string> = {
 };
 
 export default function OrdersPage() {
-  const { user, role, firebaseUser } = useAuth();
+  const { user, role } = useAuth();
   const [orders, setOrders] = useState<Transaction[]>([]);
-  const [stockists, setStockists] = useState<User[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TransactionStatus | ''>('');
@@ -31,7 +30,6 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (role === UserRole.ADMIN) {
-      UserService.getStockists().then(setStockists).catch(console.error);
       UserService.getAllForAdmin(200).then(setAllUsers).catch(() => setAllUsers([]));
     }
   }, [role]);

@@ -34,20 +34,22 @@ export async function POST(request: NextRequest) {
 
     const now = Date.now();
     const poolId = generatePoolId();
-    const pool = {
+    const trimmedPo = (poNumber || '').trim();
+    const trimmedNotes = (notes || '').trim();
+    const pool: Record<string, unknown> = {
       userId: uid,
-      userName: userName || undefined,
       totalOrdered: Number(totalOrdered),
       allocatedQuantity: 0,
       remaining: Number(totalOrdered),
       supplierName: '台灣',
-      poNumber: (poNumber || '').trim() || undefined,
       status: 'pending',
-      notes: (notes || '').trim() || undefined,
       createdAt: now,
       updatedAt: now,
       createdBy: uid,
     };
+    if (userName) pool.userName = userName;
+    if (trimmedPo) pool.poNumber = trimmedPo;
+    if (trimmedNotes) pool.notes = trimmedNotes;
 
     const db = getAdminDb();
     await db.collection('taiwanOrderPools').doc(poolId).set(pool);

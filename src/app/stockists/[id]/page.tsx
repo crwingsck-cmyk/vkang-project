@@ -7,7 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { InventoryService } from '@/services/database/inventory';
 import { OrderService } from '@/services/database/orders';
-import { PurchaseOrderService } from '@/services/database/purchaseOrders';
+import { ProductService } from '@/services/database/products';
 import {
   User,
   UserRole,
@@ -16,8 +16,6 @@ import {
   TransactionStatus,
   TransactionType,
   InventoryStatus,
-  PurchaseOrder,
-  PurchaseOrderStatus,
 } from '@/types/models';
 import Link from 'next/link';
 
@@ -25,14 +23,6 @@ const statusBadge: Record<TransactionStatus, string> = {
   [TransactionStatus.PENDING]: 'bg-warning/10 text-warning border border-warning/20',
   [TransactionStatus.COMPLETED]: 'bg-success/10 text-success border border-success/20',
   [TransactionStatus.CANCELLED]: 'bg-error/10 text-error border border-error/20',
-};
-
-const poStatusLabels: Record<PurchaseOrderStatus, string> = {
-  [PurchaseOrderStatus.DRAFT]: '草稿',
-  [PurchaseOrderStatus.SUBMITTED]: '已提交',
-  [PurchaseOrderStatus.PARTIAL]: '部分收貨',
-  [PurchaseOrderStatus.RECEIVED]: '已收貨',
-  [PurchaseOrderStatus.CANCELLED]: '已取消',
 };
 
 export default function StockistDetailPage() {
@@ -43,9 +33,9 @@ export default function StockistDetailPage() {
   const [stockist, setStockist] = useState<User | null>(null);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [orders, setOrders] = useState<Transaction[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<(PurchaseOrder & { id: string })[]>([]);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'purchase'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory'>('orders');
 
   useEffect(() => {
     if (role !== UserRole.ADMIN || !stockistId) return;
@@ -55,16 +45,20 @@ export default function StockistDetailPage() {
   async function load() {
     setLoading(true);
     try {
-      const [u, inv, ord, po] = await Promise.all([
+      const [u, inv, ord, products] = await Promise.all([
         UserService.getById(stockistId),
         InventoryService.getByUser(stockistId, 100),
         OrderService.getByFromUser(stockistId, 50),
-        PurchaseOrderService.getByUser(stockistId, undefined, 50),
+        ProductService.getAll(undefined, 200),
       ]);
       setStockist(u ?? null);
       setInventory(inv);
+      const names: Record<string, string> = {};
+      for (const p of products) {
+        if (p.sku) names[p.sku] = p.name || p.sku;
+      }
+      setProductNames(names);
       setOrders(ord.filter((o) => o.transactionType === TransactionType.SALE));
-      setPurchaseOrders(po);
     } catch (err) {
       console.error(err);
     } finally {
@@ -149,7 +143,7 @@ export default function StockistDetailPage() {
             </div>
 
             <div className="flex gap-2 border-b border-border pb-2">
-              {(['orders', 'inventory', 'purchase'] as const).map((tab) => (
+              {(['orders', 'inventory'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -162,7 +156,6 @@ export default function StockistDetailPage() {
                 >
                   {tab === 'orders' && '訂單'}
                   {tab === 'inventory' && '庫存'}
-                  {tab === 'purchase' && '進貨單'}
                 </button>
               ))}
             </div>
@@ -263,8 +256,9 @@ export default function StockistDetailPage() {
                     <tbody className="divide-y divide-border-muted">
                       {inventory.map((i) => (
                         <tr key={i.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 font-mono text-xs text-txt-primary whitespace-nowrap">
-                            {i.productId}
+                          <td className="px-5 py-3 text-txt-primary">
+                            <span className="font-medium">{productNames[i.productId] || i.productId}</span>
+                            <span className="font-mono text-xs text-txt-subtle ml-1">({i.productId})</span>
                           </td>
                           <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
                             {i.quantityOnHand}
@@ -296,81 +290,6 @@ export default function StockistDetailPage() {
               </div>
             )}
 
-            {activeTab === 'purchase' && (
-              <div className="glass-panel overflow-hidden">
-                {purchaseOrders.length === 0 ? (
-                  <div className="p-12 text-center text-txt-subtle text-sm">尚無進貨單</div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-surface-base">
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase min-w-[7.5rem]">
-                          進貨單號
-                        </th>
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
-                          供應商 / 來源
-                        </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase min-w-[5.5rem]">
-                          金額
-                        </th>
-                        <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase">
-                          狀態
-                        </th>
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
-                          進貨日期
-                        </th>
-                        <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase w-20">
-                          操作
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-muted">
-                      {purchaseOrders.map((po) => (
-                        <tr key={po.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 font-mono text-xs text-accent-text whitespace-nowrap">
-                            <Link href={`/purchase-orders/${po.id}`} className="hover:underline">
-                              {po.poNumber}
-                            </Link>
-                          </td>
-                          <td className="px-5 py-3 text-txt-secondary text-xs name-lowercase">
-                            {po.fromUserId ? '上線（內部調撥）' : po.supplierName || '—'}
-                          </td>
-                          <td className="px-5 py-3 text-txt-primary text-right tabular-nums font-medium whitespace-nowrap">
-                            USD {po.totals.grandTotal.toFixed(2)}
-                          </td>
-                          <td className="px-5 py-3 text-center whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
-                                po.status === PurchaseOrderStatus.CANCELLED
-                                  ? 'bg-red-600 text-white'
-                                  : po.status === PurchaseOrderStatus.RECEIVED
-                                    ? 'bg-blue-800 text-white'
-                                    : 'bg-chip-dark text-white'
-                              }`}
-                            >
-                              {poStatusLabels[po.status]}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-txt-subtle text-xs whitespace-nowrap">
-                            {po.createdAt
-                              ? new Date(po.createdAt).toLocaleDateString('zh-TW')
-                              : '—'}
-                          </td>
-                          <td className="px-5 py-3 text-center whitespace-nowrap">
-                            <Link
-                              href={`/purchase-orders/${po.id}`}
-                              className="text-accent-text hover:underline text-xs inline"
-                            >
-                              查看
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>

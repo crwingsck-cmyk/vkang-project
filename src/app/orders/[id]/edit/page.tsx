@@ -7,7 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
 import { InventorySyncService } from '@/services/database/inventorySync';
-import { Transaction, UserRole, TransactionStatus, TransactionType, PaymentMethod } from '@/types/models';
+import { Transaction, UserRole, TransactionStatus, TransactionType, PaymentMethod, PaymentStatus } from '@/types/models';
 import Link from 'next/link';
 
 export default function EditOrderPage() {
@@ -142,7 +142,7 @@ export default function EditOrderPage() {
         paymentDetails: {
           ...order?.paymentDetails,
           method: paymentMethod,
-          status: order?.paymentDetails?.status ?? 'pending',
+          status: order?.paymentDetails?.status ?? PaymentStatus.PENDING,
           amount: subtotal,
         },
       });

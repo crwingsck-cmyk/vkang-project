@@ -14,6 +14,7 @@ const roleBadge: Record<UserRole, string> = {
   [UserRole.ADMIN]: 'bg-chip-dark text-white border border-chip-dark',
   [UserRole.STOCKIST]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
   [UserRole.CUSTOMER]: 'bg-chip-yellow text-gray-800 border border-amber-200',
+  [UserRole.TAIWAN]: 'bg-amber-800/50 text-amber-200 border border-amber-600',
 };
 
 function buildTree(users: User[], parentId: string | null): TreeNode[] {

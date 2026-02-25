@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { InventoryService } from '@/services/database/inventory';
 import { UserService } from '@/services/database/users';
+import { ProductService } from '@/services/database/products';
 import { Inventory, InventoryStatus, User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
@@ -18,6 +19,7 @@ export default function ReconciliationPage() {
   useAuth();
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [stockists, setStockists] = useState<User[]>([]);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [filterStockist, setFilterStockist] = useState('');
   const [filterStatus, setFilterStatus] = useState<InventoryStatus | ''>('');
@@ -34,12 +36,18 @@ export default function ReconciliationPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [inv, stock] = await Promise.all([
+      const [inv, stock, products] = await Promise.all([
         InventoryService.getAll(),
         UserService.getStockists(),
+        ProductService.getAll(undefined, 200),
       ]);
       setInventory(inv);
       setStockists(stock);
+      const names: Record<string, string> = {};
+      for (const p of products) {
+        if (p.sku) names[p.sku] = p.name || p.sku;
+      }
+      setProductNames(names);
     } catch (err) {
       console.error(err);
     } finally {
@@ -232,7 +240,7 @@ export default function ReconciliationPage() {
                     <tr key={item.id} className={`hover:bg-gray-700/50 ${item.status !== InventoryStatus.IN_STOCK ? 'bg-gray-750' : ''}`}>
                       {adjustingId === item.id ? (
                         <>
-                          <td className="px-6 py-3 text-sm text-gray-100 font-medium">{item.productId}</td>
+                          <td className="px-6 py-3 text-sm text-gray-100 font-medium">{productNames[item.productId] || item.productId}</td>
                           <td className="px-6 py-3 text-sm text-gray-300 name-lowercase">{stockist?.displayName || item.userId}</td>
                           <td className="px-3 py-3" colSpan={2}>
                             <div className="space-y-2">
@@ -292,7 +300,7 @@ export default function ReconciliationPage() {
                         <>
                           <td className="px-6 py-4 text-sm">
                             <div>
-                              <p className="text-gray-100 font-medium">{item.productId}</p>
+                              <p className="text-gray-100 font-medium">{productNames[item.productId] || item.productId}</p>
                               <p className="text-gray-500 text-xs">{item.productId}</p>
                             </div>
                           </td>

@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function CreateTaiwanOrderPage() {
   const router = useRouter();
-  const { user, role, firebaseUser } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [totalOrdered, setTotalOrdered] = useState(100);
   const [poNumber, setPoNumber] = useState('');
   const [notes, setNotes] = useState('');

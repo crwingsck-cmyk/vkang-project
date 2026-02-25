@@ -6,6 +6,7 @@ import {
 } from '@/types/models';
 import { InventoryService } from './inventory';
 import { InventoryBatchService } from './inventoryBatches';
+import { UserService } from './users';
 import { InventoryStatus, CostingMethod } from '@/types/models';
 
 const COLLECTION = 'purchaseOrders';
@@ -78,11 +79,13 @@ export const PurchaseOrderService = {
 
     // 向總經銷商進貨：從 ADMIN 扣減並加入經銷商（內部調撥）
     if (po.fromUserId) {
+      const fromUser = await UserService.getById(po.fromUserId);
+      const fromUserName = fromUser?.displayName || po.fromUserId;
       for (const item of po.items) {
         const fromInv = await InventoryService.getByUserAndProduct(po.fromUserId, item.productId);
         if (!fromInv || fromInv.quantityOnHand < item.quantity) {
           throw new Error(
-            `總經銷商庫存不足：${item.productName} (${item.productId}) 需要 ${item.quantity}，可用 ${fromInv?.quantityOnHand ?? 0}`
+            `${fromUserName} 缺這個貨：${item.productName} (${item.productId}) 需要 ${item.quantity}，可用 ${fromInv?.quantityOnHand ?? 0}。請至「台灣訂單」向台灣訂貨。`
           );
         }
       }

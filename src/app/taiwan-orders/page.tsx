@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { TaiwanOrderPoolService } from '@/services/database/taiwanOrderPools';
-import { UserService } from '@/services/database/users';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { TaiwanOrderPool, UserRole, User } from '@/types/models';
 import Link from 'next/link';
 
@@ -21,6 +20,7 @@ export default function TaiwanOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterUser, setFilterUser] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -31,21 +31,22 @@ export default function TaiwanOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const [poolList, adminList] = await Promise.all([
-        role === UserRole.TAIWAN
-          ? TaiwanOrderPoolService.getAll(100)
-          : filterUser === 'all'
-            ? TaiwanOrderPoolService.getAll(100)
-            : filterUser
-              ? TaiwanOrderPoolService.getByUser(filterUser, 100)
-              : TaiwanOrderPoolService.getByUser(user!.id!, 100),
-        role === UserRole.ADMIN ? UserService.getAdmins() : [],
-      ]);
-      setPools(poolList);
-      const userMap: Record<string, User> = {};
-      adminList.forEach((u) => {
-        if (u.id) userMap[u.id] = u;
+      const token = await getCurrentToken();
+      if (!token) {
+        setError('請重新登入');
+        setLoading(false);
+        return;
+      }
+      const filterParam = role === UserRole.TAIWAN ? 'all' : (filterUser === 'all' ? 'all' : filterUser || (user?.id ?? ''));
+      const res = await fetch(`/api/taiwan-orders/list?filterUser=${encodeURIComponent(filterParam)}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '載入失敗');
+      }
+      setPools(data.pools || []);
+      const userMap: Record<string, User> = {};
       if (role === UserRole.ADMIN && user) {
         userMap[user.id!] = user;
       }
@@ -57,16 +58,37 @@ export default function TaiwanOrdersPage() {
     }
   }
 
+  async function handleDelete(poolId: string) {
+    if (!confirm('確定要刪除此訂單池？此操作無法復原。')) return;
+    setDeletingId(poolId);
+    setError(null);
+    try {
+      const token = await getCurrentToken();
+      if (!token) {
+        setError('請重新登入');
+        return;
+      }
+      const res = await fetch(`/api/taiwan-orders/${poolId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '刪除失敗');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '刪除失敗');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.TAIWAN]}>
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-txt-primary">台灣訂單</h1>
+            <h1 className="text-xl font-bold text-txt-primary">Taiwan Orders</h1>
             <p className="text-xs text-txt-subtle mt-0.5">
               {role === UserRole.TAIWAN
-                ? '檢視各總經銷商向台灣訂購的數量與分配狀況'
-                : '向台灣訂貨（僅數量），待下線有需求時再分配產品入庫'}
+                ? 'View each distributor\'s Taiwan order quantity and allocation status'
+                : 'Order from Taiwan (quantity only), allocate products when needed'}
             </p>
           </div>
           {role === UserRole.ADMIN && (
@@ -74,7 +96,7 @@ export default function TaiwanOrdersPage() {
               href="/taiwan-orders/create"
               className="px-3.5 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
             >
-              + 向台灣訂貨
+              + Order from Taiwan
             </Link>
           )}
         </div>
@@ -86,13 +108,7 @@ export default function TaiwanOrdersPage() {
               onChange={(e) => setFilterUser(e.target.value)}
               className="px-3 py-1.5 bg-surface-1 border border-border rounded-lg text-txt-primary text-xs focus:outline-none focus:border-accent name-lowercase"
             >
-              <option value="">我的訂單</option>
-              <option value="all">全部總經銷商</option>
-              {(user?.id ?? firebaseUser?.uid) && (
-                <option value={user?.id ?? firebaseUser?.uid}>
-                  {user?.displayName || '我'}
-                </option>
-              )}
+              <option value="">tan sun sun</option>
             </select>
           </div>
         )}
@@ -112,13 +128,13 @@ export default function TaiwanOrdersPage() {
             </div>
           ) : pools.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="text-txt-subtle text-sm">尚無台灣訂單</p>
+              <p className="text-txt-subtle text-sm">No Taiwan orders yet</p>
               {role === UserRole.ADMIN && (
                 <Link
                   href="/taiwan-orders/create"
                   className="mt-2 inline-block text-xs text-accent-text hover:underline"
                 >
-                  建立第一筆台灣訂單 →
+                  Create first Taiwan order →
                 </Link>
               )}
             </div>
@@ -195,12 +211,24 @@ export default function TaiwanOrdersPage() {
                         : '—'}
                     </td>
                     <td className="px-5 py-3 text-center whitespace-nowrap">
-                      <Link
-                        href={`/taiwan-orders/${pool.id}`}
-                        className="px-2 py-1 text-xs text-accent-text hover:underline"
-                      >
-                        查看
-                      </Link>
+                      <div className="flex items-center justify-center gap-2">
+                        <Link
+                          href={`/taiwan-orders/${pool.id}`}
+                          className="px-2 py-1 text-xs text-accent-text hover:underline"
+                        >
+                          查看
+                        </Link>
+                        {role === UserRole.ADMIN && (pool.userId === user?.id || pool.userId === firebaseUser?.uid) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(pool.id)}
+                            disabled={deletingId === pool.id}
+                            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:underline disabled:opacity-50"
+                          >
+                            {deletingId === pool.id ? '刪除中...' : '刪除'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

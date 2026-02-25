@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { TaiwanOrderPoolService } from '@/services/database/taiwanOrderPools';
 import { ProductService } from '@/services/database/products';
-import { UserService } from '@/services/database/users';
+import { getCurrentToken } from '@/services/firebase/auth';
 import { TaiwanOrderPool, TaiwanOrderAllocation, UserRole, Product } from '@/types/models';
 import Link from 'next/link';
 
@@ -18,9 +17,8 @@ const statusLabels: Record<TaiwanOrderPool['status'], string> = {
 
 export default function TaiwanOrderDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const poolId = (params?.id ?? '') as string;
-  const { user, role, firebaseUser } = useAuth();
+  const { role } = useAuth();
   const [pool, setPool] = useState<(TaiwanOrderPool & { id: string }) | null>(null);
   const [allocations, setAllocations] = useState<(TaiwanOrderAllocation & { id: string })[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -42,22 +40,24 @@ export default function TaiwanOrderDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const [p, allocs, prods] = await Promise.all([
-        TaiwanOrderPoolService.getById(poolId),
-        TaiwanOrderPoolService.getAllocationsByPool(poolId),
+      const token = await getCurrentToken();
+      if (!token) {
+        setError('請重新登入');
+        setLoading(false);
+        return;
+      }
+      const [res, prods] = await Promise.all([
+        fetch(`/api/taiwan-orders/${poolId}`, { headers: { Authorization: `Bearer ${token}` } }),
         ProductService.getAll(undefined, 100),
       ]);
-      setPool(p);
-      setAllocations(allocs);
       setProducts(prods);
-      if (p?.userId) {
-        if (role === UserRole.ADMIN) {
-          const u = await UserService.getById(p.userId);
-          setUserName(u?.displayName || p.userName || p.userId);
-        } else {
-          setUserName(p.userName || p.userId);
-        }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '載入失敗');
       }
+      setPool(data.pool);
+      setAllocations(data.allocations || []);
+      setUserName(data.pool?.userName || data.pool?.userId || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入失敗');
     } finally {
@@ -115,16 +115,28 @@ export default function TaiwanOrderDetailPage() {
 
     setAllocating(true);
     try {
-      await TaiwanOrderPoolService.allocate(
-        poolId,
-        valid.map((i) => ({
-          productId: i.productId,
-          productName: i.productName,
-          quantity: i.quantity,
-          unitCost: i.unitCost,
-        })),
-        user?.id ?? firebaseUser?.uid
-      );
+      const token = await getCurrentToken();
+      if (!token) {
+        setError('請重新登入');
+        setAllocating(false);
+        return;
+      }
+      const res = await fetch(`/api/taiwan-orders/${poolId}/allocate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          items: valid.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity,
+            unitCost: i.unitCost,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '分配失敗');
+      }
       setShowAllocateForm(false);
       setAllocItems([{ productId: '', productName: '', quantity: 1, unitCost: 0 }]);
       await load();
@@ -152,7 +164,7 @@ export default function TaiwanOrderDetailPage() {
           <Link href="/taiwan-orders" className="text-gray-400 hover:text-gray-200 text-sm">
             &larr; 返回台灣訂單
           </Link>
-          <div className="msg-error px-4 py-3 rounded-lg">訂單池不存在</div>
+          <div className="msg-error px-4 py-3 rounded-lg">{error || '訂單池不存在'}</div>
         </div>
       </ProtectedRoute>
     );
