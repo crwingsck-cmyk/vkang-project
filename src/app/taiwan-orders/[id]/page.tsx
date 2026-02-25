@@ -5,8 +5,11 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getCurrentToken } from '@/services/firebase/auth';
+import { ProductService } from '@/services/database/products';
 import { TaiwanOrderPool, TaiwanOrderAllocation, UserRole } from '@/types/models';
 import Link from 'next/link';
+
+type AllocItem = { productId: string; productName: string; quantity: number; unitCost: number };
 
 const statusLabels: Record<TaiwanOrderPool['status'], string> = {
   pending: '待分配',
@@ -25,15 +28,16 @@ export default function TaiwanOrderDetailPage() {
   const [error, setError] = useState('');
   const [allocating, setAllocating] = useState(false);
   const [showAllocateForm, setShowAllocateForm] = useState(false);
-  const [allocQuantity, setAllocQuantity] = useState(0);
+  const [products, setProducts] = useState<{ id: string; sku: string; name: string; costPrice?: number }[]>([]);
+  const [allocItems, setAllocItems] = useState<AllocItem[]>([{ productId: '', productName: '', quantity: 1, unitCost: 0 }]);
 
   useEffect(() => {
     load();
   }, [poolId]);
 
   useEffect(() => {
-    if (pool && pool.remaining > 0) setAllocQuantity(pool.remaining);
-  }, [pool?.remaining]);
+    ProductService.getAll(undefined, 100).then(setProducts).catch(() => setProducts([]));
+  }, []);
 
   async function load() {
     if (!poolId) return;
@@ -61,17 +65,44 @@ export default function TaiwanOrderDetailPage() {
     }
   }
 
+  function addAllocItem() {
+    setAllocItems((prev) => [...prev, { productId: '', productName: '', quantity: 1, unitCost: 0 }]);
+  }
+
+  function removeAllocItem(i: number) {
+    setAllocItems((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function updateAllocItem(index: number, field: keyof AllocItem, value: string | number) {
+    setAllocItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        if (field === 'productId') {
+          const p = products.find((x) => x.sku === value || x.id === value);
+          return {
+            ...item,
+            productId: p?.sku ?? (value as string),
+            productName: p?.name ?? '',
+            unitCost: p?.costPrice ?? 0,
+          };
+        }
+        return { ...item, [field]: value };
+      })
+    );
+  }
+
   async function handleAllocate(e: React.FormEvent) {
     e.preventDefault();
     if (!pool || pool.remaining <= 0) return;
     setError('');
-    const qty = Math.floor(allocQuantity) || 0;
-    if (qty <= 0) {
-      setError('請輸入分配數量');
+    const valid = allocItems.filter((i) => i.productId && i.quantity > 0 && i.unitCost >= 0);
+    if (valid.length === 0) {
+      setError('請至少新增一筆商品明細');
       return;
     }
-    if (qty > pool.remaining) {
-      setError(`剩餘可分配 ${pool.remaining} 單位，無法分配 ${qty} 單位`);
+    const totalQty = valid.reduce((s, i) => s + i.quantity, 0);
+    if (totalQty > pool.remaining) {
+      setError(`剩餘可分配 ${pool.remaining} 單位，無法分配 ${totalQty} 單位`);
       return;
     }
 
@@ -86,14 +117,21 @@ export default function TaiwanOrderDetailPage() {
       const res = await fetch(`/api/taiwan-orders/${poolId}/allocate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ quantity: qty }),
+        body: JSON.stringify({
+          items: valid.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity,
+            unitCost: i.unitCost,
+          })),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || '分配失敗');
       }
       setShowAllocateForm(false);
-      setAllocQuantity(pool.remaining);
+      setAllocItems([{ productId: '', productName: '', quantity: 1, unitCost: 0 }]);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : '分配失敗');
@@ -202,20 +240,85 @@ export default function TaiwanOrderDetailPage() {
                 <h2 className="text-lg font-semibold text-gray-200">分配入庫</h2>
                 {error && <div className="msg-error px-4 py-3 rounded-lg text-sm">{error}</div>}
                 <p className="text-xs text-gray-400">
-                  剩餘 {pool.remaining} 套可分配，分配後將加入總經銷商庫存（僅填總數量）
+                  剩餘 {pool.remaining} 套可分配，指定產品與數量後將加入總經銷商庫存
                 </p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">分配數量（套）</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={pool.remaining}
-                    value={allocQuantity}
-                    onChange={(e) => setAllocQuantity(parseInt(e.target.value) || 0)}
-                    className="w-32 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
-                  />
+                <div className="space-y-3">
+                  {allocItems.map((item, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-5">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">產品</label>}
+                        <select
+                          value={item.productId}
+                          onChange={(e) => updateAllocItem(i, 'productId', e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
+                        >
+                          <option value="">選擇產品...</option>
+                          {products.map((p) => (
+                            <option key={p.sku} value={p.sku}>
+                              {p.name} ({p.sku})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">數量</label>}
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateAllocItem(i, 'quantity', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">單位成本</label>}
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.unitCost === 0 ? '' : item.unitCost}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const num = val === '' ? 0 : parseFloat(val);
+                            updateAllocItem(i, 'unitCost', isNaN(num) ? 0 : num);
+                          }}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        {i === 0 && <label className="block text-xs text-gray-400 mb-1">小計</label>}
+                        <div className="px-3 py-2 bg-gray-700/50 rounded-lg text-gray-300 text-sm">
+                          USD {(item.quantity * item.unitCost).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="col-span-1">
+                        {allocItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeAllocItem(i)}
+                            className="w-full px-2 py-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 rounded-lg text-sm"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                <p className="text-xs text-gray-400">
+                  總計：{allocItems.reduce((s, i) => s + i.quantity, 0)} 套
+                  {allocItems.reduce((s, i) => s + i.quantity, 0) > pool.remaining && (
+                    <span className="text-amber-400 ml-2">超過剩餘可分配</span>
+                  )}
+                </p>
                 <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={addAllocItem}
+                    className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg"
+                  >
+                    + 新增品項
+                  </button>
                   <button
                     type="submit"
                     disabled={allocating}
