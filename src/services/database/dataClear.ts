@@ -7,12 +7,10 @@ const COLLECTIONS = [
   'purchaseOrders',
   'transactions',
   'financials',
-  'taiwanOrderPools',
-  'taiwanOrderAllocations',
 ] as const;
 
 /**
- * 清空所有業務資料（庫存、進貨單、訂單、財務紀錄、台灣訂單池）
+ * 清空所有業務資料（庫存、進貨單、訂單、財務紀錄）
  * 不刪除 users、products，以保留登入帳號及產品目錄（可手動管理）
  */
 export async function clearAllData(): Promise<{ cleared: Record<string, number>; error?: string }> {

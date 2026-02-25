@@ -10,6 +10,21 @@ import Link from 'next/link';
 
 const hubItems = [
   {
+    href: '/warehouse/inventory-entry',
+    badge: 'INVENTORY',
+    badgeColor: 'text-success bg-success/10 border-success/20',
+    title: '手動填寫庫存',
+    desc: '總經銷商填寫各產品的庫存數量與單位成本',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    ),
+    roles: ['ADMIN'],
+  },
+  {
     href: '/warehouse/transfers',
     badge: 'TRANSFER',
     badgeColor: 'text-info bg-info/10 border-info/20',

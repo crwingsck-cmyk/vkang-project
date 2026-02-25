@@ -15,7 +15,6 @@ import {
   FinancialType,
   Transaction,
 } from '@/types/models';
-import { TaiwanOrderPoolService } from '@/services/database/taiwanOrderPools';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -83,17 +82,6 @@ export default function DashboardPage() {
         });
         setRecentOrders(orders.slice(0, 5));
 
-      } else if (role === UserRole.TAIWAN) {
-        const pools = await TaiwanOrderPoolService.getAll(100);
-        const totalOrdered = pools.reduce((s, p) => s + p.totalOrdered, 0);
-        const totalAllocated = pools.reduce((s, p) => s + p.allocatedQuantity, 0);
-        setStats({
-          totalPools: pools.length,
-          totalOrdered,
-          totalAllocated,
-          totalRemaining: totalOrdered - totalAllocated,
-        });
-      }
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -124,7 +112,6 @@ export default function DashboardPage() {
           {role === UserRole.ADMIN    && 'Administrator Dashboard'}
           {role === UserRole.STOCKIST && 'Stockist Console'}
           {role === UserRole.CUSTOMER && 'Customer Portal'}
-          {role === UserRole.TAIWAN   && '台灣供應商'}
         </p>
         <h1 className="text-2xl font-bold text-txt-primary">
           Welcome back, <span className="text-accent-text name-lowercase">{user?.displayName}</span>
@@ -164,14 +151,6 @@ export default function DashboardPage() {
               <StatCard title="Total Purchased" value={String(stats.totalPurchased ?? 'USD 0')}   textColor="text-success" bgClass="bg-green-50 border-green-200" />
             </div>
           )}
-          {role === UserRole.TAIWAN && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <StatCard title="訂單池數量"   value={String(stats.totalPools ?? 0)}     textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
-              <StatCard title="總訂購量"     value={`${stats.totalOrdered ?? 0} 套`}   textColor="text-accent-text" bgClass="bg-amber-50 border-amber-200" />
-              <StatCard title="已分配"       value={`${stats.totalAllocated ?? 0} 套`} textColor="text-success" bgClass="bg-green-50 border-green-200" />
-              <StatCard title="待分配"       value={`${stats.totalRemaining ?? 0} 套`} textColor="text-warning" bgClass="bg-cyan-50 border-cyan-200" />
-            </div>
-          )}
         </>
       )}
 
@@ -181,7 +160,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <ActionButton href="/products"   label="Products" />
           <ActionButton href="/orders"     label="Orders" />
-          {(role === UserRole.ADMIN || role === UserRole.TAIWAN) && <ActionButton href="/taiwan-orders" label="Taiwan Orders" />}
           {role === UserRole.ADMIN        && <ActionButton href="/users"      label="Users" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/financials" label="Financials" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/warehouse"  label="Warehouse" />}
@@ -189,33 +167,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Orders / Taiwan Pools */}
+      {/* Recent Orders */}
       <div className="glass-panel overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
           <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">
-            {role === UserRole.TAIWAN ? 'Taiwan Orders Overview' : 'Recent Orders'}
+            Recent Orders
           </p>
           <Link
-            href={role === UserRole.TAIWAN ? '/taiwan-orders' : '/orders'}
+            href="/orders"
             className="text-xs text-accent-text hover:text-accent transition-colors font-medium"
           >
-            {role === UserRole.TAIWAN ? '查看全部 →' : 'View all →'}
+            View all →
           </Link>
         </div>
 
-        {role === UserRole.TAIWAN ? (
-          <div className="p-6 text-center">
-            <p className="text-txt-subtle text-sm mb-3">
-              檢視各總經銷商向台灣訂購的數量與分配狀況
-            </p>
-            <Link
-              href="/taiwan-orders"
-              className="inline-block px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg"
-            >
-              View Taiwan Orders
-            </Link>
-          </div>
-        ) : statsLoading ? (
+        {statsLoading ? (
           <div className="p-6 text-txt-subtle text-center text-sm">Loading...</div>
         ) : recentOrders.length === 0 ? (
           <div className="p-10 text-txt-subtle text-center text-sm">

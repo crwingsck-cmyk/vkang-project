@@ -296,7 +296,6 @@ export default function UserDetailPage() {
                       <option value={UserRole.CUSTOMER}>Customer</option>
                       <option value={UserRole.STOCKIST}>Stockist</option>
                       <option value={UserRole.ADMIN}>Admin</option>
-                      <option value={UserRole.TAIWAN}>Taiwan（台灣供應商）</option>
                     </select>
                   </div>
                   <div>

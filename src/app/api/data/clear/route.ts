@@ -8,12 +8,10 @@ const COLLECTIONS = [
   'purchaseOrders',
   'transactions',
   'financials',
-  'taiwanOrderPools',
-  'taiwanOrderAllocations',
 ] as const;
 
 /**
- * ADMIN 清空所有業務資料（庫存、進貨單、訂單、財務紀錄、台灣訂單池）
+ * ADMIN 清空所有業務資料（庫存、進貨單、訂單、財務紀錄）
  * 不刪除 users、products
  */
 export async function POST(request: NextRequest) {

@@ -5,7 +5,7 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   STOCKIST = 'STOCKIST',
   CUSTOMER = 'CUSTOMER',
-  TAIWAN = 'TAIWAN', // 台灣供應商，可檢視總經銷商訂單池
+  TAIWAN = 'TAIWAN', // 保留以相容既有使用者
 }
 
 export enum TransactionType {
@@ -403,32 +403,3 @@ export interface InventoryBatch {
   createdAt?: number;
 }
 
-/** 台灣訂單池：總經銷商向台灣訂貨時僅填數量，不指定產品 */
-export interface TaiwanOrderPool {
-  id?: string;
-  userId: string; // 總經銷商 ID
-  userName?: string;
-  totalOrdered: number; // 總訂購量（套／單位）
-  allocatedQuantity: number; // 已分配數量
-  remaining: number; // 剩餘可分配
-  supplierName?: string; // 供應商名稱，如「台灣」
-  poNumber?: string; // 台灣端發貨號碼
-  status: 'pending' | 'partially_allocated' | 'fully_allocated';
-  notes?: string;
-  createdAt?: number;
-  updatedAt?: number;
-  createdBy?: string;
-}
-
-/** 從台灣訂單池分配產品入庫的記錄 */
-export interface TaiwanOrderAllocation {
-  id?: string;
-  poolId: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitCost: number;
-  total: number;
-  createdAt?: number;
-  createdBy?: string;
-}
