@@ -24,6 +24,8 @@ interface StockLedgerRow {
   type: string;
   /** 經銷商（訂貨時的上游）或 下線/自用（發貨時的收貨人） */
   partyName: string;
+  /** 發貨時的收貨人 userId，用於判斷是否為自用 */
+  recipientUserId?: string;
   /** 經銷商價 / 發貨價銷 */
   amount: number;
   /** 該筆交易後的庫存累計 */
@@ -65,20 +67,22 @@ export default function StockLedgerPage() {
         const direction = isOut ? 'out' : isIn ? 'in' : null;
         if (!direction) continue;
 
-        const partyName = isIn ? (txn.fromUser?.userName ?? '—') : (txn.toUser?.userName ?? '—');
+        const partyName = isIn ? (txn.fromUser?.userName ?? '') : (txn.toUser?.userName ?? '');
+        const recipientUserId = isOut ? (txn.toUser?.userId ?? '') : undefined;
 
         for (const item of txn.items ?? []) {
           const amount = item.total ?? (item.unitPrice ?? 0) * (item.quantity ?? 0);
           flat.push({
             kind: isIn ? 'order' : 'shipment',
             date,
-            refId,
-            productName: item.productName,
-            productId: item.productId,
+            refId: txn.poNumber ?? txn.id ?? '',
+            productName: item.productName ?? '',
+            productId: item.productId ?? '',
             quantity: item.quantity,
             direction,
             type: typeLabel,
             partyName,
+            recipientUserId,
             amount,
           });
         }
@@ -193,57 +197,61 @@ export default function StockLedgerPage() {
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row, idx) => (
+                  rows.map((row, idx) => {
+                    const stockistName = user?.displayName ?? '';
+                    const isSelfUse = row.kind === 'shipment' && row.recipientUserId === userId;
+                    const downlineDisplay = row.kind === 'shipment' ? (isSelfUse ? stockistName : row.partyName) : '';
+                    // 自用時，經銷商欄位顯示出貨細節（產品名 × 數量、發貨號碼）
+                    const distributorDisplay = row.kind === 'order'
+                      ? stockistName
+                      : isSelfUse
+                        ? [row.productName && `${row.productName} × ${row.quantity}`, row.refId].filter(Boolean).join(' ')
+                        : '';
+                    return (
                     <tr
                       key={`${row.date}-${row.refId}-${row.productId}-${row.direction}-${idx}`}
                       className={`hover:bg-surface-2/50 ${idx % 2 === 0 ? 'bg-white/5' : 'bg-emerald-50/10 dark:bg-emerald-950/10'}`}
                     >
                       <td className="px-4 py-3 text-txt-primary whitespace-nowrap text-[15px]">
-                        {row.kind === 'order' ? row.partyName : '—'}
+                        {distributorDisplay}
                       </td>
                       <td className="px-4 py-3 text-txt-primary whitespace-nowrap text-[15px]">
-                        {row.kind === 'shipment' ? row.partyName : '—'}
+                        {downlineDisplay}
                       </td>
                       <td className="px-4 py-3 text-txt-secondary tabular-nums whitespace-nowrap text-[15px]">
                         {row.kind === 'order' && row.date
                           ? new Date(row.date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                          : '—'}
+                          : ''}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium text-[15px]">
-                        {row.kind === 'order' ? row.quantity : '—'}
+                        {row.kind === 'order' ? row.quantity : ''}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-txt-secondary text-[15px]">
-                        {row.kind === 'order' && row.amount ? `USD ${row.amount}` : '—'}
+                        {row.kind === 'order' && row.amount ? `USD ${row.amount}` : ''}
                       </td>
                       <td className="px-4 py-3 text-txt-secondary tabular-nums whitespace-nowrap text-[15px]">
                         {row.kind === 'shipment' && row.date
                           ? new Date(row.date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                          : '—'}
+                          : ''}
                       </td>
                       <td className="px-4 py-3 text-txt-primary text-[15px]">
-                        {row.kind === 'shipment' ? (
-                          <>
-                            {row.productName}
-                            <span className="font-mono text-sm text-txt-subtle ml-1">({row.productId})</span>
-                          </>
-                        ) : (
-                          '—'
-                        )}
+                        {row.kind === 'shipment' ? row.productName : ''}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-[15px]">
-                        {row.kind === 'shipment' ? row.quantity : '—'}
+                        {row.kind === 'shipment' ? row.quantity : ''}
                       </td>
                       <td className="px-4 py-3 font-mono text-sm text-txt-secondary text-[15px]">
-                        {row.kind === 'shipment' ? row.refId : '—'}
+                        {row.kind === 'shipment' ? row.refId : ''}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-txt-secondary text-[15px]">
-                        {row.kind === 'shipment' && row.amount ? `USD ${row.amount}` : '—'}
+                        {row.kind === 'shipment' && row.amount ? `USD ${row.amount}` : ''}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-[15px]">
                         {row.runningInventory}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
