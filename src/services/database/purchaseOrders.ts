@@ -85,7 +85,7 @@ export const PurchaseOrderService = {
         const fromInv = await InventoryService.getByUserAndProduct(po.fromUserId, item.productId);
         if (!fromInv || fromInv.quantityOnHand < item.quantity) {
           throw new Error(
-            `${fromUserName} 缺這個貨：${item.productName} (${item.productId}) 需要 ${item.quantity}，可用 ${fromInv?.quantityOnHand ?? 0}。請至「台灣訂單」向台灣訂貨。`
+            `${fromUserName} 缺這個貨：${item.productName} (${item.productId}) 需要 ${item.quantity}，可用 ${fromInv?.quantityOnHand ?? 0}。請先至「手動填寫庫存」補貨。`
           );
         }
       }

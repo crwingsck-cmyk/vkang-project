@@ -148,12 +148,12 @@ export default function OrdersPage() {
               <option value={TransactionStatus.CANCELLED}>Cancelled</option>
             </select>
           </div>
-          {role !== UserRole.CUSTOMER && (
+          {role === UserRole.ADMIN && (
             <Link
-              href="/orders/create-bulk"
+              href="/orders/create"
               className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
             >
-              批量進貨與分配
+              建立訂單
             </Link>
           )}
         </div>
@@ -167,8 +167,8 @@ export default function OrdersPage() {
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-14 gap-3">
               <p className="text-txt-subtle text-sm">No orders found</p>
-              {role !== UserRole.CUSTOMER && (
-                <Link href="/orders/create-bulk" className="text-accent-text hover:underline text-xs">
+              {role === UserRole.ADMIN && (
+                <Link href="/orders/create" className="text-accent-text hover:underline text-xs">
                   建立第一筆訂單
                 </Link>
               )}

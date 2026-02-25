@@ -5,14 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { InventoryService } from '@/services/database/inventory';
 import { ProductService } from '@/services/database/products';
-import { Inventory, InventoryStatus, Product, UserRole } from '@/types/models';
+import { CostingMethod, Inventory, InventoryStatus, UserRole } from '@/types/models';
 import Link from 'next/link';
 
 type EntryItem = { productId: string; productName: string; quantity: number; unitCost: number; currentQty: number };
 
 export default function InventoryEntryPage() {
   const { user, role } = useAuth();
-  const [products, setProducts] = useState<(Product & { id: string })[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [entries, setEntries] = useState<EntryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +34,6 @@ export default function InventoryEntryPage() {
         ProductService.getAll(undefined, 200),
         InventoryService.getByUser(userId, 200),
       ]);
-      setProducts(prods);
       setInventory(inv);
       const invByProduct: Record<string, Inventory> = {};
       for (const i of inv) invByProduct[i.productId] = i;
@@ -107,7 +105,7 @@ export default function InventoryEntryPage() {
             cost: unitCost,
             marketValue: targetQty * unitCost,
             status: InventoryStatus.IN_STOCK,
-            costingMethod: 'fifo',
+            costingMethod: CostingMethod.FIFO,
             lastMovementDate: now,
             movements: [
               { date: now, type: 'in', quantity: targetQty, reference },
