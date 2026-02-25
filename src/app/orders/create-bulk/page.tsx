@@ -95,12 +95,13 @@ export default function CreateBulkOrderPage() {
       .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
 
   const allocSum = selfUseQty + downlineAllocs.reduce((s, d) => s + d.qty, 0);
+  const remainder = totalQty - allocSum; // 剩餘可列為庫存待賣出
   const subAllocsValid = downlineAllocs.every((d) => {
     if (!d.expanded || !d.subAllocs?.length) return true;
     const subSum = (d.selfUseQty ?? 0) + (d.subAllocs?.reduce((s, x) => s + x.qty, 0) ?? 0);
     return subSum === d.qty;
   });
-  const allocValid = totalQty > 0 && allocSum === totalQty && subAllocsValid;
+  const allocValid = totalQty > 0 && allocSum <= totalQty && subAllocsValid;
 
   function addDownline() {
     if (directDownlines.length === 0) return;
@@ -213,7 +214,10 @@ export default function CreateBulkOrderPage() {
         setError('部分下線的多層分配總和與該列數量不符，請檢查「繼續分配」區塊');
         return;
       }
-      setError(`分配總和必須等於總數量：自用 ${selfUseQty} + 下線 ${downlineAllocs.reduce((s, d) => s + d.qty, 0)} = ${allocSum}，應為 ${totalQty}`);
+      if (allocSum > totalQty) {
+        setError(`分配總和不可超過總數量：自用 ${selfUseQty} + 下線 ${downlineAllocs.reduce((s, d) => s + d.qty, 0)} = ${allocSum}，應 ≤ ${totalQty}`);
+        return;
+      }
       return;
     }
 
@@ -283,6 +287,24 @@ export default function CreateBulkOrderPage() {
         const selfOrder = await OrderService.create(selfOrderData, { createdAt: createdAt + 1 });
         await InventorySyncService.onSaleCompleted(toUser.id!, toUser.id!, makeItem(selfUseQty), selfOrder.id!);
         await OrderService.updateStatus(selfOrder.id!, TransactionStatus.COMPLETED);
+      }
+
+      // 2b. 剩餘列為庫存待賣出
+      const remainderQty = totalQty - allocSum;
+      if (remainderQty > 0) {
+        const stockOrderData = OrderService.buildSaleOrder({
+          fromUserId: toUser.id!,
+          fromUserName: toUser.displayName,
+          toUserId: toUser.id!,
+          toUserName: toUser.displayName,
+          items: makeItem(remainderQty),
+          paymentMethod: PaymentMethod.CASH,
+          notes: '庫存待賣出',
+          createdBy,
+        });
+        const stockOrder = await OrderService.create(stockOrderData, { createdAt: createdAt + 1.5 });
+        await InventorySyncService.onSaleCompleted(toUser.id!, toUser.id!, makeItem(remainderQty), stockOrder.id!);
+        await OrderService.updateStatus(stockOrder.id!, TransactionStatus.COMPLETED);
       }
 
       // 3. 下線訂單（含多層分配）
@@ -463,21 +485,39 @@ export default function CreateBulkOrderPage() {
               <h2 className="text-lg font-semibold text-gray-200">分配（自用 + 下線）</h2>
               <span className={`text-sm ${allocValid ? 'text-green-400' : 'text-amber-400'}`}>
                 {allocSum} / {totalQty}
+                {remainder > 0 && allocValid && <span className="text-gray-400 ml-1">（剩餘 {remainder} 庫存待賣出）</span>}
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              自用 + 下線分配總和必須等於總數量。下線僅能選買方的直屬下線。若要分配至下線的下線（多層），請在該列點「繼續分配」。
+              自用 + 下線分配總和須 ≤ 總數量；若有剩餘將列為「庫存待賣出」。下線僅能選買方的直屬下線。若要分配至下線的下線（多層），請在該列點「繼續分配」。
             </p>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">自用數量</label>
-              <input
-                type="number"
-                min="0"
-                value={selfUseQty ?? ''}
-                onChange={(e) => setSelfUseQty(parseInt(e.target.value, 10) || 0)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 max-w-[120px]"
-              />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">自用數量</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selfUseQty ?? ''}
+                  onChange={(e) => setSelfUseQty(parseInt(e.target.value, 10) || 0)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 max-w-[120px]"
+                />
+              </div>
+              {totalQty > 0 && remainder > 0 && (
+                <div className="mt-6 flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-400">剩餘 {remainder} 將列為庫存待賣出</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelfUseQty((prev) => prev + remainder)}
+                    className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg"
+                  >
+                    改填入自用
+                  </button>
+                </div>
+              )}
+              {totalQty > 0 && allocSum > totalQty && (
+                <span className="mt-6 text-sm text-amber-400">分配過多，請減少共 {allocSum - totalQty} 數量</span>
+              )}
             </div>
 
             <div>
