@@ -204,7 +204,7 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-5 py-3.5 text-xs text-txt-primary font-medium font-mono whitespace-nowrap">
                       <Link href={`/orders/${order.id}`} className="text-accent-text hover:underline">
-                        {order.id}
+                        {order.poNumber ?? order.id}
                       </Link>
                     </td>
                     {role === UserRole.ADMIN && (

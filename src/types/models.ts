@@ -189,6 +189,7 @@ export interface TransactionItem {
   tax?: number;
   total: number;
   notes?: string;
+  receivedAt?: number; // 該品項進貨日期（可與訂單日期不同）
 }
 
 export interface Transaction {
