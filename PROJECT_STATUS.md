@@ -33,7 +33,7 @@
 - `/users/[id]` — 用戶詳情/編輯
 - `/inventory` — 庫存管理 + 調整
 - `/orders` — 訂單列表
-- `/orders/create` — 建立訂單
+- `/orders/create-bulk` — 批量進貨與分配（唯一建立訂單入口）
 - `/orders/[id]` — 訂單詳情/狀態管理
 - `/financials` — 財務記錄（收支/統計）
 - `/settings` — 個人資料/帳號設定

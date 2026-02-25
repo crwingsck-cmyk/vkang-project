@@ -149,20 +149,12 @@ export default function OrdersPage() {
             </select>
           </div>
           {role !== UserRole.CUSTOMER && (
-            <div className="flex gap-2">
-              <Link
-                href="/orders/create"
-                className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                + Create Order
-              </Link>
-              <Link
-                href="/orders/create-bulk"
-                className="px-4 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                批量進貨與分配
-              </Link>
-            </div>
+            <Link
+              href="/orders/create-bulk"
+              className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              批量進貨與分配
+            </Link>
           )}
         </div>
 
@@ -176,8 +168,8 @@ export default function OrdersPage() {
             <div className="flex flex-col items-center justify-center p-14 gap-3">
               <p className="text-txt-subtle text-sm">No orders found</p>
               {role !== UserRole.CUSTOMER && (
-                <Link href="/orders/create" className="text-accent-text hover:underline text-xs">
-                  Create your first order
+                <Link href="/orders/create-bulk" className="text-accent-text hover:underline text-xs">
+                  建立第一筆訂單
                 </Link>
               )}
             </div>

@@ -220,7 +220,7 @@ export default function DashboardPage() {
         ) : recentOrders.length === 0 ? (
           <div className="p-10 text-txt-subtle text-center text-sm">
             No orders yet.{' '}
-            <Link href="/orders/create" className="text-accent-text hover:underline">Create one</Link>
+            <Link href="/orders/create-bulk" className="text-accent-text hover:underline">建立訂單</Link>
           </div>
         ) : (
           <table className="w-full text-sm">
