@@ -33,10 +33,6 @@ function toTxItem(item: AllocItem): TransactionItem {
     total: item.quantity * item.unitPrice,
   };
 }
-function toTxItems(items: AllocItem[]): TransactionItem[] {
-  return items.map(toTxItem);
-}
-
 function sumByProduct(items: AllocItem[]): Record<string, number> {
   const m: Record<string, number> = {};
   for (const i of items) {
