@@ -82,6 +82,7 @@ export default function DashboardPage() {
         });
         setRecentOrders(orders.slice(0, 5));
 
+      }
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
