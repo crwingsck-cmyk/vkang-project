@@ -12,30 +12,29 @@ import { Product, User, UserRole, PaymentMethod, TransactionItem, TransactionSta
 import { sortByNameEnglishFirst } from '@/lib/sortUsers';
 import Link from 'next/link';
 
-type MainItem = { productId: string; productName: string; quantity: number; unitPrice: number };
-type AllocItem = { productId: string; productName: string; quantity: number; unitPrice: number };
+type MainItem = { date: string; poNumber: string; productId: string; productName: string; quantity: number; unitPrice: number };
+type AllocItem = { date: string; poNumber: string; productId: string; productName: string; quantity: number; unitPrice: number };
 
 type DownlineAlloc = {
   userId: string;
   userName: string;
   items: AllocItem[];
-  date: string;
-  poNumber: string;
   expanded?: boolean;
   selfUseItems?: AllocItem[];
-  selfUseDate?: string;
-  selfUsePo?: string;
-  subAllocs?: { userId: string; userName: string; items: AllocItem[]; date: string; poNumber: string }[];
+  subAllocs?: { userId: string; userName: string; items: AllocItem[] }[];
 };
 
+function toTxItem(item: AllocItem): TransactionItem {
+  return {
+    productId: item.productId,
+    productName: item.productName,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    total: item.quantity * item.unitPrice,
+  };
+}
 function toTxItems(items: AllocItem[]): TransactionItem[] {
-  return items.map((i) => ({
-    productId: i.productId,
-    productName: i.productName,
-    quantity: i.quantity,
-    unitPrice: i.unitPrice,
-    total: i.quantity * i.unitPrice,
-  }));
+  return items.map(toTxItem);
 }
 
 function sumByProduct(items: AllocItem[]): Record<string, number> {
@@ -59,13 +58,9 @@ export default function CreateBulkOrderPage() {
 
   const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
-  const [mainItems, setMainItems] = useState<MainItem[]>([{ productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
-  const [mainDate, setMainDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [mainPoNumber, setMainPoNumber] = useState('');
+  const [mainItems, setMainItems] = useState<MainItem[]>([{ date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
 
   const [selfUseItems, setSelfUseItems] = useState<AllocItem[]>([]);
-  const [selfUseDate, setSelfUseDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selfUsePoNumber, setSelfUsePoNumber] = useState('');
 
   const [downlineAllocs, setDownlineAllocs] = useState<DownlineAlloc[]>([]);
   const [buyerOptions, setBuyerOptions] = useState<User[]>([]);
@@ -172,7 +167,7 @@ export default function CreateBulkOrderPage() {
   const formValid = allocValid && subAllocsValid;
 
   function addMainItem() {
-    setMainItems((prev) => [...prev, { productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
+    setMainItems((prev) => [...prev, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
   }
   function updateMainItem(index: number, field: keyof MainItem, value: string | number) {
     setMainItems((prev) =>
@@ -196,7 +191,7 @@ export default function CreateBulkOrderPage() {
   }
 
   function addAllocItem(setter: React.Dispatch<React.SetStateAction<AllocItem[]>>) {
-    setter((prev) => [...prev, { productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
+    setter((prev) => [...prev, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }]);
   }
   function updateAllocItem(setter: React.Dispatch<React.SetStateAction<AllocItem[]>>, index: number, field: keyof AllocItem, value: string | number) {
     setter((prev) =>
@@ -221,23 +216,21 @@ export default function CreateBulkOrderPage() {
 
   function addDownline() {
     const first = directDownlines.find((d) => !downlineAllocs.some((a) => a.userId === d.id));
-    if (first) {
-      setDownlineAllocs((prev) => [
-        ...prev,
-        {
-          userId: first.id!,
-          userName: first.displayName || '',
-          items: [],
-          date: new Date().toISOString().slice(0, 10),
-          poNumber: '',
-        },
-      ]);
-    }
+    setDownlineAllocs((prev) => [
+      ...prev,
+      {
+        userId: first?.id ?? '',
+        userName: first?.displayName ?? '',
+        items: [],
+        date: new Date().toISOString().slice(0, 10),
+        poNumber: '',
+      },
+    ]);
   }
   function updateDownlineItems(index: number, items: AllocItem[]) {
     setDownlineAllocs((prev) => prev.map((d, i) => (i === index ? { ...d, items } : d)));
   }
-  function updateDownline(index: number, field: string, value: string | AllocItem[]) {
+  function updateDownline(index: number, field: string, value: string | AllocItem[] | DownlineAlloc['subAllocs']) {
     setDownlineAllocs((prev) => prev.map((d, i) => (i === index ? { ...d, [field]: value } : d)));
   }
   function removeDownline(index: number) {
@@ -271,7 +264,7 @@ export default function CreateBulkOrderPage() {
                 ...p,
                 subAllocs: [
                   ...(p.subAllocs ?? []),
-                  { userId: first.id!, userName: first.displayName || '', items: [], date: new Date().toISOString().slice(0, 10), poNumber: '' },
+                  { userId: first.id!, userName: first.displayName || '', items: [] },
                 ],
               }
             : p
@@ -281,11 +274,12 @@ export default function CreateBulkOrderPage() {
   }
 
   function setRemainderToSelfUse() {
+    const today = new Date().toISOString().slice(0, 10);
     const items: AllocItem[] = [];
     for (const [productId, qty] of Object.entries(remainderByProduct)) {
       if (qty > 0) {
         const p = products.find((x) => x.sku === productId);
-        items.push({ productId, productName: p?.name || '', quantity: qty, unitPrice: p?.unitPrice ?? 0 });
+        items.push({ date: today, poNumber: '', productId, productName: p?.name || '', quantity: qty, unitPrice: p?.unitPrice ?? 0 });
       }
     }
     setSelfUseItems((prev) => {
@@ -309,7 +303,7 @@ export default function CreateBulkOrderPage() {
     }
     const validMainItems = mainItems.filter((i) => i.productId && i.quantity > 0);
     if (validMainItems.length === 0) {
-      setError('請至少新增一筆主訂單品項（產品、數量）');
+      setError('請至少新增一筆主訂單品項（日期、發貨號碼、產品、數量）');
       return;
     }
     if (!formValid) {
@@ -336,57 +330,56 @@ export default function CreateBulkOrderPage() {
     try {
       const createdBy = user?.id ?? firebaseUser?.uid ?? '';
       let orderSeq = 0;
+      const baseCreatedAt = Date.now();
 
-      const mainTxItems: TransactionItem[] = validMainItems.map((i) => ({
-        productId: i.productId,
-        productName: i.productName,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        total: i.quantity * i.unitPrice,
-      }));
+      // 主訂單：每列（日期+發貨號碼+產品）建立一筆訂單
+      for (const row of validMainItems) {
+        const txItem = toTxItem(row);
+        const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
+        const mainOrderData = { ...OrderService.buildSaleOrder({
+          fromUserId: fromUser.id!,
+          fromUserName: fromUser.displayName,
+          toUserId: toUser.id!,
+          toUserName: toUser.displayName,
+          items: [txItem],
+          paymentMethod: PaymentMethod.CASH,
+          notes: '批量進貨（含分配）',
+          createdBy,
+        }), poNumber: row.poNumber.trim() || undefined };
+        const mainOrder = await OrderService.create(mainOrderData, { createdAt: rowCreatedAt });
+        await InventorySyncService.onSaleCompleted(fromUser.id!, toUser.id!, [txItem], mainOrder.id!);
+        await OrderService.updateStatus(mainOrder.id!, TransactionStatus.COMPLETED);
+        orderSeq++;
+      }
 
-      const mainCreatedAt = mainDate ? new Date(mainDate).setHours(0, 0, 0, 0) : Date.now();
-
-      const mainOrderData = { ...OrderService.buildSaleOrder({
-        fromUserId: fromUser.id!,
-        fromUserName: fromUser.displayName,
-        toUserId: toUser.id!,
-        toUserName: toUser.displayName,
-        items: mainTxItems,
-        paymentMethod: PaymentMethod.CASH,
-        notes: '批量進貨（含分配）',
-        createdBy,
-      }), poNumber: mainPoNumber.trim() || undefined };
-      const mainOrder = await OrderService.create(mainOrderData, { createdAt: mainCreatedAt + orderSeq++ });
-      await InventorySyncService.onSaleCompleted(fromUser.id!, toUser.id!, mainTxItems, mainOrder.id!);
-      await OrderService.updateStatus(mainOrder.id!, TransactionStatus.COMPLETED);
-
-      // 自用
+      // 自用：每列（日期+發貨號碼+產品）建立一筆訂單
       const validSelfItems = selfUseItems.filter((i) => i.productId && i.quantity > 0);
-      if (validSelfItems.length > 0) {
-        const selfTxItems = toTxItems(validSelfItems);
-        const selfCreatedAt = selfUseDate ? new Date(selfUseDate).setHours(0, 0, 0, 0) : mainCreatedAt + 1;
+      for (const row of validSelfItems) {
+        const txItem = toTxItem(row);
+        const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
         const selfOrderData = { ...OrderService.buildSaleOrder({
           fromUserId: toUser.id!,
           fromUserName: toUser.displayName,
           toUserId: toUser.id!,
           toUserName: toUser.displayName,
-          items: selfTxItems,
+          items: [txItem],
           paymentMethod: PaymentMethod.CASH,
           notes: '自用',
           createdBy,
-        }), poNumber: selfUsePoNumber.trim() || undefined };
-        const selfOrder = await OrderService.create(selfOrderData, { createdAt: selfCreatedAt });
-        await InventorySyncService.onSaleCompleted(toUser.id!, toUser.id!, selfTxItems, selfOrder.id!);
+        }), poNumber: row.poNumber.trim() || undefined };
+        const selfOrder = await OrderService.create(selfOrderData, { createdAt: rowCreatedAt });
+        await InventorySyncService.onSaleCompleted(toUser.id!, toUser.id!, [txItem], selfOrder.id!);
         await OrderService.updateStatus(selfOrder.id!, TransactionStatus.COMPLETED);
+        orderSeq++;
       }
 
       // 剩餘庫存待賣出
+      const today = new Date().toISOString().slice(0, 10);
       const remainderItems: AllocItem[] = [];
       for (const [productId, qty] of Object.entries(remainderByProduct)) {
         if (qty > 0) {
           const p = products.find((x) => x.sku === productId);
-          remainderItems.push({ productId, productName: p?.name || '', quantity: qty, unitPrice: p?.unitPrice ?? 0 });
+          remainderItems.push({ date: today, poNumber: '', productId, productName: p?.name || '', quantity: qty, unitPrice: p?.unitPrice ?? 0 });
         }
       }
       if (remainderItems.length > 0) {
@@ -401,74 +394,77 @@ export default function CreateBulkOrderPage() {
           notes: '庫存待賣出',
           createdBy,
         });
-        const stockOrder = await OrderService.create(stockOrderData, { createdAt: mainCreatedAt + orderSeq++ });
+        const stockOrder = await OrderService.create(stockOrderData, { createdAt: baseCreatedAt + orderSeq++ });
         await InventorySyncService.onSaleCompleted(toUser.id!, toUser.id!, stockTxItems, stockOrder.id!);
         await OrderService.updateStatus(stockOrder.id!, TransactionStatus.COMPLETED);
       }
 
-      // 下線
+      // 下線：每筆品項（日期+發貨號碼+產品）建立一筆訂單
       for (const d of downlineAllocs) {
-        const validItems = d.items.filter((i) => i.productId && i.quantity > 0);
-        if (validItems.length === 0) continue;
+        if (!d.userId) continue;
         const downUser = allUsers.find((u) => u.id === d.userId);
         if (!downUser) continue;
 
-        const downTxItems = toTxItems(validItems);
-        const downCreatedAt = d.date ? new Date(d.date).setHours(0, 0, 0, 0) : mainCreatedAt + orderSeq;
-        const downOrderData = { ...OrderService.buildSaleOrder({
-          fromUserId: toUser.id!,
-          fromUserName: toUser.displayName,
-          toUserId: downUser.id!,
-          toUserName: downUser.displayName,
-          items: downTxItems,
-          paymentMethod: PaymentMethod.CASH,
-          notes: `分配至 ${downUser.displayName}`,
-          createdBy,
-        }), poNumber: d.poNumber.trim() || undefined };
-        const downOrder = await OrderService.create(downOrderData, { createdAt: downCreatedAt });
-        await InventorySyncService.onSaleCompleted(toUser.id!, downUser.id!, downTxItems, downOrder.id!);
-        await OrderService.updateStatus(downOrder.id!, TransactionStatus.COMPLETED);
-        orderSeq++;
+        for (const row of d.items.filter((i) => i.productId && i.quantity > 0)) {
+          const txItem = toTxItem(row);
+          const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
+          const downOrderData = { ...OrderService.buildSaleOrder({
+            fromUserId: toUser.id!,
+            fromUserName: toUser.displayName,
+            toUserId: downUser.id!,
+            toUserName: downUser.displayName,
+            items: [txItem],
+            paymentMethod: PaymentMethod.CASH,
+            notes: `分配至 ${downUser.displayName}`,
+            createdBy,
+          }), poNumber: row.poNumber.trim() || undefined };
+          const downOrder = await OrderService.create(downOrderData, { createdAt: rowCreatedAt });
+          await InventorySyncService.onSaleCompleted(toUser.id!, downUser.id!, [txItem], downOrder.id!);
+          await OrderService.updateStatus(downOrder.id!, TransactionStatus.COMPLETED);
+          orderSeq++;
+        }
 
         if (d.expanded) {
-          const selfItems = (d.selfUseItems ?? []).filter((i) => i.productId && i.quantity > 0);
-          if (selfItems.length > 0) {
-            const selfTxItems = toTxItems(selfItems);
-            const selfCreatedAt = d.selfUseDate ? new Date(d.selfUseDate).setHours(0, 0, 0, 0) : downCreatedAt + 1;
+          for (const row of (d.selfUseItems ?? []).filter((i) => i.productId && i.quantity > 0)) {
+            const txItem = toTxItem(row);
+            const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
             const selfOrderData = { ...OrderService.buildSaleOrder({
               fromUserId: downUser.id!,
               fromUserName: downUser.displayName,
               toUserId: downUser.id!,
               toUserName: downUser.displayName,
-              items: selfTxItems,
+              items: [txItem],
               paymentMethod: PaymentMethod.CASH,
               notes: '自用',
               createdBy,
-            }), poNumber: d.selfUsePo?.trim() || undefined };
-            const selfOrder = await OrderService.create(selfOrderData, { createdAt: selfCreatedAt });
-            await InventorySyncService.onSaleCompleted(downUser.id!, downUser.id!, selfTxItems, selfOrder.id!);
+            }), poNumber: row.poNumber.trim() || undefined };
+            const selfOrder = await OrderService.create(selfOrderData, { createdAt: rowCreatedAt });
+            await InventorySyncService.onSaleCompleted(downUser.id!, downUser.id!, [txItem], selfOrder.id!);
             await OrderService.updateStatus(selfOrder.id!, TransactionStatus.COMPLETED);
+            orderSeq++;
           }
           for (const sub of d.subAllocs ?? []) {
-            const subValid = sub.items.filter((i) => i.productId && i.quantity > 0);
-            if (subValid.length === 0) continue;
+            if (!sub.userId) continue;
             const subUser = allUsers.find((u) => u.id === sub.userId);
             if (!subUser) continue;
-            const subTxItems = toTxItems(subValid);
-            const subCreatedAt = sub.date ? new Date(sub.date).setHours(0, 0, 0, 0) : downCreatedAt + orderSeq;
-            const subOrderData = { ...OrderService.buildSaleOrder({
-              fromUserId: downUser.id!,
-              fromUserName: downUser.displayName,
-              toUserId: subUser.id!,
-              toUserName: subUser.displayName,
-              items: subTxItems,
-              paymentMethod: PaymentMethod.CASH,
-              notes: `分配至 ${subUser.displayName}`,
-              createdBy,
-            }), poNumber: sub.poNumber.trim() || undefined };
-            const subOrder = await OrderService.create(subOrderData, { createdAt: subCreatedAt });
-            await InventorySyncService.onSaleCompleted(downUser.id!, subUser.id!, subTxItems, subOrder.id!);
-            await OrderService.updateStatus(subOrder.id!, TransactionStatus.COMPLETED);
+            for (const row of sub.items.filter((i) => i.productId && i.quantity > 0)) {
+              const txItem = toTxItem(row);
+              const rowCreatedAt = row.date ? new Date(row.date).setHours(0, 0, 0, 0) : baseCreatedAt + orderSeq;
+              const subOrderData = { ...OrderService.buildSaleOrder({
+                fromUserId: downUser.id!,
+                fromUserName: downUser.displayName,
+                toUserId: subUser.id!,
+                toUserName: subUser.displayName,
+                items: [txItem],
+                paymentMethod: PaymentMethod.CASH,
+                notes: `分配至 ${subUser.displayName}`,
+                createdBy,
+              }), poNumber: row.poNumber.trim() || undefined };
+              const subOrder = await OrderService.create(subOrderData, { createdAt: rowCreatedAt });
+              await InventorySyncService.onSaleCompleted(downUser.id!, subUser.id!, [txItem], subOrder.id!);
+              await OrderService.updateStatus(subOrder.id!, TransactionStatus.COMPLETED);
+              orderSeq++;
+            }
           }
         }
       }
@@ -531,22 +527,16 @@ export default function CreateBulkOrderPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">日期</label>
-              <input type="date" value={mainDate} onChange={(e) => setMainDate(e.target.value)} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 max-w-xs" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">發貨號碼</label>
-              <input type="text" value={mainPoNumber} onChange={(e) => setMainPoNumber(e.target.value)} placeholder="選填" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 max-w-xs" />
-            </div>
-            <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-300">品項</label>
+                <label className="block text-sm font-medium text-gray-300">品項（每列：日期 + 發貨號碼 + 產品 + 數量）</label>
                 <button type="button" onClick={addMainItem} className="px-4 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg">+ 新增品項</button>
               </div>
               <div className="space-y-2">
                 {mainItems.map((item, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select value={item.productId} onChange={(e) => updateMainItem(i, 'productId', e.target.value)} className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm">
+                  <div key={i} className="flex gap-2 items-center flex-wrap">
+                    <input type="date" value={item.date} onChange={(e) => updateMainItem(i, 'date', e.target.value)} className="px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" />
+                    <input type="text" value={item.poNumber} onChange={(e) => updateMainItem(i, 'poNumber', e.target.value)} placeholder="發貨號碼" className="w-24 px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm" />
+                    <select value={item.productId} onChange={(e) => updateMainItem(i, 'productId', e.target.value)} className="flex-1 min-w-[140px] px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm">
                       <option value="">請選擇產品...</option>
                       {products.map((p) => (
                         <option key={p.sku} value={p.sku}>{p.name} (USD {p.unitPrice})</option>
@@ -568,19 +558,17 @@ export default function CreateBulkOrderPage() {
               自用 + 下線分配總和須 ≤ 各品項數量；若有剩餘將列為「庫存待賣出」。每筆分配可選日期、產品、數量、發貨號碼。
             </p>
 
-            {/* 自用 */}
+            {/* 自用：每列 = 日期 + 發貨號碼 + 產品 + 數量 */}
             <div className="border border-gray-600 rounded-lg p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium text-gray-200">自用</span>
-                <div className="flex gap-2">
-                  <input type="date" value={selfUseDate} onChange={(e) => setSelfUseDate(e.target.value)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                  <input type="text" value={selfUsePoNumber} onChange={(e) => setSelfUsePoNumber(e.target.value)} placeholder="發貨號碼" className="w-28 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                </div>
-              </div>
-              <div className="flex gap-2 items-center flex-wrap">
                 <button type="button" onClick={() => addAllocItem(setSelfUseItems)} className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded">+ 品項</button>
+              </div>
+              <div className="space-y-2">
                 {selfUseItems.map((item, i) => (
-                  <div key={i} className="flex gap-1 items-center">
+                  <div key={i} className="flex gap-2 items-center flex-wrap">
+                    <input type="date" value={item.date} onChange={(e) => updateAllocItem(setSelfUseItems, i, 'date', e.target.value)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
+                    <input type="text" value={item.poNumber} onChange={(e) => updateAllocItem(setSelfUseItems, i, 'poNumber', e.target.value)} placeholder="發貨號碼" className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
                     <select value={item.productId} onChange={(e) => updateAllocItem(setSelfUseItems, i, 'productId', e.target.value)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" style={{ minWidth: 120 }}>
                       <option value="">產品...</option>
                       {products.map((p) => (
@@ -604,7 +592,7 @@ export default function CreateBulkOrderPage() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-300">下線分配</label>
-                <button type="button" onClick={addDownline} disabled={directDownlines.length === 0 || downlineAllocs.length >= directDownlines.length} className="px-4 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg disabled:opacity-50">+ 新增下線</button>
+                <button type="button" onClick={addDownline} disabled={!toUserId || (directDownlines.length > 0 && downlineAllocs.length >= directDownlines.length)} className="px-4 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg disabled:opacity-50">+ 新增下線</button>
               </div>
               <div className="space-y-2">
                 {downlineAllocs.map((d, i) => (
@@ -618,12 +606,11 @@ export default function CreateBulkOrderPage() {
                         }}
                         className="flex-1 min-w-[120px] px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm"
                       >
+                        <option value="">{directDownlines.length === 0 ? '（請先選擇買方，買方須有直屬下線）' : '請選擇下線...'}</option>
                         {directDownlines.map((u) => (
                           <option key={u.id} value={u.id}>{u.displayName}</option>
                         ))}
                       </select>
-                      <input type="date" value={d.date} onChange={(e) => updateDownline(i, 'date', e.target.value)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                      <input type="text" value={d.poNumber} onChange={(e) => updateDownline(i, 'poNumber', e.target.value)} placeholder="發貨號碼" className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
                       {getDirectDownlines(d.userId).length > 0 && (
                         <button type="button" onClick={() => toggleSubAlloc(i)} className={`px-3 py-1 text-xs rounded-lg ${d.expanded ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300'}`}>
                           {d.expanded ? '收起' : '繼續分配'}
@@ -631,10 +618,12 @@ export default function CreateBulkOrderPage() {
                       )}
                       <button type="button" onClick={() => removeDownline(i)} className="px-2 py-1 text-red-400 hover:bg-red-900/30 rounded">✕</button>
                     </div>
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <button type="button" onClick={() => updateDownlineItems(i, [...d.items, { productId: '', productName: '', quantity: 0, unitPrice: 0 }])} className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded">+ 品項</button>
+                    <div className="space-y-2">
+                      <button type="button" onClick={() => updateDownlineItems(i, [...d.items, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }])} className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded">+ 品項（日期+發貨號碼+產品）</button>
                       {d.items.map((item, j) => (
-                        <div key={j} className="flex gap-1 items-center">
+                        <div key={j} className="flex gap-2 items-center flex-wrap">
+                          <input type="date" value={item.date} onChange={(e) => { const next = [...d.items]; next[j] = { ...next[j], date: e.target.value }; updateDownlineItems(i, next); }} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
+                          <input type="text" value={item.poNumber} onChange={(e) => { const next = [...d.items]; next[j] = { ...next[j], poNumber: e.target.value }; updateDownlineItems(i, next); }} placeholder="發貨號碼" className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
                           <select value={item.productId} onChange={(e) => { const p = products.find((x) => x.sku === e.target.value); const next = [...d.items]; next[j] = { ...next[j], productId: p?.sku || '', productName: p?.name || '', unitPrice: p?.unitPrice ?? 0 }; updateDownlineItems(i, next); }} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" style={{ minWidth: 100 }}>
                             <option value="">產品...</option>
                             {products.map((p) => (
@@ -649,15 +638,13 @@ export default function CreateBulkOrderPage() {
                     {d.expanded && (
                       <div className="ml-4 pl-4 border-l-2 border-gray-600 space-y-2">
                         <div>
-                          <span className="text-xs text-gray-400">{d.userName} 自用</span>
-                          <div className="flex gap-3 mt-1">
-                            <input type="date" value={d.selfUseDate ?? ''} onChange={(e) => updateDownline(i, 'selfUseDate', e.target.value)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                            <input type="text" value={d.selfUsePo ?? ''} onChange={(e) => updateDownline(i, 'selfUsePo', e.target.value)} placeholder="發貨號碼" className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                          </div>
+                          <span className="text-xs text-gray-400">{d.userName} 自用（每列：日期+發貨號碼+產品）</span>
                           <div className="flex gap-2 items-center flex-wrap mt-1">
-                            <button type="button" onClick={() => updateDownline(i, 'selfUseItems', [...(d.selfUseItems ?? []), { productId: '', productName: '', quantity: 0, unitPrice: 0 }])} className="px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded">+ 品項</button>
+                            <button type="button" onClick={() => updateDownline(i, 'selfUseItems', [...(d.selfUseItems ?? []), { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }])} className="px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded">+ 品項</button>
                             {(d.selfUseItems ?? []).map((item, j) => (
-                              <div key={j} className="flex gap-1 items-center">
+                              <div key={j} className="flex gap-1 items-center flex-wrap">
+                                <input type="date" value={item.date} onChange={(e) => { const next = [...(d.selfUseItems ?? [])]; next[j] = { ...next[j], date: e.target.value }; updateDownline(i, 'selfUseItems', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
+                                <input type="text" value={item.poNumber} onChange={(e) => { const next = [...(d.selfUseItems ?? [])]; next[j] = { ...next[j], poNumber: e.target.value }; updateDownline(i, 'selfUseItems', next); }} placeholder="發貨號" className="w-16 px-1 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
                                 <select value={item.productId} onChange={(e) => { const p = products.find((x) => x.sku === e.target.value); const next = [...(d.selfUseItems ?? [])]; next[j] = { ...next[j], productId: p?.sku || '', productName: p?.name || '', unitPrice: p?.unitPrice ?? 0 }; updateDownline(i, 'selfUseItems', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" style={{ minWidth: 80 }}>
                                   <option value="">產品</option>
                                   {products.map((p) => (
@@ -676,19 +663,19 @@ export default function CreateBulkOrderPage() {
                             <button type="button" onClick={() => addSubDownline(i)} disabled={(d.subAllocs?.length ?? 0) >= getDirectDownlines(d.userId).length} className="text-xs px-2 py-0.5 bg-gray-600 hover:bg-gray-500 text-gray-300 rounded disabled:opacity-50">+ 新增</button>
                           </div>
                           {(d.subAllocs ?? []).map((s, j) => (
-                            <div key={j} className="flex gap-2 items-center flex-wrap mb-2 p-2 bg-gray-700/50 rounded">
+                            <div key={j} className="flex gap-2 items-start flex-wrap mb-2 p-2 bg-gray-700/50 rounded">
                               <select value={s.userId} onChange={(e) => { const u = allUsers.find((x) => x.id === e.target.value); const next = [...(d.subAllocs ?? [])]; next[j] = { ...next[j], userId: e.target.value, userName: u?.displayName || '' }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" style={{ minWidth: 100 }}>
                                 {getDirectDownlines(d.userId).map((u) => (
                                   <option key={u.id} value={u.id}>{u.displayName}</option>
                                 ))}
                               </select>
-                              <input type="date" value={s.date} onChange={(e) => { const next = [...(d.subAllocs ?? [])]; next[j] = { ...next[j], date: e.target.value }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
-                              <input type="text" value={s.poNumber} onChange={(e) => { const next = [...(d.subAllocs ?? [])]; next[j] = { ...next[j], poNumber: e.target.value }; updateDownline(i, 'subAllocs', next); }} placeholder="發貨號碼" className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm" />
                               <button type="button" onClick={() => updateDownline(i, 'subAllocs', (d.subAllocs ?? []).filter((_, k) => k !== j))} className="px-1 text-red-400 text-xs">✕</button>
-                              <div className="flex gap-1 items-center flex-wrap">
-                                <button type="button" onClick={() => { const next = [...(d.subAllocs ?? [])]; next[j] = { ...next[j], items: [...next[j].items, { productId: '', productName: '', quantity: 0, unitPrice: 0 }] }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded">+ 品項</button>
+                              <div className="flex flex-col gap-1 w-full">
+                                <button type="button" onClick={() => { const next = [...(d.subAllocs ?? [])]; next[j] = { ...next[j], items: [...next[j].items, { date: new Date().toISOString().slice(0, 10), poNumber: '', productId: '', productName: '', quantity: 0, unitPrice: 0 }] }; updateDownline(i, 'subAllocs', next); }} className="text-left px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded w-fit">+ 品項（日期+發貨號碼+產品）</button>
                                 {s.items.map((item, k) => (
-                                  <div key={k} className="flex gap-1 items-center">
+                                  <div key={k} className="flex gap-1 items-center flex-wrap">
+                                    <input type="date" value={item.date} onChange={(e) => { const next = [...(d.subAllocs ?? [])]; next[j].items[k] = { ...next[j].items[k], date: e.target.value }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
+                                    <input type="text" value={item.poNumber} onChange={(e) => { const next = [...(d.subAllocs ?? [])]; next[j].items[k] = { ...next[j].items[k], poNumber: e.target.value }; updateDownline(i, 'subAllocs', next); }} placeholder="發貨號" className="w-16 px-1 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" />
                                     <select value={item.productId} onChange={(e) => { const p = products.find((x) => x.sku === e.target.value); const next = [...(d.subAllocs ?? [])]; next[j].items[k] = { ...next[j].items[k], productId: p?.sku || '', productName: p?.name || '', unitPrice: p?.unitPrice ?? 0 }; updateDownline(i, 'subAllocs', next); }} className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-gray-100 text-xs" style={{ minWidth: 80 }}>
                                       <option value="">產品</option>
                                       {products.map((p) => (
