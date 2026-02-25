@@ -163,6 +163,9 @@ export default function CreateOrderPage() {
           <Link href="/orders" className="text-gray-400 hover:text-gray-200 text-sm">
             &larr; 返回訂單
           </Link>
+          <Link href="/orders/create-bulk" className="text-gray-400 hover:text-gray-200 text-sm">
+            批量進貨與分配
+          </Link>
         </div>
 
         <div>

@@ -149,12 +149,20 @@ export default function OrdersPage() {
             </select>
           </div>
           {role !== UserRole.CUSTOMER && (
-            <Link
-              href="/orders/create"
-              className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              + Create Order
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/orders/create"
+                className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                + Create Order
+              </Link>
+              <Link
+                href="/orders/create-bulk"
+                className="px-4 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                批量進貨與分配
+              </Link>
+            </div>
           )}
         </div>
 
