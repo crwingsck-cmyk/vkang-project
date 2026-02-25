@@ -85,6 +85,11 @@ export default function CreateBulkOrderPage() {
     }
   }, [productId, products]);
 
+  // 變更主訂單欄位時清除錯誤，避免錯誤訊息殘留
+  useEffect(() => {
+    setError('');
+  }, [fromUserId, toUserId, productId, totalQty]);
+
   const directDownlines = toUserId
     ? allUsers.filter((u) => u.parentUserId === toUserId).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
     : [];
@@ -205,8 +210,13 @@ export default function CreateBulkOrderPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!fromUserId || !toUserId || !productId || totalQty <= 0) {
-      setError('請填寫完整：賣方、買方、產品、總數量');
+    const missing: string[] = [];
+    if (!fromUserId) missing.push('賣方');
+    if (!toUserId) missing.push('買方');
+    if (!productId) missing.push('產品');
+    if (totalQty <= 0) missing.push('總數量');
+    if (missing.length > 0) {
+      setError(`請填寫完整：${missing.join('、')}`);
       return;
     }
     if (!allocValid) {
