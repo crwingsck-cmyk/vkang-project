@@ -56,6 +56,7 @@ export default function CreatePurchaseOrderPage() {
     if (role === UserRole.STOCKIST) {
       const id = user?.id ?? firebaseUser?.uid;
       if (id) setUserId(id);
+      setFromAdmin(true); // 經銷商只能向總經銷商進貨，不能向台灣進貨
     }
   }, [user?.id, firebaseUser?.uid, role]);
 
@@ -66,6 +67,7 @@ export default function CreatePurchaseOrderPage() {
         setRecipientUser(u);
         if (u?.parentUserId) {
           UserService.getById(u.parentUserId).then(setParentUser).catch(() => setParentUser(null));
+          if (role === UserRole.STOCKIST) setFromUserId(u.parentUserId!);
         } else {
           setParentUser(null);
         }
@@ -162,6 +164,10 @@ export default function CreatePurchaseOrderPage() {
       setError('請至少新增一筆商品明細');
       return;
     }
+    if (role === UserRole.STOCKIST && !fromUserId) {
+      setError('請選擇進貨來源（總經銷商或上線）');
+      return;
+    }
     if (fromAdmin && !fromUserId) {
       setError('請選擇總經銷商');
       return;
@@ -177,9 +183,11 @@ export default function CreatePurchaseOrderPage() {
         total: item.quantity * item.unitCost,
       }));
       const createdAt = new Date(orderDate).setHours(0, 0, 0, 0);
+      const isFromAdmin = role === UserRole.STOCKIST ? true : fromAdmin;
+      const effectiveFromUserId = role === UserRole.STOCKIST ? fromUserId : (fromAdmin ? fromUserId : undefined);
       await PurchaseOrderService.create({
-        supplierName: fromAdmin ? (fromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined),
-        fromUserId: fromAdmin ? fromUserId : undefined,
+        supplierName: isFromAdmin ? (effectiveFromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined),
+        fromUserId: isFromAdmin ? effectiveFromUserId : undefined,
         userId: targetUserId,
         useFifo: useFifo || undefined,
         items: poItems,
@@ -254,26 +262,13 @@ export default function CreatePurchaseOrderPage() {
             </div>
 
           {role === UserRole.STOCKIST && (
-            <div className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                id="fromAdmin"
-                checked={fromAdmin}
-                onChange={(e) => {
-                  setFromAdmin(e.target.checked);
-                  if (!e.target.checked) setFromUserId('');
-                  else if (recipientUser?.parentUserId) setFromUserId(recipientUser.parentUserId!);
-                }}
-                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
-              />
-              <label htmlFor="fromAdmin" className="text-sm text-gray-300">
-                向上線進貨（從上線調撥庫存，支援第四線、第五線等多層級）
-              </label>
-            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              經銷商僅能向總經銷商／上線進貨，無法向台灣等外部供應商進貨。
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            {fromAdmin && role === UserRole.STOCKIST ? (
+            {role === UserRole.STOCKIST ? (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   進貨來源 <span className="text-red-400">*</span>

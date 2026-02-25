@@ -5,15 +5,16 @@ import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',  href: '/dashboard',  roles: ['ADMIN', 'STOCKIST', 'CUSTOMER'] },
+  { label: 'Dashboard',  href: '/dashboard',  roles: ['ADMIN', 'STOCKIST', 'CUSTOMER', 'TAIWAN'] },
   { label: 'Products',   href: '/products',   roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Users',      href: '/users',      roles: ['ADMIN'] },
   { label: 'Stockists',  href: '/stockists',  roles: ['ADMIN'] },
+  { label: '台灣訂單',   href: '/taiwan-orders', roles: ['ADMIN', 'TAIWAN'] },
   { label: 'Purchase Orders', href: '/purchase-orders', roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Orders',     href: '/orders',     roles: ['ADMIN', 'STOCKIST', 'CUSTOMER'] },
   { label: 'Warehouse',  href: '/warehouse',  roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Financials', href: '/financials', roles: ['ADMIN', 'STOCKIST'] },
-  { label: 'Settings',   href: '/settings',   roles: ['ADMIN', 'STOCKIST', 'CUSTOMER'] },
+  { label: 'Settings',   href: '/settings',   roles: ['ADMIN', 'STOCKIST', 'CUSTOMER', 'TAIWAN'] },
 ];
 
 export function Sidebar() {

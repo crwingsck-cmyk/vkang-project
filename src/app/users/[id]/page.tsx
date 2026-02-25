@@ -14,6 +14,7 @@ const roleColors: Record<UserRole, string> = {
   [UserRole.ADMIN]: 'bg-red-900/30 text-red-300',
   [UserRole.STOCKIST]: 'bg-blue-900/30 text-blue-300',
   [UserRole.CUSTOMER]: 'bg-green-900/30 text-green-300',
+  [UserRole.TAIWAN]: 'bg-amber-900/30 text-amber-300',
 };
 
 export default function UserDetailPage() {
@@ -295,6 +296,7 @@ export default function UserDetailPage() {
                       <option value={UserRole.CUSTOMER}>Customer</option>
                       <option value={UserRole.STOCKIST}>Stockist</option>
                       <option value={UserRole.ADMIN}>Admin</option>
+                      <option value={UserRole.TAIWAN}>Taiwan（台灣供應商）</option>
                     </select>
                   </div>
                   <div>

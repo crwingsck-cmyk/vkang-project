@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { InventoryService } from '@/services/database/inventory';
 import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType, TransactionStatus, InventoryStatus } from '@/types/models';
+import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -16,7 +16,7 @@ function DistributorCard({
   badge,
 }: {
   user: User;
-  stats: { invValue: number; orderCount: number; lowStock: number };
+  stats: { invValue: number; orderCount: number; totalQuantity: number };
   cardClass: string;
   badge?: string;
 }) {
@@ -50,19 +50,15 @@ function DistributorCard({
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">待處理訂單</p>
+          <p className="text-xs text-gray-300">庫存總數</p>
           <p className="text-sm font-semibold text-white tabular-nums">
-            {stats.orderCount}
+            {stats.totalQuantity}
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">現有庫存</p>
-          <p
-            className={`text-sm font-semibold tabular-nums ${
-              stats.lowStock > 0 ? 'text-amber-300' : 'text-white'
-            }`}
-          >
-            {stats.lowStock}
+          <p className="text-xs text-gray-300">待處理訂單</p>
+          <p className="text-sm font-semibold text-white tabular-nums">
+            {stats.orderCount}
           </p>
         </div>
       </div>
@@ -74,7 +70,7 @@ export default function StockistsPage() {
   const { role } = useAuth();
   const [admins, setAdmins] = useState<User[]>([]);
   const [stockists, setStockists] = useState<User[]>([]);
-  const [stats, setStats] = useState<Record<string, { invValue: number; orderCount: number; lowStock: number }>>({});
+  const [stats, setStats] = useState<Record<string, { invValue: number; orderCount: number; totalQuantity: number }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,7 +78,7 @@ export default function StockistsPage() {
     load();
   }, [role]);
 
-  async function loadUserStats(userId: string): Promise<{ invValue: number; orderCount: number; lowStock: number }> {
+  async function loadUserStats(userId: string): Promise<{ invValue: number; orderCount: number; totalQuantity: number }> {
     try {
       const [inv, orders] = await Promise.all([
         InventoryService.getByUser(userId, 200),
@@ -92,14 +88,12 @@ export default function StockistsPage() {
         (sum, i) => sum + (i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand)),
         0
       );
+      const totalQuantity = inv.reduce((sum, i) => sum + i.quantityOnHand, 0);
       const sales = orders.filter((o) => o.transactionType === TransactionType.SALE);
       const pendingSales = sales.filter((o) => o.status === TransactionStatus.PENDING);
-      const lowStock = inv.filter(
-        (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
-      ).length;
-      return { invValue, orderCount: pendingSales.length, lowStock };
+      return { invValue, orderCount: pendingSales.length, totalQuantity };
     } catch {
-      return { invValue: 0, orderCount: 0, lowStock: 0 };
+      return { invValue: 0, orderCount: 0, totalQuantity: 0 };
     }
   }
 
@@ -113,7 +107,7 @@ export default function StockistsPage() {
       setAdmins(adminList);
       setStockists(stockistList);
 
-      const s: Record<string, { invValue: number; orderCount: number; lowStock: number }> = {};
+      const s: Record<string, { invValue: number; orderCount: number; totalQuantity: number }> = {};
       const allUsers = [...adminList, ...stockistList];
       await Promise.all(
         allUsers.map(async (u) => {
@@ -158,7 +152,7 @@ export default function StockistsPage() {
                 <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">總經銷商</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {admins.map((a, idx) => {
-                    const st = stats[a.id!] ?? { invValue: 0, orderCount: 0, lowStock: 0 };
+                    const st = stats[a.id!] ?? { invValue: 0, orderCount: 0, totalQuantity: 0 };
                     const adminCardColors = [
                       'bg-emerald-50 border-emerald-200/60 hover:bg-emerald-100/80',
                       'bg-violet-50 border-violet-200/60 hover:bg-violet-100/80',
@@ -182,7 +176,7 @@ export default function StockistsPage() {
                 <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">經銷商</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {stockists.map((s, idx) => {
-                    const st = stats[s.id!] ?? { invValue: 0, orderCount: 0, lowStock: 0 };
+                    const st = stats[s.id!] ?? { invValue: 0, orderCount: 0, totalQuantity: 0 };
                     const cardColors = [
                       'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
                       'bg-blue-50 border-blue-200/60 hover:bg-blue-100/80',

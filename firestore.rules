@@ -18,6 +18,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'STOCKIST';
     }
 
+    function isTaiwan() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TAIWAN';
+    }
+
     function isOwnData(userId) {
       return request.auth.uid == userId || isAdmin();
     }
@@ -131,16 +137,37 @@ service cloud.firestore {
     }
 
     // ========== PURCHASE ORDERS (進貨單) ==========
+    // 僅總經銷商（ADMIN）可向台灣等外部供應商進貨；經銷商（STOCKIST）僅能向總經銷商／上線進貨（必須有 fromUserId）
     match /purchaseOrders/{poId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
       allow create: if isAuthenticated() && (
         request.resource.data.userId == request.auth.uid || isAdmin()
+      ) && (
+        isAdmin() || (isStockist() && request.resource.data.get('fromUserId', '') != '')
       );
       allow update, delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
+    }
+
+    // ========== TAIWAN ORDER POOLS (台灣訂單池) ==========
+    // 僅總經銷商（ADMIN）可向台灣下訂單，經銷商（STOCKIST）無權限
+    match /taiwanOrderPools/{poolId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin() || isTaiwan()
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ========== TAIWAN ORDER ALLOCATIONS (台灣訂單分配) ==========
+    match /taiwanOrderAllocations/{allocId} {
+      allow read: if isAuthenticated() && (isAdmin() || isTaiwan());
+      allow create: if isAdmin();
+      allow update, delete: if false;
     }
   }
 }

@@ -141,6 +141,10 @@ export default function EditPurchaseOrderPage() {
       setError('請至少新增一筆商品明細');
       return;
     }
+    if (role === UserRole.STOCKIST && fromAdmin && !fromUserId) {
+      setError('請選擇進貨來源（總經銷商或上線）');
+      return;
+    }
     if (fromAdmin && !fromUserId) {
       setError('請選擇總經銷商');
       return;
@@ -156,15 +160,20 @@ export default function EditPurchaseOrderPage() {
         total: item.quantity * item.unitCost,
       }));
       const trimmedPoNumber = poNumber.trim();
-      await PurchaseOrderService.update(poId, {
+      // 經銷商編輯由總經銷商代建的外部供應商 PO 時，不覆寫 supplierName/fromUserId
+      const isStockistEditingExternal = role === UserRole.STOCKIST && !fromAdmin;
+      const updates: Parameters<typeof PurchaseOrderService.update>[1] = {
         ...(trimmedPoNumber ? { poNumber: trimmedPoNumber } : {}),
-        supplierName: fromAdmin ? (fromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined),
-        fromUserId: fromAdmin ? fromUserId : undefined,
         userId: targetUserId,
         useFifo: useFifo || undefined,
         items: poItems,
         notes: notes.trim() || undefined,
-      });
+      };
+      if (!isStockistEditingExternal) {
+        updates.supplierName = fromAdmin ? (fromUserId === recipientUser?.parentUserId ? '上線' : '總經銷商') : (supplierName.trim() || undefined);
+        updates.fromUserId = fromAdmin ? fromUserId : undefined;
+      }
+      await PurchaseOrderService.update(poId, updates);
       router.push(`/purchase-orders/${poId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '儲存失敗');
@@ -226,22 +235,9 @@ export default function EditPurchaseOrderPage() {
           className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4"
         >
           {role === UserRole.STOCKIST && (
-            <div className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                id="fromAdmin"
-                checked={fromAdmin}
-                onChange={(e) => {
-                  setFromAdmin(e.target.checked);
-                  if (!e.target.checked) setFromUserId('');
-                  else if (recipientUser?.parentUserId) setFromUserId(recipientUser.parentUserId!);
-                }}
-                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
-              />
-              <label htmlFor="fromAdmin" className="text-sm text-gray-300">
-                向上線進貨（從上線調撥庫存）
-              </label>
-            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              經銷商僅能向總經銷商／上線進貨，無法向台灣等外部供應商進貨。
+            </p>
           )}
 
           <div>
@@ -256,7 +252,39 @@ export default function EditPurchaseOrderPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {fromAdmin && role === UserRole.STOCKIST ? (
+            {role === UserRole.STOCKIST ? (
+              fromAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">進貨來源</label>
+                  <select
+                    value={fromUserId}
+                    onChange={(e) => setFromUserId(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">請選擇</option>
+                    {recipientUser?.parentUserId && (
+                      <option value={recipientUser.parentUserId}>
+                        上線：{parentUser?.displayName || recipientUser.parentUserId}
+                      </option>
+                    )}
+                    {admins
+                      .filter((a) => a.id !== recipientUser?.parentUserId)
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.displayName}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">供應商</label>
+                  <p className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300">
+                    {supplierName || '—'}（由總經銷商代建，無法修改）
+                  </p>
+                </div>
+              )
+            ) : fromAdmin ? (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">進貨來源</label>
                 <select
@@ -281,14 +309,12 @@ export default function EditPurchaseOrderPage() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {role === UserRole.ADMIN ? '供應商' : '供應商名稱'}
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">供應商</label>
                 <input
                   type="text"
                   value={supplierName}
                   onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="選填"
+                  placeholder="例如：台灣（總經銷商向台灣訂貨及進貨）"
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>

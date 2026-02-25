@@ -77,9 +77,7 @@ export default function StockistDetailPage() {
   const invItemValue = (i: { quantityOnHand: number; marketValue?: number; cost: number }) =>
     i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand);
   const invValue = inventory.reduce((s, i) => s + invItemValue(i), 0);
-  const lowStockCount = inventory.filter(
-    (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
-  ).length;
+  const totalQuantity = inventory.reduce((s, i) => s + i.quantityOnHand, 0);
   const pendingOrders = orders.filter((o) => o.status === TransactionStatus.PENDING).length;
 
   return (
@@ -128,7 +126,7 @@ export default function StockistDetailPage() {
                 </Link>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="mt-6 grid grid-cols-3 gap-4">
                 <div className="rounded-lg bg-chip-dark p-4">
                   <p className="text-xs text-gray-300">庫存價值</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
@@ -136,19 +134,15 @@ export default function StockistDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">待處理訂單</p>
+                  <p className="text-xs text-gray-300">庫存總數</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
-                    {pendingOrders}
+                    {totalQuantity}
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">現有庫存品項</p>
-                  <p
-                    className={`text-xl font-bold tabular-nums mt-1 ${
-                      lowStockCount > 0 ? 'text-amber-300' : 'text-white'
-                    }`}
-                  >
-                    {lowStockCount}
+                  <p className="text-xs text-gray-300">待處理訂單</p>
+                  <p className="text-xl font-bold text-white tabular-nums mt-1">
+                    {pendingOrders}
                   </p>
                 </div>
               </div>

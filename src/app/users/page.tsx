@@ -39,6 +39,7 @@ export default function UsersPage() {
     [UserRole.ADMIN]:    'bg-chip-dark text-white border border-chip-dark',
     [UserRole.STOCKIST]: 'bg-chip-cyan text-gray-800 border border-cyan-200',
     [UserRole.CUSTOMER]: 'bg-chip-yellow text-gray-800 border border-amber-200',
+    [UserRole.TAIWAN]:   'bg-amber-800/50 text-amber-200 border border-amber-600',
   };
 
   return (
@@ -99,6 +100,7 @@ export default function UsersPage() {
               <option value={UserRole.ADMIN}>Admin</option>
               <option value={UserRole.STOCKIST}>Stockist</option>
               <option value={UserRole.CUSTOMER}>Customer</option>
+              <option value={UserRole.TAIWAN}>Taiwan</option>
             </select>
           </div>
           <div className="flex items-center gap-2 ml-auto">
@@ -106,6 +108,7 @@ export default function UsersPage() {
             <StatChip label="Admins"    value={users.filter((u) => u.role === UserRole.ADMIN).length}    color="text-error" />
             <StatChip label="Stockists" value={users.filter((u) => u.role === UserRole.STOCKIST).length} color="text-info" />
             <StatChip label="Customers" value={users.filter((u) => u.role === UserRole.CUSTOMER).length} color="text-success" />
+            <StatChip label="Taiwan"    value={users.filter((u) => u.role === UserRole.TAIWAN).length} color="text-amber-400" />
           </div>
         </div>
         )}
