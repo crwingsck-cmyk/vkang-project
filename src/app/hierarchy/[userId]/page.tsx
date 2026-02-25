@@ -9,6 +9,7 @@ import { UserService } from '@/services/database/users';
 import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
 import { InventorySyncService } from '@/services/database/inventorySync';
+import { InventoryService } from '@/services/database/inventory';
 import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem } from '@/types/models';
 
 type RowKind = 'order' | 'shipment';
@@ -17,6 +18,7 @@ interface StockLedgerRow {
   kind: RowKind;
   date: number;
   refId: string;
+  transactionId: string;
   productName: string;
   productId: string;
   quantity: number;
@@ -41,6 +43,7 @@ export default function StockLedgerPage() {
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editTransactionId, setEditTransactionId] = useState<string | null>(null);
   const [addError, setAddError] = useState('');
 
   useEffect(() => {
@@ -60,7 +63,6 @@ export default function StockLedgerPage() {
       for (const t of txList) {
         const txn = t as Transaction & { id: string };
         const date = txn.createdAt ?? 0;
-        const refId = txn.poNumber ?? txn.id ?? '—';
         const isOut = txn.fromUser?.userId === userId;
         const isIn = txn.toUser?.userId === userId;
         const typeLabel = getTypeLabel(txn.transactionType);
@@ -70,12 +72,14 @@ export default function StockLedgerPage() {
         const partyName = isIn ? (txn.fromUser?.userName ?? '') : (txn.toUser?.userName ?? '');
         const recipientUserId = isOut ? (txn.toUser?.userId ?? '') : undefined;
 
+        const txnId = (txn as Transaction & { id: string }).id ?? '';
         for (const item of txn.items ?? []) {
           const amount = item.total ?? (item.unitPrice ?? 0) * (item.quantity ?? 0);
           flat.push({
             kind: isIn ? 'order' : 'shipment',
             date,
-            refId: txn.poNumber ?? txn.id ?? '',
+            refId: txn.poNumber ?? txnId ?? '',
+            transactionId: txnId,
             productName: item.productName ?? '',
             productId: item.productId ?? '',
             quantity: item.quantity,
@@ -143,6 +147,17 @@ export default function StockLedgerPage() {
             onError={setAddError}
           />
         )}
+        {editTransactionId && (
+          <EditMovementModal
+            transactionId={editTransactionId}
+            userId={userId}
+            userName={user?.displayName ?? '—'}
+            error={addError}
+            onClose={() => { setEditTransactionId(null); setAddError(''); }}
+            onDone={() => { setEditTransactionId(null); setAddError(''); load(); }}
+            onError={setAddError}
+          />
+        )}
 
         {loading ? (
           <div className="py-16 text-center">
@@ -187,12 +202,15 @@ export default function StockLedgerPage() {
                   <th className="px-4 py-3 text-right text-sm font-semibold uppercase tracking-wider whitespace-nowrap">
                     庫存
                   </th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold uppercase tracking-wider whitespace-nowrap w-20">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center text-txt-subtle text-base">
+                    <td colSpan={12} className="px-4 py-12 text-center text-txt-subtle text-base">
                       尚無庫存異動紀錄
                     </td>
                   </tr>
@@ -201,12 +219,12 @@ export default function StockLedgerPage() {
                     const stockistName = user?.displayName ?? '';
                     const isSelfUse = row.kind === 'shipment' && row.recipientUserId === userId;
                     const downlineDisplay = row.kind === 'shipment' ? (isSelfUse ? stockistName : row.partyName) : '';
-                    // 自用時，經銷商欄位顯示出貨細節（產品名 × 數量、發貨號碼）
+                    // 入貨：經銷商名字；自用：出貨細節；出貨給下線：經銷商名字
                     const distributorDisplay = row.kind === 'order'
                       ? stockistName
                       : isSelfUse
                         ? [row.productName && `${row.productName} × ${row.quantity}`, row.refId].filter(Boolean).join(' ')
-                        : '';
+                        : stockistName;
                     return (
                     <tr
                       key={`${row.date}-${row.refId}-${row.productId}-${row.direction}-${idx}`}
@@ -248,6 +266,15 @@ export default function StockLedgerPage() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-[15px]">
                         {row.runningInventory}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setEditTransactionId(row.transactionId)}
+                          className="px-2 py-1 text-xs font-medium text-accent hover:text-accent-hover hover:underline"
+                        >
+                          修改
+                        </button>
                       </td>
                     </tr>
                     );
@@ -383,6 +410,16 @@ function AddMovementModal({
     if (form.direction === 'out' && !form.downlineId) {
       onError('請選擇下線或自用');
       return;
+    }
+
+    // 統籌計算：入貨數量 > 出貨數量，出貨前驗證庫存足夠
+    if (form.direction === 'out') {
+      const inv = await InventoryService.getByUserAndProduct(userId, productId);
+      const have = inv?.quantityOnHand ?? 0;
+      if (have < quantity) {
+        onError(`${productName} 庫存不足：需要 ${quantity}，目前僅 ${have}`);
+        return;
+      }
     }
 
     setSaving(true);
@@ -634,6 +671,392 @@ function AddMovementModal({
                     value={form.refId}
                     onChange={(e) => setForm((f) => ({ ...f, refId: e.target.value }))}
                     placeholder="SHIP-xxx"
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base font-mono"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-base font-medium rounded-lg"
+              >
+                {saving ? '儲存中...' : '儲存'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-base rounded-lg"
+              >
+                取消
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditMovementModal({
+  transactionId,
+  userId,
+  userName,
+  error,
+  onClose,
+  onDone,
+  onError,
+}: {
+  transactionId: string;
+  userId: string;
+  userName: string;
+  error: string;
+  onClose: () => void;
+  onDone: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [downlines, setDownlines] = useState<DownlineOption[]>([]);
+  const [upstreams, setUpstreams] = useState<UpstreamOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    direction: 'in' as 'in' | 'out',
+    upstreamId: '',
+    upstreamName: '',
+    orderDate: '',
+    orderQty: 1,
+    orderPrice: 0,
+    downlineId: '',
+    downlineName: '',
+    shipDate: '',
+    productId: '',
+    productName: '',
+    shipQty: 1,
+    refId: '',
+    shipPrice: 0,
+  });
+  const [txnMeta, setTxnMeta] = useState<{
+    type: string;
+    fromUserId: string;
+    toUserId: string;
+    isSelfUse: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [txn, productList, children, allUsers] = await Promise.all([
+          OrderService.getById(transactionId),
+          ProductService.getAll(undefined, 200),
+          UserService.getChildren(userId),
+          UserService.getAllForAdmin(200),
+        ]);
+        if (!txn) {
+          onError('找不到該筆交易');
+          return;
+        }
+        const t = txn as Transaction & { id: string };
+        const isIn = t.toUser?.userId === userId;
+        const isOut = t.fromUser?.userId === userId;
+        const item = t.items?.[0];
+        if (!item) {
+          onError('該筆交易無產品資料');
+          return;
+        }
+        setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
+        setDownlines([
+          { id: userId, displayName: '自用' },
+          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '—' })),
+        ]);
+        setUpstreams([
+          { id: 'system', displayName: '手動調整' },
+          ...allUsers.filter((u) => (u.id ?? u.email) !== userId).map((u) => ({
+            id: u.id ?? u.email ?? '',
+            displayName: u.displayName ?? '—',
+          })),
+        ]);
+        const dateStr = t.createdAt
+          ? new Date(t.createdAt).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+        const isSelfUse = isOut && t.toUser?.userId === userId;
+        setTxnMeta({
+          type: t.transactionType ?? '',
+          fromUserId: t.fromUser?.userId ?? '',
+          toUserId: t.toUser?.userId ?? '',
+          isSelfUse,
+        });
+        setForm({
+          direction: isIn ? 'in' : 'out',
+          upstreamId: isIn ? (t.fromUser?.userId === 'system' ? 'system' : t.fromUser?.userId ?? 'system') : 'system',
+          upstreamName: isIn ? (t.fromUser?.userName ?? '手動調整') : '',
+          orderDate: dateStr,
+          orderQty: item.quantity,
+          orderPrice: item.unitPrice ?? 0,
+          downlineId: isOut ? (t.toUser?.userId ?? userId) : userId,
+          downlineName: isOut ? (t.toUser?.userName ?? '自用') : '自用',
+          shipDate: dateStr,
+          productId: item.productId ?? '',
+          productName: item.productName ?? '',
+          shipQty: item.quantity,
+          refId: t.poNumber ?? t.id ?? '',
+          shipPrice: item.unitPrice ?? 0,
+        });
+      } catch (e) {
+        onError(e instanceof Error ? e.message : '載入失敗');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [transactionId, userId, onError]);
+
+  function handleProductChange(sku: string) {
+    const p = products.find((x) => x.sku === sku);
+    setForm((f) => ({ ...f, productId: sku, productName: p?.name ?? '' }));
+  }
+
+  function handleUpstreamChange(id: string) {
+    const u = upstreams.find((x) => x.id === id);
+    setForm((f) => ({ ...f, upstreamId: id, upstreamName: u?.displayName ?? '' }));
+  }
+
+  function handleDownlineChange(id: string) {
+    const d = downlines.find((x) => x.id === id);
+    setForm((f) => ({ ...f, downlineId: id, downlineName: d?.displayName ?? '' }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onError('');
+
+    const productId = form.productId;
+    const productName = form.productName;
+    const quantity = form.direction === 'in' ? form.orderQty : form.shipQty;
+    if (!productId || quantity <= 0) {
+      onError('請選擇產品並輸入數量');
+      return;
+    }
+
+    if (form.direction === 'out') {
+      const inv = await InventoryService.getByUserAndProduct(userId, productId);
+      const have = inv?.quantityOnHand ?? 0;
+      if (have < quantity) {
+        onError(`${productName} 庫存不足：需要 ${quantity}，目前僅 ${have}`);
+        return;
+      }
+    }
+
+    if (!txnMeta) return;
+
+    setSaving(true);
+    try {
+      const items: TransactionItem[] = [{
+        productId,
+        productName,
+        quantity,
+        unitPrice: form.direction === 'in' ? form.orderPrice : form.shipPrice,
+        total: form.direction === 'in' ? form.orderPrice * form.orderQty : form.shipPrice * form.shipQty,
+      }];
+
+      const oldTxn = await OrderService.getById(transactionId) as Transaction & { id: string };
+      const oldItems = oldTxn?.items ?? [];
+      const oldFrom = oldTxn?.fromUser?.userId ?? '';
+      const oldTo = oldTxn?.toUser?.userId ?? '';
+
+      // 1. Revert old inventory
+      if (oldTxn?.transactionType === TransactionType.TRANSFER && oldFrom && oldTo) {
+        await InventorySyncService.onTransferCompleted(oldTo, oldFrom, oldItems, `REVERT-${transactionId}`);
+      } else if (oldTxn?.transactionType === TransactionType.ADJUSTMENT) {
+        if (oldTo === userId && oldFrom !== userId) {
+          await InventorySyncService.onAdjustment(userId, null, oldItems, `REVERT-${transactionId}`);
+        } else if (oldFrom === userId) {
+          await InventorySyncService.onAdjustment(null, userId, oldItems, `REVERT-${transactionId}`);
+        }
+      }
+
+      // 2. Update transaction document
+      const dateMs = form.direction === 'in'
+        ? new Date(form.orderDate).getTime()
+        : new Date(form.shipDate).getTime();
+      const refId = form.direction === 'in' ? `ORD-${dateMs}` : (form.refId.trim() || `SHIP-${dateMs}`);
+      const fromUser = form.direction === 'in'
+        ? (form.upstreamId === 'system' ? { userId: 'system', userName: '手動調整' } : { userId: form.upstreamId, userName: form.upstreamName })
+        : { userId, userName };
+      const toUser = form.direction === 'in'
+        ? { userId, userName }
+        : (form.downlineId === userId ? { userId, userName: `${userName} (自用)` } : { userId: form.downlineId, userName: form.downlineName });
+
+      await OrderService.updateTransaction(transactionId, {
+        items,
+        totals: { subtotal: items[0].total, grandTotal: items[0].total },
+        poNumber: refId,
+        fromUser,
+        toUser,
+        createdAt: dateMs,
+        updatedAt: Date.now(),
+      });
+
+      // 3. Apply new inventory
+      if (form.direction === 'in') {
+        await InventorySyncService.onAdjustment(null, userId, items, transactionId);
+      } else if (form.downlineId === userId) {
+        await InventorySyncService.onAdjustment(userId, null, items, transactionId);
+      } else {
+        await InventorySyncService.onTransferCompleted(userId, form.downlineId, items, transactionId);
+      }
+
+      onDone();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : '修改失敗');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-lg bg-surface-1 border border-border rounded-xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-bold text-txt-primary mb-4">修改庫存異動</h2>
+        {error && (
+          <div className="mb-4 px-4 py-2 bg-error/10 border border-error/30 text-error text-sm rounded-lg">
+            {error}
+          </div>
+        )}
+        {loading ? (
+          <p className="text-txt-subtle text-base">載入中...</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {form.direction === 'in' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商（上游）</label>
+                  <select
+                    value={form.upstreamId}
+                    onChange={(e) => handleUpstreamChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  >
+                    {upstreams.map((u) => (
+                      <option key={u.id} value={u.id}>{u.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨日</label>
+                  <input
+                    type="date"
+                    value={form.orderDate}
+                    onChange={(e) => setForm((f) => ({ ...f, orderDate: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">產品</label>
+                  <select
+                    value={form.productId}
+                    onChange={(e) => handleProductChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  >
+                    <option value="">請選擇</option>
+                    {products.map((p) => (
+                      <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨數</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.orderQty}
+                      onChange={(e) => setForm((f) => ({ ...f, orderQty: parseInt(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (USD)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.orderPrice || ''}
+                      onChange={(e) => setForm((f) => ({ ...f, orderPrice: parseFloat(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">下線/自用 (必選)</label>
+                  <select
+                    value={form.downlineId}
+                    onChange={(e) => handleDownlineChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  >
+                    {downlines.map((d) => (
+                      <option key={d.id} value={d.id}>{d.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨日期</label>
+                  <input
+                    type="date"
+                    value={form.shipDate}
+                    onChange={(e) => setForm((f) => ({ ...f, shipDate: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨產品</label>
+                  <select
+                    value={form.productId}
+                    onChange={(e) => handleProductChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                  >
+                    <option value="">請選擇</option>
+                    {products.map((p) => (
+                      <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨數</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.shipQty}
+                      onChange={(e) => setForm((f) => ({ ...f, shipQty: parseInt(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (USD)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.shipPrice || ''}
+                      onChange={(e) => setForm((f) => ({ ...f, shipPrice: parseFloat(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨號碼</label>
+                  <input
+                    type="text"
+                    value={form.refId}
+                    onChange={(e) => setForm((f) => ({ ...f, refId: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base font-mono"
                   />
                 </div>

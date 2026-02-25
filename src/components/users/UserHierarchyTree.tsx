@@ -52,7 +52,7 @@ function TreeNodeComponent({ node, level }: { node: TreeNode; level: number }) {
           )}
         </button>
         <Link
-          href={`/users/${node.user.id || node.user.email}`}
+          href={`/hierarchy/${node.user.id || node.user.email}`}
           className="flex-1 min-w-0 flex items-center gap-2"
         >
           <span className="font-medium text-txt-primary truncate name-lowercase">{node.user.displayName || '—'}</span>
@@ -65,7 +65,7 @@ function TreeNodeComponent({ node, level }: { node: TreeNode; level: number }) {
             + 下線
           </Link>
           <Link href={`/users/${node.user.id || node.user.email}`} className="px-2 py-1 text-[10px] text-accent-text hover:underline">
-            Edit
+            編輯
           </Link>
         </div>
       </div>

@@ -78,6 +78,28 @@ export const OrderService = {
   },
 
   /**
+   * Get all transactions where user is fromUser or toUser (for stock ledger)
+   * Merged and sorted by createdAt desc
+   */
+  async getByUserRelated(userId: string, pageLimit = 200) {
+    const [fromList, toList] = await Promise.all([
+      this.getByFromUser(userId, pageLimit),
+      this.getByToUser(userId, pageLimit),
+    ]);
+    const seen = new Set<string>();
+    const merged: Transaction[] = [];
+    for (const t of [...fromList, ...toList]) {
+      const id = (t as Transaction & { id: string }).id;
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        merged.push(t);
+      }
+    }
+    merged.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return merged.slice(0, pageLimit);
+  },
+
+  /**
    * Get orders by status
    */
   async getByStatus(status: TransactionStatus, pageLimit = 100) {
@@ -99,6 +121,13 @@ export const OrderService = {
       firestoreLimit(pageLimit),
     ];
     return FirestoreService.query<Transaction>(COLLECTION, constraints);
+  },
+
+  /**
+   * Update transaction (for ledger edit - allows updating completed transactions)
+   */
+  async updateTransaction(id: string, updates: Partial<Transaction>) {
+    return FirestoreService.update<Transaction>(COLLECTION, id, updates);
   },
 
   /**

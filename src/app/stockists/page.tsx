@@ -5,8 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { InventoryService } from '@/services/database/inventory';
-import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
+import { User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -16,7 +15,7 @@ function DistributorCard({
   badge,
 }: {
   user: User;
-  stats: { invValue: number; orderCount: number; totalQuantity: number };
+  stats: { invValue: number; totalQuantity: number };
   cardClass: string;
   badge?: string;
 }) {
@@ -42,7 +41,7 @@ function DistributorCard({
         </div>
         <span className="text-accent-text text-xs">查看 →</span>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
           <p className="text-xs text-gray-300">庫存價值</p>
           <p className="text-sm font-semibold text-white tabular-nums">
@@ -55,12 +54,6 @@ function DistributorCard({
             {stats.totalQuantity}
           </p>
         </div>
-        <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">待處理訂單</p>
-          <p className="text-sm font-semibold text-white tabular-nums">
-            {stats.orderCount}
-          </p>
-        </div>
       </div>
     </Link>
   );
@@ -70,7 +63,7 @@ export default function StockistsPage() {
   const { role } = useAuth();
   const [admins, setAdmins] = useState<User[]>([]);
   const [stockists, setStockists] = useState<User[]>([]);
-  const [stats, setStats] = useState<Record<string, { invValue: number; orderCount: number; totalQuantity: number }>>({});
+  const [stats, setStats] = useState<Record<string, { invValue: number; totalQuantity: number }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -78,22 +71,17 @@ export default function StockistsPage() {
     load();
   }, [role]);
 
-  async function loadUserStats(userId: string): Promise<{ invValue: number; orderCount: number; totalQuantity: number }> {
+  async function loadUserStats(userId: string): Promise<{ invValue: number; totalQuantity: number }> {
     try {
-      const [inv, orders] = await Promise.all([
-        InventoryService.getByUser(userId, 200),
-        OrderService.getByFromUser(userId, 50),
-      ]);
+      const inv = await InventoryService.getByUser(userId, 200);
       const invValue = inv.reduce(
         (sum, i) => sum + (i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand)),
         0
       );
       const totalQuantity = inv.reduce((sum, i) => sum + i.quantityOnHand, 0);
-      const sales = orders.filter((o) => o.transactionType === TransactionType.SALE);
-      const pendingSales = sales.filter((o) => o.status === TransactionStatus.PENDING);
-      return { invValue, orderCount: pendingSales.length, totalQuantity };
+      return { invValue, totalQuantity };
     } catch {
-      return { invValue: 0, orderCount: 0, totalQuantity: 0 };
+      return { invValue: 0, totalQuantity: 0 };
     }
   }
 
@@ -107,7 +95,7 @@ export default function StockistsPage() {
       setAdmins(adminList);
       setStockists(stockistList);
 
-      const s: Record<string, { invValue: number; orderCount: number; totalQuantity: number }> = {};
+      const s: Record<string, { invValue: number; totalQuantity: number }> = {};
       const allUsers = [...adminList, ...stockistList];
       await Promise.all(
         allUsers.map(async (u) => {
@@ -130,7 +118,7 @@ export default function StockistsPage() {
       <div className="space-y-5">
         <div>
           <h1 className="text-xl font-bold text-txt-primary tracking-tight">經銷商總覽</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">查看總經銷商與每位經銷商的訂單、庫存與營運狀況</p>
+          <p className="text-sm text-txt-subtle mt-0.5">查看總經銷商與每位經銷商的庫存與營運狀況</p>
         </div>
 
         {loading ? (
@@ -152,7 +140,7 @@ export default function StockistsPage() {
                 <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">總經銷商</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {admins.map((a, idx) => {
-                    const st = stats[a.id!] ?? { invValue: 0, orderCount: 0, totalQuantity: 0 };
+                    const st = stats[a.id!] ?? { invValue: 0, totalQuantity: 0 };
                     const adminCardColors = [
                       'bg-emerald-50 border-emerald-200/60 hover:bg-emerald-100/80',
                       'bg-violet-50 border-violet-200/60 hover:bg-violet-100/80',
@@ -176,7 +164,7 @@ export default function StockistsPage() {
                 <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">經銷商</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {stockists.map((s, idx) => {
-                    const st = stats[s.id!] ?? { invValue: 0, orderCount: 0, totalQuantity: 0 };
+                    const st = stats[s.id!] ?? { invValue: 0, totalQuantity: 0 };
                     const cardColors = [
                       'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
                       'bg-blue-50 border-blue-200/60 hover:bg-blue-100/80',

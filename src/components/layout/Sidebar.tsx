@@ -9,8 +9,7 @@ const NAV_ITEMS = [
   { label: 'Products',   href: '/products',   roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Users',      href: '/users',      roles: ['ADMIN'] },
   { label: 'Stockists',  href: '/stockists',  roles: ['ADMIN'] },
-  { label: 'Orders',     href: '/orders',     roles: ['ADMIN', 'STOCKIST', 'CUSTOMER'] },
-  { label: 'Purchase Orders', href: '/purchase-orders', roles: ['ADMIN', 'STOCKIST'] },
+  { label: '金三角架構', href: '/hierarchy',  roles: ['ADMIN'] },
   { label: 'Warehouse',  href: '/warehouse',  roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Financials', href: '/financials', roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Settings',   href: '/settings',   roles: ['ADMIN', 'STOCKIST', 'CUSTOMER', 'TAIWAN'] },
@@ -26,7 +25,7 @@ export function Sidebar() {
 
   return (
     <aside className="w-52 border-r border-border bg-surface-base hidden sm:flex sm:flex-col shrink-0">
-      <nav className="p-2 space-y-0.5 flex-1 pt-3">
+      <nav className="p-2 space-y-0.5 flex-1 pt-3 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive = pathname === item.href || (pathname?.startsWith(item.href + '/') ?? false);
           return (

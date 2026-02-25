@@ -24,15 +24,6 @@ const features: Feature[] = [
     href: '/products',
   },
   {
-    badge: 'ORDERS',
-    badgeColor: 'text-accent-text bg-accent-muted border-accent/20',
-    title: 'Order Management',
-    desc: 'Create, assign, and track orders through their full lifecycle with configurable status workflows.',
-    detail: 'Orders flow from creation through fulfillment with clear status transitions: Pending → Processing → Completed or Cancelled. Admins can assign orders between stockists and customers. Each order records line items, quantities, pricing, tax, and grand totals. Full order history is accessible at any time.',
-    tags: ['Full Lifecycle', 'Multi-status', 'Line Items', 'Role-based'],
-    href: '/orders',
-  },
-  {
     badge: 'FINANCE',
     badgeColor: 'text-warning bg-warning/10 border-warning/20',
     title: 'Financial Reports',

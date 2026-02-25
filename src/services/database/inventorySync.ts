@@ -121,6 +121,30 @@ export const InventorySyncService = {
     await _add(fromUserId, items, ref);
     await _deduct(toUserId, items, ref);
   },
+
+  /**
+   * 手動調整：入庫（toUser）或出庫（fromUser）
+   * 出庫時會檢查庫存是否足夠
+   */
+  async onAdjustment(
+    fromUserId: string | null,
+    toUserId: string | null,
+    items: TransactionItem[],
+    transactionId: string
+  ) {
+    const ref = `ADJUSTMENT: ${transactionId}`;
+    if (fromUserId) {
+      const { ok, insufficient } = await this.validateSaleInventory(fromUserId, items);
+      if (!ok) {
+        const msg = insufficient
+          .map((i) => `${i.productName} 需要 ${i.need}，庫存僅 ${i.have}`)
+          .join('；');
+        throw new Error(`出庫失敗：${msg}`);
+      }
+      await _deduct(fromUserId, items, ref);
+    }
+    if (toUserId) await _add(toUserId, items, ref);
+  },
 };
 
 async function _replenishPlaceholderForBulk(userId: string, items: TransactionItem[], reference: string) {

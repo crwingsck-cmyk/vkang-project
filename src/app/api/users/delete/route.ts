@@ -5,7 +5,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 
 /**
  * ADMIN 永久刪除使用者及其所有相關資料
- * 包含：Firebase Auth、Firestore 使用者、庫存、進貨單、訂單
+ * 包含：Firebase Auth、Firestore 使用者、庫存、訂單
  */
 export async function POST(request: NextRequest) {
   try {
@@ -49,11 +49,7 @@ export async function POST(request: NextRequest) {
     // 2. 刪除庫存批次
     await deleteByField('inventoryBatches', 'userId', uid);
 
-    // 3. 刪除進貨單
-    await deleteByField('purchaseOrders', 'userId', uid);
-    await deleteByField('purchaseOrders', 'fromUserId', uid);
-
-    // 4. 刪除訂單（fromUser 或 toUser）
+    // 3. 刪除訂單（fromUser 或 toUser）
     const txnColl = db.collection('transactions');
     while (true) {
       const fromSnap = await txnColl.where('fromUser.userId', '==', uid).limit(400).get();
@@ -70,10 +66,10 @@ export async function POST(request: NextRequest) {
       await b.commit();
     }
 
-    // 5. 刪除 Firestore 使用者
+    // 4. 刪除 Firestore 使用者
     await db.collection('users').doc(uid).delete();
 
-    // 6. 刪除 Firebase Auth 使用者
+    // 5. 刪除 Firebase Auth 使用者
     await admin.auth().deleteUser(uid);
 
     return NextResponse.json({ success: true });
