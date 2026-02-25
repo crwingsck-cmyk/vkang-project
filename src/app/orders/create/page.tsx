@@ -248,7 +248,7 @@ export default function CreateOrderPage() {
                 <option value="">請選擇買方（下線）...</option>
                 {sortByNameEnglishFirst(buyerOptions).map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.displayName}{c.id === (user?.id ?? firebaseUser?.uid) ? '（自用）' : ''}
+                      {c.displayName}
                     </option>
                   ))}
               </select>

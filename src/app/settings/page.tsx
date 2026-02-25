@@ -201,7 +201,7 @@ export default function SettingsPage() {
             <div className="mt-6 pt-6 border-t border-border">
               <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-2">危險操作</p>
               <p className="text-xs text-txt-subtle mb-3">
-                清空所有產品、庫存、進貨單、訂單、財務紀錄。使用者帳號會保留。
+                清空庫存、進貨單、訂單、財務紀錄、台灣訂單池。使用者帳號與產品目錄會保留（產品可手動管理）。
               </p>
               {clearResult && (
                 <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('錯誤') ? 'msg-error' : 'bg-success/10 border border-success/20 text-success'}`}>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const msg = '確定要清空所有資料嗎？此操作無法復原。將刪除：產品、庫存、進貨單、訂單、財務紀錄。';
+                  const msg = '確定要清空所有資料嗎？此操作無法復原。將刪除：庫存、進貨單、訂單、財務紀錄、台灣訂單池。產品目錄會保留。';
                   if (!confirm(msg)) return;
                   const confirmAgain = '請再次確認：此操作將永久刪除所有業務資料。';
                   if (!confirm(confirmAgain)) return;
