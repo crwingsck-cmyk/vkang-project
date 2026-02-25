@@ -219,12 +219,8 @@ export default function StockLedgerPage() {
                     const stockistName = user?.displayName ?? '';
                     const isSelfUse = row.kind === 'shipment' && row.recipientUserId === userId;
                     const downlineDisplay = row.kind === 'shipment' ? (isSelfUse ? stockistName : row.partyName) : '';
-                    // 入貨：經銷商名字；自用：出貨細節；出貨給下線：經銷商名字
-                    const distributorDisplay = row.kind === 'order'
-                      ? stockistName
-                      : isSelfUse
-                        ? [row.productName && `${row.productName} × ${row.quantity}`, row.refId].filter(Boolean).join(' ')
-                        : stockistName;
+                    // 經銷商欄位一律顯示該表格所屬經銷商名字
+                    const distributorDisplay = stockistName;
                     return (
                     <tr
                       key={`${row.date}-${row.refId}-${row.productId}-${row.direction}-${idx}`}
