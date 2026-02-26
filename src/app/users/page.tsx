@@ -82,7 +82,7 @@ export default function UsersPage() {
                 : 'text-txt-subtle hover:text-txt-primary'
             }`}
           >
-            金三角架構
+            Multi-tier distribution structure
           </button>
         </div>
 

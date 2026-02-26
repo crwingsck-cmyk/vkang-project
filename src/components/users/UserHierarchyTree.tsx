@@ -124,7 +124,7 @@ export default function UserHierarchyTree() {
     <div className="glass-panel overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-surface-base">
         <p className="text-xs text-txt-subtle">
-          金三角架構：總經銷商 → 下線 → 下線的下線，點擊 ▼/▶ 展開/收合
+          Multi-tier distribution structure：總經銷商 → 下線 → 下線的下線，點擊 ▼/▶ 展開/收合
         </p>
       </div>
       <div className="divide-y divide-border-muted px-4 py-2">

@@ -61,6 +61,19 @@ const hubItems = [
     ),
     roles: ['ADMIN'],
   },
+  {
+    href: '/warehouse/product-conversion',
+    badge: 'TR',
+    badgeColor: 'text-white bg-purple-600 border-purple-700',
+    title: '产品转换调拨单',
+    desc: '将临时过渡品（如 TEMP-PLACE-001）转换为正式产品，支持一转多，数量守恒校验。',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+      </svg>
+    ),
+    roles: ['ADMIN', 'STOCKIST'],
+  },
 ];
 
 export default function WarehousePage() {

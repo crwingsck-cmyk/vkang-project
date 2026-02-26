@@ -39,11 +39,18 @@ export async function POST(request: NextRequest) {
       packsPerBox,
       barcode,
       isActive,
+      isTemporary,
     } = body;
 
-    if (!sku || !name || !category || unitPrice == null || costPrice == null) {
+    if (!sku || !name || !category) {
       return NextResponse.json(
-        { error: '缺少必填欄位：SKU、名稱、分類、售價、成本' },
+        { error: '缺少必填欄位：SKU、名稱、分類' },
+        { status: 400 }
+      );
+    }
+    if (!isTemporary && (unitPrice == null || costPrice == null)) {
+      return NextResponse.json(
+        { error: '缺少必填欄位：售價、成本（臨時過渡品除外）' },
         { status: 400 }
       );
     }
@@ -62,8 +69,8 @@ export async function POST(request: NextRequest) {
       name: String(name).trim(),
       category: String(category),
       description: description ? String(description).trim() : null,
-      unitPrice: parseFloat(String(unitPrice)),
-      costPrice: parseFloat(String(costPrice)),
+      unitPrice: parseFloat(String(unitPrice ?? 0)),
+      costPrice: parseFloat(String(costPrice ?? 0)),
       priceNote: priceNote ? String(priceNote).trim() : undefined,
       unit: unit || 'pcs',
       reorderLevel: parseInt(String(reorderLevel || 10), 10),
@@ -71,6 +78,7 @@ export async function POST(request: NextRequest) {
       packsPerBox: packsPerBox != null && packsPerBox !== '' ? parseInt(String(packsPerBox), 10) : undefined,
       barcode: barcode ? String(barcode).trim() : null,
       isActive: isActive !== false,
+      isTemporary: isTemporary === true ? true : undefined,
       createdAt: timestamp,
       updatedAt: timestamp,
       createdBy: adminUser.uid,

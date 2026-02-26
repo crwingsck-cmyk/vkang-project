@@ -30,17 +30,27 @@ export default function CreateProductPage() {
     reorderQuantity: '50',
     packsPerBox: '',
     barcode: '',
+    isTemporary: false,
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const target = e.target as HTMLInputElement;
+    if (target.type === 'checkbox') {
+      setForm((prev) => ({ ...prev, [target.name]: target.checked }));
+    } else {
+      setForm((prev) => ({ ...prev, [target.name]: target.value }));
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
-    if (!form.sku || !form.name || !form.category || !form.unitPrice || !form.costPrice) {
+    if (!form.sku || !form.name || !form.category) {
+      setError('請填寫所有必填欄位（SKU、名稱、分類）。');
+      return;
+    }
+    if (!form.isTemporary && (!form.unitPrice || !form.costPrice)) {
       setError('請填寫所有必填欄位（SKU、名稱、分類、售價、成本）。');
       return;
     }
@@ -82,8 +92,8 @@ export default function CreateProductPage() {
           name: form.name.trim(),
           category: form.category,
           description: form.description.trim() || undefined,
-          unitPrice: parseFloat(form.unitPrice),
-          costPrice: parseFloat(form.costPrice),
+          unitPrice: form.isTemporary ? 0 : parseFloat(form.unitPrice),
+          costPrice: form.isTemporary ? 0 : parseFloat(form.costPrice),
           priceNote: form.priceNote.trim() || undefined,
           unit: form.unit,
           reorderLevel: parseInt(form.reorderLevel),
@@ -91,6 +101,7 @@ export default function CreateProductPage() {
           packsPerBox: packsPerBoxVal,
           barcode: form.barcode.trim() || undefined,
           isActive: true,
+          isTemporary: form.isTemporary || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -113,7 +124,7 @@ export default function CreateProductPage() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/products" className="text-gray-400 hover:text-gray-200 text-sm">
+          <Link href="/products" className="text-gray-500 hover:text-gray-800 text-sm">
             &larr; Back to Products
           </Link>
         </div>
@@ -224,35 +235,59 @@ export default function CreateProductPage() {
             />
           </div>
 
+          {/* Temporary Product Toggle */}
+          <div className="flex items-start gap-3 p-3 bg-purple-900/20 border border-purple-700/30 rounded-lg">
+            <input
+              type="checkbox"
+              id="isTemporary"
+              name="isTemporary"
+              checked={form.isTemporary}
+              onChange={handleChange}
+              className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500"
+            />
+            <div>
+              <label htmlFor="isTemporary" className="block text-sm font-medium text-purple-300 cursor-pointer">
+                临时过渡品（Temporary Placement SKU）
+              </label>
+              <p className="text-xs text-gray-400 mt-0.5">
+                仅用于未定产品铺货中转，不参与销售结算。勾选后售价与成本自动设为 0。
+                <br />
+                <span className="text-purple-400">For temporary inventory tracking of undetermined products only. Not for actual sales.</span>
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Unit Price (USD) <span className="text-red-400">*</span>
+                Unit Price (USD) {!form.isTemporary && <span className="text-red-400">*</span>}
               </label>
               <input
                 type="number"
                 name="unitPrice"
-                value={form.unitPrice}
+                value={form.isTemporary ? '0' : form.unitPrice}
                 onChange={handleChange}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                disabled={form.isTemporary}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Cost Price (USD) <span className="text-red-400">*</span>
+                Cost Price (USD) {!form.isTemporary && <span className="text-red-400">*</span>}
               </label>
               <input
                 type="number"
                 name="costPrice"
-                value={form.costPrice}
+                value={form.isTemporary ? '0' : form.costPrice}
                 onChange={handleChange}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                disabled={form.isTemporary}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>

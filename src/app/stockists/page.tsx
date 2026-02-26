@@ -29,17 +29,17 @@ function DistributorCard({
           {badge}
         </span>
       )}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="font-semibold text-txt-primary name-lowercase">{user.displayName}</h2>
-          <p className="text-xs text-txt-subtle mt-0.5 truncate max-w-[200px]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-semibold text-txt-primary name-lowercase truncate">{user.displayName}</h2>
+          <p className="text-xs text-txt-subtle mt-0.5 truncate">
             {user.email}
           </p>
           {user.company?.name && (
-            <p className="text-xs text-txt-subtle mt-0.5">{user.company.name}</p>
+            <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.company.name}</p>
           )}
         </div>
-        <span className="text-accent-text text-xs">查看 →</span>
+        <span className="text-accent-text text-xs shrink-0">查看 →</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">

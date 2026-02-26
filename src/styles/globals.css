@@ -39,48 +39,50 @@ body {
   background-color: #a3a3a3;
 }
 
-/* Form inputs — 白底 */
-input,
-textarea,
-select {
-  background-color: #ffffff;
-  color: #000000;
-  font-weight: 700;
-  border: 1px solid #e5e5e5;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  transition: border-color 0.15s ease;
-}
+@layer base {
+  /* Form inputs — 白底（可被 Tailwind bg-gray-700 等覆蓋） */
+  input,
+  textarea,
+  select {
+    background-color: #ffffff;
+    color: #000000;
+    font-weight: 700;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    transition: border-color 0.15s ease;
+  }
 
-input:focus,
-textarea:focus,
-select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
 
-input::placeholder,
-textarea::placeholder {
-  color: #000000;
-  font-weight: 700;
-}
+  input::placeholder,
+  textarea::placeholder {
+    color: #000000;
+    font-weight: 700;
+  }
 
-/* 所有字體：粗體 + 最深色 */
-p, span, div, td, th, label, h1, h2, h3, h4, h5, h6, a, li, button {
-  font-weight: 700;
-  color: #000000;
-}
+  /* 所有字體：粗體 + 最深色（可被 Tailwind text-gray-300 等覆蓋） */
+  p, span, div, td, th, label, h1, h2, h3, h4, h5, h6, a, li, button {
+    font-weight: 700;
+    color: #000000;
+  }
 
-/* Monospace for IDs, codes, numbers */
-.font-mono,
-code,
-pre {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
-  font-feature-settings: 'tnum';
-  font-weight: 700;
-  color: #000000;
+  /* Monospace for IDs, codes, numbers */
+  .font-mono,
+  code,
+  pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-feature-settings: 'tnum';
+    font-weight: 700;
+    color: #000000;
+  }
 }
 
 /* Tabular numbers for amounts */

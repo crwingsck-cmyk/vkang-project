@@ -23,16 +23,18 @@ export const OrderService = {
     options?: { customId?: string; createdAt?: number }
   ) {
     const timestamp = options?.createdAt ?? Date.now();
-    const customId = options?.customId?.trim();
-    const docId = customId
-      ? customId.replace(/\s+/g, '-').replace(/\//g, '-')
-      : `TXN-${timestamp}`;
     const data: Transaction = {
       ...order,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    return FirestoreService.set(COLLECTION, docId, data);
+    const customId = options?.customId?.trim();
+    if (customId) {
+      const docId = customId.replace(/\s+/g, '-').replace(/\//g, '-');
+      return FirestoreService.set(COLLECTION, docId, data);
+    }
+    // No customId → let Firestore generate a unique document ID (prevents same-date collisions)
+    return FirestoreService.add(COLLECTION, data);
   },
 
   /**
@@ -196,6 +198,13 @@ export const OrderService = {
     return FirestoreService.update<Transaction>(COLLECTION, id, {
       status: TransactionStatus.CANCELLED,
     });
+  },
+
+  /**
+   * Delete a transaction by ID
+   */
+  async delete(id: string) {
+    return FirestoreService.delete(COLLECTION, id);
   },
 
   /**

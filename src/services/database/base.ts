@@ -5,6 +5,7 @@ import {
   getDocs,
   query,
   setDoc,
+  addDoc,
   updateDoc,
   deleteDoc,
   QueryConstraint,
@@ -27,6 +28,20 @@ function stripUndefined<T extends Record<string, unknown>>(data: T): Partial<T> 
 }
 
 export class FirestoreService {
+  static async add<T extends DocumentData>(
+    collectionName: string,
+    data: T
+  ): Promise<T & { id: string }> {
+    try {
+      const clean = stripUndefined(data as Record<string, unknown>);
+      const docRef = await addDoc(collection(getDb(), collectionName), clean);
+      return { id: docRef.id, ...clean } as T & { id: string };
+    } catch (error) {
+      console.error(`Error adding document to ${collectionName}:`, error);
+      throw error;
+    }
+  }
+
   static async set<T extends DocumentData>(
     collectionName: string,
     docId: string,

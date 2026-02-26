@@ -15,6 +15,7 @@ export enum TransactionType {
   LOAN = 'loan',
   RETURN = 'return',
   ADJUSTMENT = 'adjustment',
+  CONVERSION = 'conversion', // 产品转换调拨单（TR）：将临时过渡品转换为正式产品
 }
 
 export enum TransactionStatus {
@@ -91,6 +92,7 @@ export interface Product {
   reorderLevel: number;
   reorderQuantity: number;
   isActive: boolean;
+  isTemporary?: boolean; // 临时过渡品标志（如 TEMP-PLACE-001），不参与销售结算
   images?: string[];
   barcode?: string;
   supplier?: {
@@ -231,6 +233,11 @@ export interface Transaction {
     paidDate?: number;
     amount: number;
   };
+  // 产品转换调拨单（TR）专用字段
+  conversionSource?: { productId: string; productName: string; quantity: number };
+  conversionTargets?: { productId: string; productName: string; quantity: number }[];
+  ownerName?: string;        // 归属人（TR 专用）
+  upstreamOrderNo?: string;  // 上游单号（TR 专用）
   approvalChain?: ApprovalRecord[];
   loanDetails?: {
     loanId: string;

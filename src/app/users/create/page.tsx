@@ -82,7 +82,7 @@ function CreateUserForm() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/users" className="text-gray-400 hover:text-gray-200 text-sm">
+          <Link href="/users" className="text-gray-500 hover:text-gray-800 text-sm">
             &larr; Back to Users
           </Link>
         </div>
@@ -188,7 +188,7 @@ function CreateUserForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              上線（金三角架構）
+              上線（Multi-tier）
             </label>
             <select
               name="parentUserId"

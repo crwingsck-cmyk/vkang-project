@@ -11,10 +11,10 @@ import { User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
 const roleColors: Record<UserRole, string> = {
-  [UserRole.ADMIN]: 'bg-red-900/30 text-red-300',
-  [UserRole.STOCKIST]: 'bg-blue-900/30 text-blue-300',
-  [UserRole.CUSTOMER]: 'bg-green-900/30 text-green-300',
-  [UserRole.TAIWAN]: 'bg-amber-900/30 text-amber-300',
+  [UserRole.ADMIN]: 'bg-red-100 text-red-700 border border-red-200',
+  [UserRole.STOCKIST]: 'bg-blue-100 text-blue-700 border border-blue-200',
+  [UserRole.CUSTOMER]: 'bg-green-100 text-green-700 border border-green-200',
+  [UserRole.TAIWAN]: 'bg-amber-100 text-amber-700 border border-amber-200',
 };
 
 export default function UserDetailPage() {
@@ -189,7 +189,7 @@ export default function UserDetailPage() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/users" className="text-gray-400 hover:text-gray-200 text-sm">
+          <Link href="/users" className="text-gray-500 hover:text-gray-800 text-sm">
             &larr; Back to Users
           </Link>
         </div>
@@ -202,8 +202,8 @@ export default function UserDetailPage() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-100 name-lowercase">{user.displayName}</h1>
-                <p className="text-gray-400 mt-1">{user.email}</p>
+                <h1 className="text-3xl font-bold text-gray-900 name-lowercase">{user.displayName}</h1>
+                <p className="text-gray-500 mt-1">{user.email}</p>
                 <div className="mt-2 flex items-center gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
                     {user.role}
@@ -253,7 +253,7 @@ export default function UserDetailPage() {
               <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
             )}
             {successMsg && (
-              <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>
+              <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg">{successMsg}</div>
             )}
 
             {isEditing ? (
@@ -323,7 +323,7 @@ export default function UserDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">上線（金三角架構）</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">上線（Multi-tier）</label>
                   <select
                     name="parentUserId"
                     value={form.parentUserId}

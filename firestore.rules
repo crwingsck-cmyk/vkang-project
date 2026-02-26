@@ -70,16 +70,18 @@ service cloud.firestore {
     }
 
     // ========== TRANSACTIONS COLLECTION ==========
+    // Covers: PURCHASE, SALE, TRANSFER, LOAN, RETURN, ADJUSTMENT, CONVERSION
+    // CONVERSION 产品转换调拨单：fromUser.userId == toUser.userId == 执行人 UID，下方规则自然覆盖
     match /transactions/{transactionId} {
       allow read: if isAuthenticated() && (
         resource.data.fromUser.userId == request.auth.uid ||
         resource.data.toUser.userId == request.auth.uid ||
         isAdmin()
       );
-      
-      // Users can create transactions
+
+      // Users can create transactions (including CONVERSION)
       allow create: if isAuthenticated();
-      
+
       // Only admins can update/delete
       allow update: if isAdmin();
       allow delete: if isAdmin();

@@ -171,7 +171,7 @@ export default function ProductDetailPage() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST]}>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/products" className="text-gray-400 hover:text-gray-200 text-sm">
+          <Link href="/products" className="text-gray-500 hover:text-gray-800 text-sm">
             &larr; Back to Products
           </Link>
         </div>
@@ -201,8 +201,8 @@ export default function ProductDetailPage() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-100">{product.name}</h1>
-                <p className="text-gray-400 mt-1">SKU: {product.sku}</p>
+                <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+                <p className="text-gray-500 mt-1">SKU: {product.sku}</p>
               </div>
               {isAdmin && !isEditing && (
                 <div className="flex gap-2">
@@ -227,7 +227,7 @@ export default function ProductDetailPage() {
               <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
             )}
             {successMsg && (
-              <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg">{successMsg}</div>
+              <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg">{successMsg}</div>
             )}
 
             {isEditing && isAdmin ? (
