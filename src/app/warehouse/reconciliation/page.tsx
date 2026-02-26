@@ -118,10 +118,10 @@ export default function ReconciliationPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Link href="/warehouse" className="text-gray-400 hover:text-gray-200 text-sm">&larr; Warehouse</Link>
+              <Link href="/warehouse" className="text-gray-500 hover:text-gray-800 text-sm">&larr; Warehouse</Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-100">Stock Reconciliation</h1>
-            <p className="text-gray-400 mt-1">Verify and correct inventory counts across all warehouses</p>
+            <h1 className="text-3xl font-bold text-gray-900">Stock Reconciliation</h1>
+            <p className="text-gray-500 mt-1">Verify and correct inventory counts across all warehouses</p>
           </div>
           <button
             onClick={loadData}
@@ -132,7 +132,7 @@ export default function ReconciliationPage() {
         </div>
 
         {successMsg && (
-          <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg text-sm">
             {successMsg}
           </div>
         )}
@@ -170,8 +170,8 @@ export default function ReconciliationPage() {
 
         {/* Alert for items needing attention */}
         {discrepancies.length > 0 && (
-          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
-            <p className="text-yellow-300 font-medium text-sm">
+          <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4">
+            <p className="text-yellow-800 font-medium text-sm">
               {discrepancies.length} item{discrepancies.length > 1 ? 's' : ''} need attention (low or out of stock).
             </p>
           </div>

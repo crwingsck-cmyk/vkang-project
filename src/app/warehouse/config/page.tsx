@@ -74,15 +74,15 @@ export default function WarehouseConfigPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Link href="/warehouse" className="text-gray-400 hover:text-gray-200 text-sm">&larr; Warehouse</Link>
+              <Link href="/warehouse" className="text-gray-500 hover:text-gray-800 text-sm">&larr; Warehouse</Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-100">Warehouse Configuration</h1>
-            <p className="text-gray-400 mt-1">Manage stockist warehouses and credit settings</p>
+            <h1 className="text-3xl font-bold text-gray-900">Warehouse Configuration</h1>
+            <p className="text-gray-500 mt-1">Manage stockist warehouses and credit settings</p>
           </div>
         </div>
 
         {successMsg && (
-          <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg text-sm">
             {successMsg}
           </div>
         )}

@@ -291,10 +291,10 @@ export default function TransfersPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Link href="/warehouse" className="text-gray-400 hover:text-gray-200 text-sm">&larr; Warehouse</Link>
+              <Link href="/warehouse" className="text-gray-500 hover:text-gray-800 text-sm">&larr; Warehouse</Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-100">Warehouse Transfers</h1>
-            <p className="text-gray-400 mt-1">Transfer inventory between stockists</p>
+            <h1 className="text-3xl font-bold text-gray-900">Warehouse Transfers</h1>
+            <p className="text-gray-500 mt-1">Transfer inventory between stockists</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
