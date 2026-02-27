@@ -2,7 +2,7 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
+  getDocsFromServer,
   query,
   setDoc,
   addDoc,
@@ -79,7 +79,7 @@ export class FirestoreService {
   ): Promise<(T & { id: string })[]> {
     try {
       const q = query(collection(getDb(), collectionName), ...constraints);
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocsFromServer(q);
       return querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data() as T,

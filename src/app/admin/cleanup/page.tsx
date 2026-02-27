@@ -3,21 +3,23 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { InventoryService } from '@/services/database/inventory';
 import { OrderService } from '@/services/database/orders';
 import { FirestoreService } from '@/services/database/base';
 import { TransactionType, UserRole } from '@/types/models';
 
 // ============================================================
-// ONE-TIME CLEANUP: Fix Tan Ai Sun inventory discrepancy
-// Target state: TEMP(VKANG-005)=34, no Plus, running balance=34
-// Actions:
-//   1. Delete any inventory document for Tan Ai Sun that is not VKANG-005
-//   2. Force-delete the ghost "PO-0" ADJUSTMENT transaction (Plus, no-rollback)
+// ONE-TIME CLEANUP v2: Fix Tan Ai Sun inventory discrepancy
+// Current broken state: Plus(VKANG-002)=2, TEMP(VKANG-005)=33
+// Target state:         Plus=DELETED,       TEMP=34
+// Strategy:
+//   1. Direct-delete Plus inventory doc via known ID (${userId}_VKANG-002)
+//   2. Direct-set TEMP inventory doc to qty=34 via known ID (${userId}_VKANG-005)
+//   3. Delete ALL ADJUSTMENT transactions that contain Plus items for this user
 // ============================================================
 
 const TEMP_SKU = 'VKANG-005';
-const GHOST_PO_NUMBER = 'PO-0';
+const PLUS_SKU = 'VKANG-002';
+const TARGET_TEMP_QTY = 34;
 
 export default function CleanupPage() {
   const [log, setLog] = useState<string[]>([]);
@@ -51,60 +53,78 @@ export default function CleanupPage() {
       }
       addLog(`✓ 找到: ${user.displayName} (userId: ${user.id})`);
 
-      // Step 2: Delete non-TEMP inventory documents
-      addLog(`\nStep 2: 清理庫存（保留 ${TEMP_SKU}，刪除其他）...`);
-      const inventory = await InventoryService.getByUser(user.id, 200);
-      addLog(`  共找到 ${inventory.length} 筆庫存記錄`);
-
-      let deletedInv = 0;
-      for (const inv of inventory) {
-        if (inv.productId !== TEMP_SKU) {
-          addLog(`  刪除庫存: ${inv.productId}（qty=${inv.quantityOnHand}, docId=${inv.id}）`);
-          await FirestoreService.delete('inventory', inv.id);
-          addLog(`  ✓ 已刪除`);
-          deletedInv++;
-        } else {
-          addLog(`  保留: ${inv.productId}（qty=${inv.quantityOnHand}）✓`);
-        }
+      // Step 2: Direct-delete Plus inventory (by known document ID, bypasses query cache)
+      const plusDocId = `${user.id}_${PLUS_SKU}`;
+      addLog(`\nStep 2: 直接刪除 Plus 庫存文件（docId=${plusDocId}）...`);
+      const plusInv = await FirestoreService.get('inventory', plusDocId);
+      if (plusInv) {
+        addLog(`  找到 Plus 庫存: qty=${(plusInv as Record<string, unknown>).quantityOnHand}，刪除中...`);
+        await FirestoreService.delete('inventory', plusDocId);
+        addLog(`  ✓ Plus 庫存已刪除`);
+      } else {
+        addLog(`  ℹ️ Plus 庫存文件不存在（已清理過）`);
       }
-      addLog(`  庫存清理完成，刪除了 ${deletedInv} 筆非臨時品記錄`);
 
-      // Step 3: Force-delete ghost PO-0 transaction (no inventory rollback)
-      addLog(`\nStep 3: 查找幽靈交易 (poNumber="${GHOST_PO_NUMBER}", 產品非TEMP)...`);
-      const txns = await OrderService.getByUserRelated(user.id, 300);
-      const ghosts = (txns as (typeof txns[0] & { id: string })[]).filter((t) =>
+      // Step 3: Direct-set TEMP inventory to exactly 34
+      const tempDocId = `${user.id}_${TEMP_SKU}`;
+      addLog(`\nStep 3: 直接設定 TEMP 庫存為 ${TARGET_TEMP_QTY}（docId=${tempDocId}）...`);
+      const tempInv = await FirestoreService.get('inventory', tempDocId);
+      if (tempInv) {
+        const currentQty = (tempInv as Record<string, unknown>).quantityOnHand;
+        addLog(`  當前 TEMP qty=${currentQty}，強制設定為 ${TARGET_TEMP_QTY}...`);
+        await FirestoreService.update('inventory', tempDocId, {
+          quantityOnHand: TARGET_TEMP_QTY,
+          quantityAvailable: TARGET_TEMP_QTY,
+          quantityReserved: 0,
+        });
+        addLog(`  ✓ TEMP 庫存已設定為 ${TARGET_TEMP_QTY}`);
+      } else {
+        addLog(`  ❌ 找不到 TEMP 庫存文件 (${tempDocId})，請確認 SKU 是否正確`);
+      }
+
+      // Step 4: Delete ALL ADJUSTMENT transactions with Plus items for this user
+      addLog(`\nStep 4: 查找所有含 Plus(${PLUS_SKU}) 的 ADJUSTMENT 交易...`);
+      const txns = await OrderService.getByUserRelated(user.id, 500);
+      const plusTxns = (txns as (typeof txns[0] & { id: string })[]).filter((t) =>
         t.transactionType === TransactionType.ADJUSTMENT &&
         t.fromUser?.userId === user.id &&
-        t.poNumber === GHOST_PO_NUMBER &&
-        t.items?.some((i) => i.productId !== TEMP_SKU)
+        t.items?.some((i) => i.productId === PLUS_SKU)
       );
-      addLog(`  找到 ${ghosts.length} 筆幽靈交易`);
+      addLog(`  找到 ${plusTxns.length} 筆含 Plus 的 ADJUSTMENT 交易`);
 
       let deletedTxn = 0;
-      for (const txn of ghosts) {
-        addLog(`  強制刪除: poNumber=${txn.poNumber}, items=[${txn.items?.map((i) => i.productId).join(',')}], docId=${txn.id}`);
+      for (const txn of plusTxns) {
+        addLog(
+          `  強制刪除: poNumber=${txn.poNumber ?? '(無)'}, ` +
+          `items=[${txn.items?.map((i) => `${i.productId}×${i.quantity}`).join(', ')}], ` +
+          `docId=${txn.id}`
+        );
         await FirestoreService.delete('transactions', txn.id);
         addLog(`  ✓ 已刪除`);
         deletedTxn++;
       }
-      addLog(`  交易清理完成，刪除了 ${deletedTxn} 筆幽靈交易`);
+      addLog(`  交易清理完成，共刪除 ${deletedTxn} 筆 Plus 相關 ADJUSTMENT`);
 
-      // Step 4: Verify
-      addLog('\nStep 4: 驗證結果...');
-      const finalInv = await InventoryService.getByUser(user.id, 200);
-      addLog(`  剩餘庫存: ${finalInv.length} 筆`);
-      for (const inv of finalInv) {
-        addLog(`  - ${inv.productId}: qty=${inv.quantityOnHand}`);
-      }
+      // Step 5: Verify by direct document lookup
+      addLog('\nStep 5: 驗證結果...');
+      const [finalPlus, finalTemp] = await Promise.all([
+        FirestoreService.get('inventory', plusDocId),
+        FirestoreService.get('inventory', tempDocId),
+      ]);
 
-      const tempInv = finalInv.find((i) => i.productId === TEMP_SKU);
-      if (tempInv?.quantityOnHand === 34) {
-        addLog('\n✅ 清理完成！Tan Ai Sun 庫存 = TEMP 34，無其他產品');
+      const plusQty = finalPlus ? (finalPlus as Record<string, unknown>).quantityOnHand : '(已刪除)';
+      const tempQty = finalTemp ? (finalTemp as Record<string, unknown>).quantityOnHand : '(未找到)';
+
+      addLog(`  Plus (${PLUS_SKU}): ${plusQty}`);
+      addLog(`  TEMP (${TEMP_SKU}): ${tempQty}`);
+
+      if (!finalPlus && tempQty === TARGET_TEMP_QTY) {
+        addLog(`\n✅ 清理完成！Tan Ai Sun 庫存 = TEMP ${TARGET_TEMP_QTY}，Plus 已刪除`);
+        setDone(true);
       } else {
-        addLog(`\n⚠️ 清理完成，但請手動確認庫存: TEMP=${tempInv?.quantityOnHand ?? '未找到'}`);
+        addLog(`\n⚠️ 結果異常，請確認：Plus 應為「已刪除」，TEMP 應為 ${TARGET_TEMP_QTY}`);
+        setDone(true);
       }
-
-      setDone(true);
     } catch (err) {
       addLog(`\n❌ 錯誤: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -119,9 +139,12 @@ export default function CleanupPage() {
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="min-h-screen bg-gray-900 text-green-400 p-8 font-mono">
-        <h1 className="text-xl font-bold text-white mb-2">Admin Cleanup Tool</h1>
-        <p className="text-gray-400 text-sm mb-6">
-          一次性清理：移除 Tan Ai Sun 的非臨時品庫存及幽靈交易記錄
+        <h1 className="text-xl font-bold text-white mb-2">Admin Cleanup Tool v2</h1>
+        <p className="text-gray-400 text-sm mb-1">
+          目標：Tan Ai Sun 庫存 = TEMP(VKANG-005) 34，無 Plus(VKANG-002)
+        </p>
+        <p className="text-yellow-500 text-xs mb-6">
+          ⚡ 直接修改 Firestore 文件（繞過查詢快取），刪除所有 Plus ADJUSTMENT 交易
         </p>
 
         {running && (
@@ -138,7 +161,7 @@ export default function CleanupPage() {
         {done && (
           <div className="mt-6 space-y-3">
             <div className="bg-green-900/30 border border-green-700 rounded-lg px-4 py-3 text-green-300 text-sm">
-              ✅ 清理完成！請返回 Hierarchy → Tan Ai Sun 確認 running balance = 34
+              清理完成！請返回 Hierarchy → Tan Ai Sun 確認 running balance = 34，且庫存只有 TEMP 34
             </div>
             <button
               type="button"

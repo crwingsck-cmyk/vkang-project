@@ -210,6 +210,12 @@ async function _replenishPlaceholderForBulk(userId: string, items: TransactionIt
 
 async function _deduct(userId: string, items: TransactionItem[], reference: string) {
   for (const item of items) {
+    const inv = await InventoryService.getByUserAndProduct(userId, item.productId);
+    // Deduplication: skip if this reference was already applied to this inventory doc
+    if (inv?.movements?.some((m) => m.reference === reference)) {
+      console.warn(`[_deduct] skip duplicate ref=${reference} product=${item.productId}`);
+      continue;
+    }
     await InventoryService.deduct(userId, item.productId, item.quantity, reference);
   }
 }
@@ -219,6 +225,12 @@ async function _add(userId: string, items: TransactionItem[], reference: string)
   for (const item of items) {
     const inv = await InventoryService.getByUserAndProduct(userId, item.productId);
     const unitCost = item.unitPrice ?? item.costPrice ?? 0;
+
+    // Deduplication: skip if this reference was already applied to this inventory doc
+    if (inv?.movements?.some((m) => m.reference === reference)) {
+      console.warn(`[_add] skip duplicate ref=${reference} product=${item.productId}`);
+      continue;
+    }
 
     if (inv?.id) {
       if (inv.costingMethod === CostingMethod.FIFO) {
