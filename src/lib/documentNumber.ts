@@ -5,7 +5,7 @@
  */
 
 export function generateDocumentNumber(
-  type: 'PO' | 'SHIP' | 'TR',
+  type: 'PO' | 'SHIP' | 'TR' | 'SO' | 'DN',
   existingNumbers: string[]
 ): string {
   const today = new Date();

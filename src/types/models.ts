@@ -77,6 +77,20 @@ export enum CostingMethod {
   FIFO = 'fifo',
 }
 
+export enum SalesOrderStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum DeliveryNoteStatus {
+  PENDING = 'PENDING',
+  WAREHOUSE_APPROVED = 'WAREHOUSE_APPROVED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
+
 // ========== DOCUMENT TYPES ==========
 export interface Product {
   id?: string;
@@ -408,5 +422,56 @@ export interface InventoryBatch {
   unitCost: number;
   receivedAt: number;
   createdAt?: number;
+}
+
+// ========== 銷售訂單 & 發貨單 ==========
+export interface SalesOrder {
+  id?: string;
+  orderNo: string;              // SO-YYYYMMDD-NNN
+  status: SalesOrderStatus;
+  fromUserId: string;           // 賣方（發單人：ADMIN 或 STOCKIST）
+  fromUserName: string;
+  customerId: string;
+  customerName: string;
+  items: TransactionItem[];
+  totals: {
+    subtotal: number;
+    discount?: number;
+    tax?: number;
+    grandTotal: number;
+  };
+  currency?: 'USD' | 'MYR';
+  notes?: string;
+  creditCheckPassed?: boolean;  // 管理員信用額度特批旗標
+  linkedDeliveryNoteIds?: string[];
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+export interface DeliveryNote {
+  id?: string;
+  deliveryNo: string;           // DN-YYYYMMDD-NNN
+  salesOrderId: string;
+  salesOrderNo: string;
+  status: DeliveryNoteStatus;
+  fromUserId: string;
+  fromUserName: string;
+  toUserId: string;
+  toUserName: string;
+  items: TransactionItem[];
+  totals: { grandTotal: number };
+  logistics?: {
+    carrier?: string;
+    trackingNumber?: string;
+    shippedDate?: number;
+    deliveredDate?: number;
+  };
+  warehouseApprovedBy?: string;
+  warehouseApprovedAt?: number;
+  notes?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
 }
 
