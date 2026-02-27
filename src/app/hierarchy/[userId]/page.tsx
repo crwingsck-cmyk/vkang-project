@@ -121,6 +121,21 @@ export default function StockLedgerPage() {
     }
   }
 
+  async function handleForceDeleteConfirm() {
+    if (!deleteTransactionId) return;
+    setDeleting(true);
+    try {
+      await OrderService.delete(deleteTransactionId);
+      setDeleteTransactionId(null);
+      load();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : '刪除失敗');
+      setDeleteTransactionId(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleDeleteConfirm() {
     if (!deleteTransactionId) return;
     setDeleting(true);
@@ -214,8 +229,8 @@ export default function StockLedgerPage() {
             <div className="w-full max-w-sm bg-white dark:bg-surface-1 border-2 border-red-400 rounded-2xl shadow-2xl p-6 text-center">
               <div className="text-4xl mb-3">🗑️</div>
               <h3 className="text-lg font-bold text-red-600 mb-2">確認刪除</h3>
-              <p className="text-sm text-txt-primary mb-5">此操作將永久刪除該筆異動記錄，並自動恢復相關庫存。此動作無法復原。</p>
-              <div className="flex gap-3">
+              <p className="text-sm text-txt-primary mb-3">此操作將永久刪除該筆異動記錄，並自動恢復相關庫存。此動作無法復原。</p>
+              <div className="flex gap-3 mb-3">
                 <button
                   type="button"
                   onClick={() => setDeleteTransactionId(null)}
@@ -231,6 +246,17 @@ export default function StockLedgerPage() {
                   className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-semibold rounded-lg text-base"
                 >
                   {deleting ? '刪除中...' : '確認刪除'}
+                </button>
+              </div>
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-txt-subtle mb-2">⚠️ 幽靈記錄專用：若該筆記錄庫存未實際更新（bug遺留），用此選項只刪記錄不動庫存</p>
+                <button
+                  type="button"
+                  onClick={handleForceDeleteConfirm}
+                  disabled={deleting}
+                  className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
+                >
+                  {deleting ? '刪除中...' : '強制刪除（不還原庫存）'}
                 </button>
               </div>
             </div>
