@@ -91,6 +91,19 @@ export enum DeliveryNoteStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum ReceivableStatus {
+  OUTSTANDING = 'OUTSTANDING',
+  PARTIAL_PAID = 'PARTIAL_PAID',
+  PAID = 'PAID',
+}
+
+export enum PaymentReceiptStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  CANCELLED = 'CANCELLED',
+}
+
 // ========== DOCUMENT TYPES ==========
 export interface Product {
   id?: string;
@@ -475,3 +488,46 @@ export interface DeliveryNote {
   createdBy?: string;
 }
 
+// ========== 應收款 & 收款單 ==========
+export interface Receivable {
+  id?: string;
+  deliveryNoteId: string;
+  deliveryNoteNo: string;       // DN-YYYYMMDD-NNN
+  salesOrderId: string;
+  salesOrderNo: string;
+  customerId: string;
+  customerName: string;
+  fromUserId: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  currency?: 'USD' | 'MYR';
+  status: ReceivableStatus;
+  dueDate?: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface PaymentReceiptItem {
+  receivableId: string;
+  deliveryNoteNo: string;
+  appliedAmount: number;
+}
+
+export interface PaymentReceipt {
+  id?: string;
+  receiptNo: string;            // PR-YYYYMMDD-NNN
+  status: PaymentReceiptStatus;
+  customerId: string;
+  customerName: string;
+  items: PaymentReceiptItem[];
+  totalAmount: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  notes?: string;
+  approvedBy?: string;
+  approvedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}

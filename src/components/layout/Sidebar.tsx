@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { label: 'Multi-tier',  href: '/hierarchy',  roles: ['ADMIN'] },
   { label: 'Sales',      href: '/sales',      roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Deliveries', href: '/deliveries', roles: ['ADMIN', 'STOCKIST'] },
+  { label: 'AR / 應收',  href: '/ar',         roles: ['ADMIN'] },
+  { label: 'Payments',  href: '/payments',   roles: ['ADMIN'] },
   { label: 'Warehouse',  href: '/warehouse',  roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Financials', href: '/financials', roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Settings',   href: '/settings',   roles: ['ADMIN', 'STOCKIST', 'CUSTOMER', 'TAIWAN'] },

@@ -1,7 +1,8 @@
 import { where, orderBy, limit } from 'firebase/firestore';
 import { FirestoreService } from './base';
-import { DeliveryNote, DeliveryNoteStatus } from '@/types/models';
+import { DeliveryNote, DeliveryNoteStatus, ReceivableStatus } from '@/types/models';
 import { InventorySyncService } from './inventorySync';
+import { ReceivableService } from './receivables';
 
 const COLLECTION = 'deliveryNotes';
 
@@ -63,6 +64,21 @@ export const DeliveryNoteService = {
       status: DeliveryNoteStatus.WAREHOUSE_APPROVED,
       warehouseApprovedBy: approvedByUserId,
       warehouseApprovedAt: Date.now(),
+    });
+
+    // 自動生成應收款
+    await ReceivableService.create({
+      deliveryNoteId: id,
+      deliveryNoteNo: dn.deliveryNo,
+      salesOrderId: dn.salesOrderId,
+      salesOrderNo: dn.salesOrderNo,
+      customerId: dn.toUserId,
+      customerName: dn.toUserName,
+      fromUserId: dn.fromUserId,
+      totalAmount: dn.totals.grandTotal,
+      paidAmount: 0,
+      remainingAmount: dn.totals.grandTotal,
+      status: ReceivableStatus.OUTSTANDING,
     });
   },
 
