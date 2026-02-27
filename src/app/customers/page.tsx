@@ -145,7 +145,7 @@ export default function CustomersPage() {
       // Only show self-use cards for users who have records
       const suUserList = Object.keys(suStats)
         .map((uid) => userMap.get(uid))
-        .filter((u): u is User => !!u)
+        .filter((u): u is NonNullable<typeof u> => !!u)
         .sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? ''));
       setSelfUseUsers(suUserList);
     } catch (err) {
