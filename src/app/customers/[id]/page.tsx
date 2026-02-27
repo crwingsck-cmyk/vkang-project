@@ -161,6 +161,9 @@ export default function CustomerFinancialPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── DN IDs that already have AR (to detect old DNs missing AR) ──────────
+  const arDnIds = new Set(receivables.map((r) => r.deliveryNoteId));
+
   // ── Summary stats ─────────────────────────────────────────────────────────
   const totalOutstanding = receivables
     .filter((r) => r.status !== ReceivableStatus.PAID)
@@ -325,6 +328,29 @@ export default function CustomerFinancialPage() {
   const handleDNCancel = async (dn: DeliveryNote) => {
     if (!confirm(`確定取消發貨單 ${dn.deliveryNo}？`)) return;
     await DeliveryNoteService.cancel(dn.id!); await load();
+  };
+
+  /** 為舊 DN（已出庫但缺少 AR）補建應收款記錄 */
+  const handleBackfillAR = async (dn: DeliveryNote) => {
+    setActionError('');
+    try {
+      await ReceivableService.create({
+        deliveryNoteId: dn.id!,
+        deliveryNoteNo: dn.deliveryNo,
+        salesOrderId: dn.salesOrderId,
+        salesOrderNo: dn.salesOrderNo,
+        customerId: dn.toUserId,
+        customerName: dn.toUserName,
+        fromUserId: dn.fromUserId,
+        totalAmount: dn.totals.grandTotal,
+        paidAmount: 0,
+        remainingAmount: dn.totals.grandTotal,
+        status: ReceivableStatus.OUTSTANDING,
+      });
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? '補建失敗');
+    }
   };
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -590,6 +616,9 @@ export default function CustomerFinancialPage() {
                                 )}
                                 {dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED && (
                                   <button onClick={() => handleDNMarkDelivered(dn)} className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50">標記送達</button>
+                                )}
+                                {(dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) && !arDnIds.has(dn.id!) && (
+                                  <button onClick={() => handleBackfillAR(dn)} className="text-xs px-2 py-1 rounded bg-purple-800/40 text-purple-300 hover:bg-purple-700/50">補建應收款</button>
                                 )}
                                 {dn.status === DeliveryNoteStatus.PENDING && (
                                   <button onClick={() => handleDNCancel(dn)} className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50">取消</button>
