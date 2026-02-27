@@ -5,15 +5,21 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType } from '@/types/models';
+import { ReceivableService } from '@/services/database/receivables';
+import { User, UserRole, TransactionType, ReceivableStatus } from '@/types/models';
 import Link from 'next/link';
 
-interface Stats {
+interface SelfUseStats {
   totalValue: number;
   totalQty: number;
 }
 
-function CustomerCard({ user, stats, idx }: { user: User; stats: Stats; idx: number }) {
+interface ARStats {
+  outstanding: number;
+  paid: number;
+}
+
+function CustomerCard({ user, arStats, idx }: { user: User; arStats: ARStats; idx: number }) {
   const cardColors = [
     'bg-sky-50 border-sky-200/60 hover:bg-sky-100/80',
     'bg-teal-50 border-teal-200/60 hover:bg-teal-100/80',
@@ -21,7 +27,7 @@ function CustomerCard({ user, stats, idx }: { user: User; stats: Stats; idx: num
   ];
   return (
     <Link
-      href={`/hierarchy/${user.id}`}
+      href={`/customers/${user.id}`}
       className={`block p-5 rounded-xl border ${cardColors[idx % 3]} hover:border-accent/40 transition-all shadow-sm relative`}
     >
       <span className="absolute top-3 right-10 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
@@ -35,23 +41,27 @@ function CustomerCard({ user, stats, idx }: { user: User; stats: Stats; idx: num
             <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.company.name}</p>
           )}
         </div>
-        <span className="text-accent-text text-xs shrink-0">查看 →</span>
+        <span className="text-accent-text text-xs shrink-0">財務 →</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">購買總額</p>
-          <p className="text-sm font-semibold text-white tabular-nums">${stats.totalValue.toFixed(0)}</p>
+          <p className="text-xs text-gray-300">未收款</p>
+          <p className="text-sm font-semibold text-red-400 tabular-nums">
+            {arStats.outstanding > 0 ? arStats.outstanding.toFixed(0) : '—'}
+          </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">購買總數</p>
-          <p className="text-sm font-semibold text-white tabular-nums">{stats.totalQty}</p>
+          <p className="text-xs text-gray-300">已收款</p>
+          <p className="text-sm font-semibold text-green-400 tabular-nums">
+            {arStats.paid > 0 ? arStats.paid.toFixed(0) : '—'}
+          </p>
         </div>
       </div>
     </Link>
   );
 }
 
-function SelfUseCard({ user, stats, idx }: { user: User; stats: Stats; idx: number }) {
+function SelfUseCard({ user, stats, idx }: { user: User; stats: SelfUseStats; idx: number }) {
   const cardColors = [
     'bg-orange-50 border-orange-200/60 hover:bg-orange-100/80',
     'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
@@ -93,8 +103,8 @@ export default function CustomersPage() {
   const { role } = useAuth();
   const [customers, setCustomers] = useState<User[]>([]);
   const [selfUseUsers, setSelfUseUsers] = useState<User[]>([]);
-  const [customerStats, setCustomerStats] = useState<Record<string, Stats>>({});
-  const [selfUseStats, setSelfUseStats] = useState<Record<string, Stats>>({});
+  const [customerARStats, setCustomerARStats] = useState<Record<string, ARStats>>({});
+  const [selfUseStats, setSelfUseStats] = useState<Record<string, SelfUseStats>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,32 +115,32 @@ export default function CustomersPage() {
   async function load() {
     setLoading(true);
     try {
-      const [customerList, adminList, stockistList, allTransfers, allAdjustments] = await Promise.all([
+      const [customerList, adminList, stockistList, allAdjustments, allReceivables] = await Promise.all([
         UserService.getByRole(UserRole.CUSTOMER),
         UserService.getAdmins(),
         UserService.getStockists(),
-        OrderService.getByType(TransactionType.TRANSFER, 2000),
         OrderService.getByType(TransactionType.ADJUSTMENT, 1000),
+        ReceivableService.getAll(1000),
       ]);
 
       setCustomers(customerList);
 
-      // Customer stats: TRANSFER transactions where toUser is a CUSTOMER
-      const customerIdSet = new Set(customerList.map((c) => c.id!));
-      const cStats: Record<string, Stats> = {};
-      for (const txn of allTransfers) {
-        const uid = txn.toUser?.userId;
-        if (!uid || !customerIdSet.has(uid)) continue;
-        if (!cStats[uid]) cStats[uid] = { totalValue: 0, totalQty: 0 };
-        cStats[uid].totalValue += txn.totals?.grandTotal ?? 0;
-        cStats[uid].totalQty += (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
+      // Customer AR stats from receivables
+      const arStats: Record<string, ARStats> = {};
+      for (const r of allReceivables) {
+        const cid = r.customerId;
+        if (!arStats[cid]) arStats[cid] = { outstanding: 0, paid: 0 };
+        if (r.status !== ReceivableStatus.PAID) {
+          arStats[cid].outstanding += r.remainingAmount;
+        }
+        arStats[cid].paid += r.paidAmount;
       }
-      setCustomerStats(cStats);
+      setCustomerARStats(arStats);
 
       // Self-use stats: ADJUSTMENT where description='自用' AND fromUser.userId === toUser.userId
       const allUsers = [...adminList, ...stockistList];
       const userMap = new Map(allUsers.map((u) => [u.id!, u]));
-      const suStats: Record<string, Stats> = {};
+      const suStats: Record<string, SelfUseStats> = {};
       for (const txn of allAdjustments) {
         const fromUid = txn.fromUser?.userId;
         const toUid = txn.toUser?.userId;
@@ -161,8 +171,8 @@ export default function CustomersPage() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-txt-primary tracking-tight">客戶購買 &amp; 自用總覽</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">查看所有客戶購買記錄及經銷商自用消費數量</p>
+          <h1 className="text-xl font-bold text-txt-primary tracking-tight">客戶財務總覽</h1>
+          <p className="text-sm text-txt-subtle mt-0.5">點擊客戶卡片查看訂貨、發貨、應收款及收款記錄</p>
         </div>
 
         {loading ? (
@@ -190,7 +200,7 @@ export default function CustomersPage() {
                     <CustomerCard
                       key={c.id}
                       user={c}
-                      stats={customerStats[c.id!] ?? { totalValue: 0, totalQty: 0 }}
+                      arStats={customerARStats[c.id!] ?? { outstanding: 0, paid: 0 }}
                       idx={idx}
                     />
                   ))}

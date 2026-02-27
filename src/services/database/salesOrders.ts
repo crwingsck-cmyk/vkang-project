@@ -33,6 +33,23 @@ export const SalesOrderService = {
     ]);
   },
 
+  async getByCustomer(customerId: string, pageLimit = 200): Promise<SalesOrder[]> {
+    return FirestoreService.query<SalesOrder>(COLLECTION, [
+      where('customerId', '==', customerId),
+      orderBy('createdAt', 'desc'),
+      limit(pageLimit),
+    ]);
+  },
+
+  async getApprovedByCustomer(customerId: string): Promise<SalesOrder[]> {
+    return FirestoreService.query<SalesOrder>(COLLECTION, [
+      where('customerId', '==', customerId),
+      where('status', '==', SalesOrderStatus.APPROVED),
+      orderBy('createdAt', 'desc'),
+      limit(200),
+    ]);
+  },
+
   async getApproved(): Promise<SalesOrder[]> {
     return FirestoreService.query<SalesOrder>(COLLECTION, [
       where('status', '==', SalesOrderStatus.APPROVED),
