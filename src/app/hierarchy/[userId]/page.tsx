@@ -1020,25 +1020,6 @@ function EditMovementModal({
       return;
     }
 
-    if (form.direction === 'out') {
-      const inv = await InventoryService.getByUserAndProduct(userId, productId);
-      const have = inv?.quantityOnHand ?? 0;
-      if (have < quantity) {
-        setAlertMsg(`⚠️ 庫存不足\n\n${productName} 需要 ${quantity} 個，但目前庫存只有 ${have} 個。\n\n請先補貨後再操作。`);
-        return;
-      }
-    }
-
-    // 入庫前驗證上游庫存（必須在撤銷舊庫存前執行，避免留下不一致狀態）
-    if (form.direction === 'in' && form.upstreamId !== 'TW') {
-      const upstreamInv = await InventoryService.getByUserAndProduct(form.upstreamId, productId);
-      const upstreamHave = upstreamInv?.quantityOnHand ?? 0;
-      if (upstreamHave < quantity) {
-        setAlertMsg(`⚠️ 上游貨源不足\n\n${form.upstreamName} 的 ${productName} 只有 ${upstreamHave} 個，無法提供 ${quantity} 個。\n\n請聯絡上游補貨後再操作。`);
-        return;
-      }
-    }
-
     if (!txnMeta) return;
 
     setSaving(true);
@@ -1056,7 +1037,7 @@ function EditMovementModal({
       const oldFrom = oldTxn?.fromUser?.userId ?? '';
       const oldTo = oldTxn?.toUser?.userId ?? '';
 
-      // 1. Revert old inventory
+      // 1. Revert old inventory first (must happen before validation so restored stock is visible)
       if (oldTxn?.transactionType === TransactionType.TRANSFER && oldFrom && oldTo) {
         await InventorySyncService.onTransferCompleted(oldTo, oldFrom, oldItems, `REVERT-${transactionId}`);
       } else if (oldTxn?.transactionType === TransactionType.ADJUSTMENT) {
@@ -1069,7 +1050,30 @@ function EditMovementModal({
         }
       }
 
-      // 2. Update transaction document
+      // 2. Validate inventory AFTER revert (so restored stock is counted)
+      if (form.direction === 'out') {
+        const inv = await InventoryService.getByUserAndProduct(userId, productId);
+        const have = inv?.quantityOnHand ?? 0;
+        if (have < quantity) {
+          // Revert was already applied — undo it to restore previous state
+          await InventorySyncService.onAdjustment(null, userId, oldItems, `REVERT-UNDO-${transactionId}`);
+          setAlertMsg(`⚠️ 庫存不足\n\n${productName} 需要 ${quantity} 個，但目前庫存只有 ${have} 個。\n\n請先補貨後再操作。`);
+          setSaving(false);
+          return;
+        }
+      }
+      if (form.direction === 'in' && form.upstreamId !== 'TW') {
+        const upstreamInv = await InventoryService.getByUserAndProduct(form.upstreamId, productId);
+        const upstreamHave = upstreamInv?.quantityOnHand ?? 0;
+        if (upstreamHave < quantity) {
+          await InventorySyncService.onAdjustment(userId, oldFrom && oldFrom !== 'TW' && oldFrom !== 'system' ? oldFrom : null, oldItems, `REVERT-UNDO-${transactionId}`);
+          setAlertMsg(`⚠️ 上游貨源不足\n\n${form.upstreamName} 的 ${productName} 只有 ${upstreamHave} 個，無法提供 ${quantity} 個。\n\n請聯絡上游補貨後再操作。`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 3. Update transaction document
       const dateMs = form.direction === 'in'
         ? new Date(form.orderDate).getTime()
         : new Date(form.shipDate).getTime();
@@ -1091,7 +1095,7 @@ function EditMovementModal({
         updatedAt: Date.now(),
       });
 
-      // 3. Apply new inventory
+      // 4. Apply new inventory
       if (form.direction === 'in') {
         const upstreamForDeduction = form.upstreamId !== 'TW' ? form.upstreamId : null;
         await InventorySyncService.onAdjustment(upstreamForDeduction, userId, items, transactionId);
