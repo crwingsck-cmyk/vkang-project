@@ -139,6 +139,12 @@ export default function StockLedgerPage() {
           } else if (oldFrom === userId) {
             await InventorySyncService.onAdjustment(null, userId, oldItems, `DELETE-${deleteTransactionId}`);
           }
+        } else if (txn.transactionType === TransactionType.CONVERSION && txn.conversionSource) {
+          const sourceItem = oldItems.find((i) => i.productId === txn.conversionSource!.productId);
+          const targetItems = oldItems.filter((i) => i.productId !== txn.conversionSource!.productId);
+          if (sourceItem && targetItems.length > 0) {
+            await InventorySyncService.onConversionReverted(oldFrom, sourceItem, targetItems, `DELETE-${deleteTransactionId}`);
+          }
         }
       }
       await OrderService.delete(deleteTransactionId);

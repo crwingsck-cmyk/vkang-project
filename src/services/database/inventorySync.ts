@@ -145,6 +145,22 @@ export const InventorySyncService = {
     }
     if (toUserId) await _add(toUserId, items, ref);
   },
+
+  /**
+   * 撤銷產品轉換（TR 刪除）：還原源品庫存、扣回各目標品庫存
+   */
+  async onConversionReverted(
+    userId: string,
+    sourceItem: TransactionItem,
+    targetItems: TransactionItem[],
+    transactionId: string
+  ) {
+    const ref = `CONVERSION-REVERT: ${transactionId}`;
+    // 還原源品（加回）
+    await _add(userId, [sourceItem], ref);
+    // 扣除目標品（扣回）
+    await _deduct(userId, targetItems, ref);
+  },
 };
 
 async function _replenishPlaceholderForBulk(userId: string, items: TransactionItem[], reference: string) {
