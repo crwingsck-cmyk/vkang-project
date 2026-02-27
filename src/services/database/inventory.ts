@@ -49,8 +49,15 @@ export const InventoryService = {
 
   /**
    * Get inventory for a specific user and product
+   * Primary: direct document ID lookup (deterministic format, bypasses query cache)
+   * Fallback: query by field values (handles legacy documents)
    */
   async getByUserAndProduct(userId: string, productId: string) {
+    // Inventory document ID is always created as `${userId}_${productId}`
+    const direct = await this.getById(`${userId}_${productId}`);
+    if (direct) return direct;
+
+    // Fallback: query by field values
     const constraints = [
       where('userId', '==', userId),
       where('productId', '==', productId),
