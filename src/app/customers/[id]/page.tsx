@@ -102,6 +102,7 @@ export default function CustomerFinancialPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('orders');
   const [actionError, setActionError] = useState('');
+  const [bulkBackfilling, setBulkBackfilling] = useState(false);
 
   // ── SO Modal ─────────────────────────────────────────────────────────────
   const [showSOModal, setShowSOModal] = useState(false);
@@ -353,6 +354,39 @@ export default function CustomerFinancialPage() {
     }
   };
 
+  const handleBulkBackfillAR = async () => {
+    const missing = deliveries.filter(
+      (dn) =>
+        (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) &&
+        !arDnIds.has(dn.id!),
+    );
+    if (missing.length === 0) return;
+    setBulkBackfilling(true);
+    setActionError('');
+    try {
+      for (const dn of missing) {
+        await ReceivableService.create({
+          deliveryNoteId: dn.id!,
+          deliveryNoteNo: dn.deliveryNo,
+          salesOrderId: dn.salesOrderId,
+          salesOrderNo: dn.salesOrderNo,
+          customerId: dn.toUserId,
+          customerName: dn.toUserName,
+          fromUserId: dn.fromUserId,
+          totalAmount: dn.totals.grandTotal,
+          paidAmount: 0,
+          remainingAmount: dn.totals.grandTotal,
+          status: ReceivableStatus.OUTSTANDING,
+        });
+      }
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? '批量補建失敗');
+    } finally {
+      setBulkBackfilling(false);
+    }
+  };
+
   // ═════════════════════════════════════════════════════════════════════════
   // PR handlers
   // ═════════════════════════════════════════════════════════════════════════
@@ -572,7 +606,22 @@ export default function CustomerFinancialPage() {
             {/* ── Tab: 發貨單 ────────────────────────────────────────────── */}
             {tab === 'deliveries' && (
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  {deliveries.some(
+                    (dn) =>
+                      (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) &&
+                      !arDnIds.has(dn.id!),
+                  ) && (
+                    <button
+                      onClick={handleBulkBackfillAR}
+                      disabled={bulkBackfilling}
+                      className="px-4 py-2 bg-purple-800/50 text-purple-300 rounded-lg text-sm font-medium hover:bg-purple-700/60 transition-colors disabled:opacity-50"
+                    >
+                      {bulkBackfilling
+                        ? '補建中…'
+                        : `一次補建全部應收款（${deliveries.filter((dn) => (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) && !arDnIds.has(dn.id!)).length} 筆）`}
+                    </button>
+                  )}
                   <button
                     onClick={openDNModal}
                     className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
