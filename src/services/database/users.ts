@@ -87,13 +87,12 @@ export const UserService = {
    * Get users by role
    */
   async getByRole(role: UserRole) {
-    const constraints = [
+    const results = await FirestoreService.query<User>(COLLECTION, [
       where('role', '==', role),
-      where('isActive', '==', true),
-      orderBy('displayName', 'asc'),
-    ];
-    
-    return FirestoreService.query<User>(COLLECTION, constraints);
+    ]);
+    return results
+      .filter((u) => u.isActive !== false)
+      .sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? ''));
   },
 
   /**
