@@ -39,7 +39,7 @@ export default function ARPage() {
     try {
       const [list, custs] = await Promise.all([
         ReceivableService.getAll(),
-        UserService.getByRole(UserRole.CUSTOMER),
+        UserService.getAll(),
       ]);
       setReceivables(list);
       setCustomers(custs);
@@ -106,7 +106,7 @@ export default function ARPage() {
             onChange={(e) => setFilterCustomer(e.target.value)}
             className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500"
           >
-            <option value="ALL">All Customers</option>
+            <option value="ALL">所有人</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.displayName}</option>
             ))}
@@ -124,12 +124,12 @@ export default function ARPage() {
                 onClick={() => setFilterStatus(f.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   filterStatus === f.key
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-gray-900 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
                 {f.label}
-                <span className={`text-[10px] tabular-nums ${filterStatus === f.key ? 'text-violet-200' : 'text-gray-400'}`}>
+                <span className={`text-[10px] tabular-nums ${filterStatus === f.key ? 'text-gray-300' : 'text-gray-400'}`}>
                   {f.count}
                 </span>
               </button>
