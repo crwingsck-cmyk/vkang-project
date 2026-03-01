@@ -379,63 +379,63 @@ export default function StockLedgerPage() {
                       key={`${row.date}-${row.refId}-${row.productId}-${row.direction}-${idx}`}
                       className={`hover:bg-surface-2/50 ${idx % 2 === 0 ? 'bg-white/5' : 'bg-emerald-50/10 dark:bg-emerald-950/10'}`}
                     >
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.grandUpstreamDisplayName ?? '') : (user?.upstreamDisplayName ?? '')}</td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.upstreamDisplayName ?? '') : distributorDisplay}</td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.displayName ?? '') : downlineDisplay}</td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{row.productName}</td>
+                      <td className="px-1.5 py-1 text-txt-primary whitespace-nowrap text-xs">{isCustomer ? (user?.grandUpstreamDisplayName ?? '') : (user?.upstreamDisplayName ?? '')}</td>
+                      <td className="px-1.5 py-1 text-txt-primary whitespace-nowrap text-xs">{isCustomer ? (user?.upstreamDisplayName ?? '') : distributorDisplay}</td>
+                      <td className="px-1.5 py-1 text-txt-primary whitespace-nowrap text-xs">{isCustomer ? (user?.displayName ?? '') : downlineDisplay}</td>
+                      <td className="px-1.5 py-1 text-txt-primary whitespace-nowrap text-xs">{row.productName}</td>
                       {isCustomer ? (
                         <>
-                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                          <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'order' && row.date
                               ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
                               : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-medium text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums font-medium text-xs">
                             {row.kind === 'order' ? row.quantity : ''}
                           </td>
-                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                          <td className="px-1.5 py-1 font-mono text-xs text-txt-secondary">
                             {row.kind === 'order' ? row.refId : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums text-txt-secondary text-xs">
                             {row.kind === 'order' && row.amount ? `RM ${row.amount}` : ''}
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                          <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'order' && row.date
                               ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
                               : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-medium text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums font-medium text-xs">
                             {row.kind === 'order' ? row.quantity : ''}
                           </td>
-                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                          <td className="px-1.5 py-1 font-mono text-xs text-txt-secondary">
                             {row.kind === 'order' ? row.refId : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums text-txt-secondary text-xs">
                             {row.kind === 'order' && row.amount ? `RM ${row.amount}` : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                          <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'shipment' && row.date
                               ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
                               : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-xs">
                             {row.kind === 'shipment' ? row.quantity : ''}
                           </td>
-                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                          <td className="px-1.5 py-1 font-mono text-xs text-txt-secondary">
                             {row.kind === 'shipment' ? row.refId : ''}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                          <td className="px-1.5 py-1 text-right tabular-nums text-txt-secondary text-xs">
                             {row.kind === 'shipment' && row.amount ? `RM ${row.amount}` : ''}
                           </td>
                         </>
                       )}
-                      <td className="px-2 py-1.5 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-sm">
+                      <td className="px-1.5 py-1 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-xs">
                         {row.runningInventory}
                       </td>
-                      <td className="px-2 py-1.5 text-center">
+                      <td className="px-1.5 py-1 text-center">
                         <div className="flex gap-1 justify-center">
                           <button
                             type="button"
