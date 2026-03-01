@@ -100,6 +100,19 @@ export const InventorySyncService = {
     await _add(toUserId, items, ref);
   },
 
+  async onSwapCompleted(
+    fromUserId: string,
+    toUserId: string,
+    aItems: TransactionItem[], // A gives to B
+    bItems: TransactionItem[], // B gives to A
+    transactionId: string
+  ) {
+    await _deduct(fromUserId, aItems, `SWAP-A: ${transactionId}`);
+    await _add(toUserId, aItems, `SWAP-A: ${transactionId}`);
+    await _deduct(toUserId, bItems, `SWAP-B: ${transactionId}`);
+    await _add(fromUserId, bItems, `SWAP-B: ${transactionId}`);
+  },
+
   async onLoanCreated(
     fromUserId: string,
     toUserId: string,

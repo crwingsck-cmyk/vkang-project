@@ -35,17 +35,18 @@ function CreateTransferModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [stockists, setStockists] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [fromUserId, setFromUserId] = useState(fromUser.id || '');
   const [toUserId, setToUserId] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState([{ productId: '', productName: '', quantity: 1, unitPrice: 0 }]);
 
   useEffect(() => {
-    UserService.getStockists().then(setStockists).catch(console.error);
+    UserService.getAll(500).then(setAllUsers).catch(console.error);
     ProductService.getAll().then(setProducts).catch(console.error);
   }, []);
 
@@ -73,12 +74,14 @@ function CreateTransferModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!toUserId) { setError('Select a destination stockist.'); return; }
-    if (toUserId === fromUser.id) { setError('Cannot transfer to yourself.'); return; }
+    if (!fromUserId) { setError('Select a source.'); return; }
+    if (!toUserId) { setError('Select a destination.'); return; }
+    if (toUserId === fromUserId) { setError('Cannot dispatch to yourself.'); return; }
     if (items.some((i) => !i.productId)) { setError('Select a product for each item.'); return; }
     if (items.some((i) => i.quantity <= 0)) { setError('Quantity must be greater than 0.'); return; }
 
-    const toUser = stockists.find((s) => s.id === toUserId);
+    const selectedFromUser = allUsers.find((s) => s.id === fromUserId) || fromUser;
+    const toUser = allUsers.find((s) => s.id === toUserId);
     if (!toUser) { setError('Destination user not found.'); return; }
 
     setSaving(true);
@@ -96,7 +99,7 @@ function CreateTransferModal({
         transactionType: TransactionType.TRANSFER,
         status: TransactionStatus.PENDING,
         description: notes.trim() || undefined,
-        fromUser: { userId: fromUser.id!, userName: fromUser.displayName },
+        fromUser: { userId: selectedFromUser.id!, userName: selectedFromUser.displayName },
         toUser: { userId: toUser.id!, userName: toUser.displayName },
         items: txItems,
         totals: { subtotal, grandTotal: subtotal },
@@ -115,26 +118,26 @@ function CreateTransferModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-2xl p-6 space-y-4 my-4">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-2xl p-7 space-y-5 my-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-100">Create Transfer</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">x</button>
+          <h2 className="text-xl font-bold text-gray-100">Manual Dispatch</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-2xl">x</button>
         </div>
 
         {error && (
-          <div className="msg-error px-3 py-2 rounded-lg text-sm">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg text-base">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">To Stockist</label>
+            <label className="block text-base font-medium text-gray-300 mb-1.5">From</label>
             <select
-              value={toUserId}
-              onChange={(e) => setToUserId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500 name-lowercase"
+              value={fromUserId}
+              onChange={(e) => setFromUserId(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base focus:outline-none focus:border-blue-500 name-lowercase"
             >
-              <option value="">Select destination...</option>
-              {stockists.filter((s) => s.id !== fromUser.id).map((s) => (
+              <option value="">Select source...</option>
+              {allUsers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.displayName} {s.company?.name ? `(${s.company.name})` : ''}
                 </option>
@@ -143,23 +146,39 @@ function CreateTransferModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Notes</label>
+            <label className="block text-base font-medium text-gray-300 mb-1.5">To</label>
+            <select
+              value={toUserId}
+              onChange={(e) => setToUserId(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base focus:outline-none focus:border-blue-500 name-lowercase"
+            >
+              <option value="">Select destination...</option>
+              {allUsers.filter((s) => s.id !== fromUserId).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.displayName} {s.company?.name ? `(${s.company.name})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-base font-medium text-gray-300 mb-1.5">Notes</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-300">Items</label>
+              <label className="text-base font-medium text-gray-300">Items</label>
               <button
                 type="button"
                 onClick={addItem}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
               >
                 + Add Item
               </button>
@@ -171,7 +190,7 @@ function CreateTransferModal({
                   <select
                     value={item.productId}
                     onChange={(e) => updateItem(index, 'productId', e.target.value)}
-                    className="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value="">Select product...</option>
                     {products.map((p) => (
@@ -185,10 +204,10 @@ function CreateTransferModal({
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                     min="1"
-                    className="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
-                <div className="col-span-3 text-sm text-gray-400 py-2">
+                <div className="col-span-3 text-sm text-gray-400 py-3">
                   Cost: {item.unitPrice} / ea
                 </div>
                 <div className="col-span-2">
@@ -196,7 +215,7 @@ function CreateTransferModal({
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="w-full py-2 text-xs bg-red-900/30 hover:bg-red-900/60 text-red-400 rounded-lg"
+                      className="w-full py-3 text-sm bg-red-900/30 hover:bg-red-900/60 text-red-400 rounded-lg"
                     >
                       x
                     </button>
@@ -205,7 +224,7 @@ function CreateTransferModal({
               </div>
             ))}
 
-            <div className="text-right text-sm text-gray-400">
+            <div className="text-right text-base text-gray-400">
               Total value: <span className="text-gray-100 font-medium">RM {subtotal.toFixed(2)}</span>
             </div>
           </div>
@@ -214,11 +233,11 @@ function CreateTransferModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-base font-medium"
             >
-              {saving ? 'Creating...' : 'Create Transfer'}
+              {saving ? 'Dispatching...' : 'Confirm Dispatch'}
             </button>
-            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm font-medium">
+            <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-base font-medium">
               Cancel
             </button>
           </div>
@@ -244,10 +263,11 @@ export default function TransfersPage() {
     setLoading(true);
     try {
       const data = await OrderService.getByType(TransactionType.TRANSFER);
-      // Stockists only see their transfers
+      // 過濾掉 Hierarchy 頁自動建立的「發貨給下線」記錄，只顯示手動建立的
+      const manual = data.filter((t) => t.description !== '發貨給下線');
       const filtered = role === UserRole.ADMIN
-        ? data
-        : data.filter((t) => t.fromUser?.userId === user.id || t.toUser?.userId === user.id);
+        ? manual
+        : manual.filter((t) => t.fromUser?.userId === user.id || t.toUser?.userId === user.id);
       setTransfers(filtered);
     } catch (err) {
       console.error('Error loading transfers:', err);
@@ -277,6 +297,28 @@ export default function TransfersPage() {
     }
   }
 
+  async function handleRevert(transfer: Transaction) {
+    const ok = await toast.confirm(`Revert this dispatch? Inventory will be moved back from ${transfer.toUser?.userName} to ${transfer.fromUser?.userName}.`);
+    if (!ok) return;
+    try {
+      // Reverse inventory: swap from/to
+      if (transfer.fromUser?.userId && transfer.toUser?.userId) {
+        await InventorySyncService.onTransferCompleted(
+          transfer.toUser.userId,
+          transfer.fromUser.userId,
+          transfer.items,
+          `REVERT-${transfer.id!}`
+        );
+      }
+      await OrderService.updateStatus(transfer.id!, TransactionStatus.CANCELLED);
+      toast.success('Dispatch reverted. Inventory restored.');
+      await loadTransfers();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to revert dispatch.');
+    }
+  }
+
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST]}>
       {showModal && user && (
@@ -293,14 +335,14 @@ export default function TransfersPage() {
             <div className="flex items-center gap-3 mb-1">
               <Link href="/warehouse" className="text-gray-500 hover:text-gray-800 text-sm">&larr; Warehouse</Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Warehouse Transfers</h1>
-            <p className="text-gray-500 mt-1">Transfer inventory between stockists</p>
+            <h1 className="text-3xl font-bold text-gray-900">Manual Dispatch</h1>
+            <p className="text-gray-500 mt-1">Dispatch inventory to downlines.</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
           >
-            New Transfer
+            + New Dispatch
           </button>
         </div>
 
@@ -375,6 +417,14 @@ export default function TransfersPage() {
                             className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
                           >
                             Approve
+                          </button>
+                        )}
+                        {t.status === TransactionStatus.COMPLETED && (
+                          <button
+                            onClick={() => handleRevert(t)}
+                            className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
+                          >
+                            Revert
                           </button>
                         )}
                       </td>

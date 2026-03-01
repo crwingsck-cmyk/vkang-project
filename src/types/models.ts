@@ -16,6 +16,7 @@ export enum TransactionType {
   RETURN = 'return',
   ADJUSTMENT = 'adjustment',
   CONVERSION = 'conversion', // 产品转换调拨单（TR）：将临时过渡品转换为正式产品
+  SWAP = 'swap', // 雙方互換產品
 }
 
 export enum TransactionStatus {
@@ -260,6 +261,8 @@ export interface Transaction {
     paidDate?: number;
     amount: number;
   };
+  // SWAP 專用：Party B 給出的品項（items = Party A 給出的品項）
+  swapItems?: TransactionItem[];
   // 产品转换调拨单（TR）专用字段
   conversionSource?: { productId: string; productName: string; quantity: number };
   conversionTargets?: { productId: string; productName: string; quantity: number }[];

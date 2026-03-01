@@ -471,15 +471,15 @@ export default function CustomerFinancialPage() {
                   <button
                     key={t.key}
                     onClick={() => setTab(t.key)}
-                    className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-3 text-base font-bold border-b-2 whitespace-nowrap transition-all ${
                       tab === t.key
-                        ? 'border-violet-600 text-violet-600'
+                        ? 'border-gray-900 text-gray-900'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
                     {t.label}
                     <span className={`inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded text-xs font-bold ${
-                      tab === t.key ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-500'
+                      tab === t.key ? 'bg-gray-200 text-gray-900' : 'bg-gray-100 text-gray-500'
                     }`}>
                       {t.count}
                     </span>
@@ -527,7 +527,7 @@ export default function CustomerFinancialPage() {
                         const totalQty = (txn.items ?? []).reduce((s, i) => s + i.quantity, 0);
                         return (
                           <tr key={txnId} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{txn.poNumber ?? txnId}</td>
+                            <td className="px-5 py-3.5 font-mono text-sm font-bold text-gray-900">{txn.poNumber ?? txnId}</td>
                             <td className="px-5 py-3.5 text-gray-500 text-sm">
                               {txn.createdAt ? new Date(txn.createdAt).toLocaleDateString('zh-TW') : '—'}
                             </td>
@@ -539,7 +539,7 @@ export default function CustomerFinancialPage() {
                               ) : (
                                 <button
                                   onClick={() => handleBackfillARFromTxn(txn as Transaction & { id: string })}
-                                  className="text-[11px] px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                                  className="text-[11px] px-2.5 py-1 rounded-md bg-blue-900 text-white hover:bg-blue-800 transition-colors"
                                 >
                                   補建應收款
                                 </button>
@@ -589,7 +589,7 @@ export default function CustomerFinancialPage() {
                     <tbody className="divide-y divide-gray-100">
                       {receivables.map((r) => (
                         <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{r.deliveryNoteNo}</td>
+                          <td className="px-5 py-3.5 font-mono text-sm font-bold text-gray-900">{r.deliveryNoteNo}</td>
                           <td className="px-5 py-3.5 text-right tabular-nums text-gray-600">{r.totalAmount.toFixed(2)}</td>
                           <td className="px-5 py-3.5 text-right tabular-nums text-green-600 font-medium">
                             {r.paidAmount > 0 ? r.paidAmount.toFixed(2) : '—'}
@@ -655,7 +655,7 @@ export default function CustomerFinancialPage() {
                     <tbody className="divide-y divide-gray-100">
                       {receipts.map((pr) => (
                         <tr key={pr.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{pr.receiptNo}</td>
+                          <td className="px-5 py-3.5 font-mono text-sm font-bold text-gray-900">{pr.receiptNo}</td>
                           <td className="px-5 py-3.5 text-gray-500 text-sm">
                             {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('zh-TW') : '—'}
                           </td>
@@ -884,7 +884,7 @@ export default function CustomerFinancialPage() {
                             className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checkedIds.has(r.id!) ? 'border-violet-300 bg-violet-50' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}>
                             <input type="checkbox" checked={checkedIds.has(r.id!)} onChange={() => toggleCheck(r.id!)} className="accent-violet-600" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-mono text-violet-600">{r.deliveryNoteNo}</p>
+                              <p className="text-sm font-mono font-bold text-gray-900">{r.deliveryNoteNo}</p>
                               <p className="text-xs text-gray-500">訂單：{r.salesOrderNo}</p>
                             </div>
                             <div className="text-right shrink-0">

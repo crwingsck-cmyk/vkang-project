@@ -79,6 +79,10 @@ export default function StockLedgerPage() {
       const flat: Omit<StockLedgerRow, 'runningInventory'>[] = [];
       for (const t of txList) {
         const txn = t as Transaction & { id: string };
+        // Cancelled = no net inventory effect (never executed or already reverted)
+        if (txn.status === TransactionStatus.CANCELLED) continue;
+        // Completed loans = net-zero for both parties (inventory restored via onLoanReturned)
+        if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
         const date = txn.createdAt ?? 0;
         const isOut = txn.fromUser?.userId === userId;
         const isIn = txn.toUser?.userId === userId;
@@ -90,6 +94,20 @@ export default function StockLedgerPage() {
         const recipientUserId = isOut ? (txn.toUser?.userId ?? '') : undefined;
 
         const txnId = (txn as Transaction & { id: string }).id ?? '';
+
+        if (txn.transactionType === TransactionType.SWAP) {
+          // A's items: fromUser=out, toUser=in
+          for (const item of txn.items ?? []) {
+            flat.push({ kind: 'shipment', date, refId: txn.poNumber ?? txnId, transactionId: txnId, productName: item.productName ?? '', productId: item.productId ?? '', quantity: item.quantity, direction: direction as 'in' | 'out', type: 'SWAP', partyName, recipientUserId, amount: item.total ?? 0 });
+          }
+          // B's swapItems: toUser=out, fromUser=in
+          const swapDir: 'in' | 'out' = direction === 'out' ? 'in' : 'out';
+          for (const item of (txn as any).swapItems ?? []) {
+            flat.push({ kind: 'order', date, refId: txn.poNumber ?? txnId, transactionId: txnId, productName: item.productName ?? '', productId: item.productId ?? '', quantity: item.quantity, direction: swapDir, type: 'SWAP', partyName, recipientUserId, amount: item.total ?? 0 });
+          }
+          continue;
+        }
+
         for (const item of txn.items ?? []) {
           const amount = item.total ?? (item.unitPrice ?? 0) * (item.quantity ?? 0);
           // 產品轉換：源品為 out（扣減），目標品為 in（增加），淨效果為零

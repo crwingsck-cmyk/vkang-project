@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType } from '@/types/models';
+import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -44,13 +44,13 @@ function DistributorCard({
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
           <p className="text-xs text-gray-300">庫存價值</p>
-          <p className="text-sm font-semibold text-white tabular-nums">
-            ${stats.invValue.toFixed(0)}
+          <p className="text-lg font-bold text-white tabular-nums">
+            RM {stats.invValue.toFixed(0)}
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
           <p className="text-xs text-gray-300">庫存總數</p>
-          <p className="text-sm font-semibold text-white tabular-nums">
+          <p className="text-lg font-bold text-white tabular-nums">
             {stats.totalQuantity}
           </p>
         </div>
@@ -77,10 +77,26 @@ export default function StockistsPage() {
       // Mirror hierarchy page direction logic exactly
       const flat: { quantity: number; direction: 'in' | 'out'; date: number; unitPrice: number }[] = [];
       for (const txn of txns) {
+        // Cancelled = no net inventory effect (never executed or already reverted)
+        if (txn.status === TransactionStatus.CANCELLED) continue;
+        // Completed loans = net-zero for both parties (inventory already restored via onLoanReturned)
+        if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
         const isOut = txn.fromUser?.userId === userId;
         const isIn = txn.toUser?.userId === userId;
         const direction: 'in' | 'out' | null = isOut ? 'out' : isIn ? 'in' : null;
         if (!direction) continue;
+        if (txn.transactionType === TransactionType.SWAP) {
+          // A's items: fromUser=out, toUser=in
+          for (const item of txn.items ?? []) {
+            flat.push({ quantity: item.quantity, direction: direction as 'in' | 'out', date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+          }
+          // B's swapItems: toUser=out, fromUser=in
+          const swapDir: 'in' | 'out' = direction === 'out' ? 'in' : 'out';
+          for (const item of (txn as any).swapItems ?? []) {
+            flat.push({ quantity: item.quantity, direction: swapDir, date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+          }
+          continue;
+        }
         for (const item of txn.items ?? []) {
           let itemDir = direction;
           if (txn.transactionType === TransactionType.CONVERSION) {

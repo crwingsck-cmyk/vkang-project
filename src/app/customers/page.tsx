@@ -63,7 +63,7 @@ function UserCard({
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
           <p className="text-xs text-gray-300">{qtyLabel}</p>
-          <p className="text-sm font-semibold text-white tabular-nums">{buyQty}</p>
+          <p className="text-lg font-bold text-white tabular-nums">{buyQty}</p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
           <p className="text-xs text-gray-300">財務明細</p>

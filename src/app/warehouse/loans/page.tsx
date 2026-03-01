@@ -35,18 +35,19 @@ function CreateLoanModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [stockists, setStockists] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [fromUserId, setFromUserId] = useState(fromUser.id || '');
   const [toUserId, setToUserId] = useState('');
   const [returnDueDays, setReturnDueDays] = useState('30');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState([{ productId: '', productName: '', quantity: 1, unitPrice: 0 }]);
 
   useEffect(() => {
-    UserService.getStockists().then(setStockists).catch(console.error);
+    UserService.getAll(500).then(setAllUsers).catch(console.error);
     ProductService.getAll().then(setProducts).catch(console.error);
   }, []);
 
@@ -66,11 +67,13 @@ function CreateLoanModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!fromUserId) { setError('Select a lender.'); return; }
     if (!toUserId) { setError('Select a borrower.'); return; }
-    if (toUserId === fromUser.id) { setError('Cannot loan to yourself.'); return; }
+    if (toUserId === fromUserId) { setError('Cannot loan to yourself.'); return; }
     if (items.some((i) => !i.productId)) { setError('Select a product for each item.'); return; }
 
-    const toUser = stockists.find((s) => s.id === toUserId);
+    const selectedFromUser = allUsers.find((s) => s.id === fromUserId) || fromUser;
+    const toUser = allUsers.find((s) => s.id === toUserId);
     if (!toUser) { setError('Borrower not found.'); return; }
 
     setSaving(true);
@@ -90,7 +93,7 @@ function CreateLoanModal({
         transactionType: TransactionType.LOAN,
         status: TransactionStatus.PENDING,
         description: notes.trim() || undefined,
-        fromUser: { userId: fromUser.id!, userName: fromUser.displayName },
+        fromUser: { userId: selectedFromUser.id!, userName: selectedFromUser.displayName },
         toUser: { userId: toUser.id!, userName: toUser.displayName },
         items: txItems,
         totals: { subtotal, grandTotal: subtotal },
@@ -104,7 +107,7 @@ function CreateLoanModal({
         createdBy: fromUser.id,
       });
       // Deduct from lender, add to borrower
-      await InventorySyncService.onLoanCreated(fromUser.id!, toUser.id!, txItems, created.id);
+      await InventorySyncService.onLoanCreated(selectedFromUser.id!, toUser.id!, txItems, created.id);
       onDone();
     } catch (err: any) {
       setError(err?.message || 'Failed to create loan.');
@@ -115,61 +118,74 @@ function CreateLoanModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-xl p-6 space-y-4 my-4">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-xl p-7 space-y-5 my-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-100">Create Loan</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">x</button>
+          <h2 className="text-xl font-bold text-gray-100">Create Loan</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-2xl">x</button>
         </div>
 
         {error && (
-          <div className="msg-error px-3 py-2 rounded-lg text-sm">{error}</div>
+          <div className="msg-error px-4 py-3 rounded-lg text-base">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Lend To</label>
+              <label className="block text-base font-medium text-gray-300 mb-1.5">Lend From</label>
               <select
-                value={toUserId}
-                onChange={(e) => setToUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500 name-lowercase"
+                value={fromUserId}
+                onChange={(e) => setFromUserId(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base focus:outline-none focus:border-blue-500 name-lowercase"
               >
-                <option value="">Select borrower...</option>
-                {stockists.filter((s) => s.id !== fromUser.id).map((s) => (
+                <option value="">Select lender...</option>
+                {allUsers.map((s) => (
                   <option key={s.id} value={s.id}>{s.displayName}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Return Due (days)</label>
+              <label className="block text-base font-medium text-gray-300 mb-1.5">Lend To</label>
+              <select
+                value={toUserId}
+                onChange={(e) => setToUserId(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base focus:outline-none focus:border-blue-500 name-lowercase"
+              >
+                <option value="">Select borrower...</option>
+                {allUsers.filter((s) => s.id !== fromUserId).map((s) => (
+                  <option key={s.id} value={s.id}>{s.displayName}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-base font-medium text-gray-300 mb-1.5">Return Due (days)</label>
               <input
                 type="number"
                 value={returnDueDays}
                 onChange={(e) => setReturnDueDays(e.target.value)}
                 min="1"
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Notes</label>
+            <label className="block text-base font-medium text-gray-300 mb-1.5">Notes</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-300">Items</label>
+              <label className="text-base font-medium text-gray-300">Items</label>
               <button
                 type="button"
                 onClick={() => setItems((p) => [...p, { productId: '', productName: '', quantity: 1, unitPrice: 0 }])}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
               >
                 + Add
               </button>
@@ -180,7 +196,7 @@ function CreateLoanModal({
                   <select
                     value={item.productId}
                     onChange={(e) => updateItem(index, 'productId', e.target.value)}
-                    className="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value="">Product...</option>
                     {products.map((p) => (
@@ -195,7 +211,7 @@ function CreateLoanModal({
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                     min="1"
                     placeholder="Qty"
-                    className="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div className="col-span-1">
@@ -203,7 +219,7 @@ function CreateLoanModal({
                     <button
                       type="button"
                       onClick={() => setItems((p) => p.filter((_, i) => i !== index))}
-                      className="text-red-400 hover:text-red-300 text-sm"
+                      className="text-red-400 hover:text-red-300 text-base"
                     >
                       x
                     </button>
@@ -217,11 +233,11 @@ function CreateLoanModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-base font-medium"
             >
               {saving ? 'Creating...' : 'Create Loan'}
             </button>
-            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm font-medium">
+            <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-base font-medium">
               Cancel
             </button>
           </div>
@@ -262,7 +278,7 @@ export default function LoansPage() {
     const ok = await toast.confirm('Mark this loan as returned? Inventory will be moved back.');
     if (!ok) return;
     try {
-      await OrderService.updateStatus(loan.id!, TransactionStatus.COMPLETED);
+      // Inventory first — if this fails, status stays pending (safe)
       if (loan.fromUser?.userId && loan.toUser?.userId) {
         await InventorySyncService.onLoanReturned(
           loan.fromUser.userId,
@@ -271,11 +287,32 @@ export default function LoansPage() {
           loan.id!
         );
       }
+      await OrderService.updateStatus(loan.id!, TransactionStatus.COMPLETED);
       toast.success('Loan marked as returned. Inventory restored.');
       await loadLoans();
     } catch (err) {
       console.error(err);
       toast.error('Failed to mark loan as returned.');
+    }
+  }
+
+  async function handleResyncReturn(loan: Transaction) {
+    const ok = await toast.confirm('Re-sync inventory for this completed loan? Safe to run — duplicates are skipped automatically.');
+    if (!ok) return;
+    try {
+      if (loan.fromUser?.userId && loan.toUser?.userId) {
+        await InventorySyncService.onLoanReturned(
+          loan.fromUser.userId,
+          loan.toUser.userId,
+          loan.items,
+          loan.id!
+        );
+      }
+      toast.success('Inventory re-synced.');
+      await loadLoans();
+    } catch (err) {
+      console.error(err);
+      toast.error('Re-sync failed.');
     }
   }
 
@@ -385,6 +422,14 @@ export default function LoansPage() {
                             className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
                           >
                             Mark Returned
+                          </button>
+                        )}
+                        {loan.status === TransactionStatus.COMPLETED && role === UserRole.ADMIN && (
+                          <button
+                            onClick={() => handleResyncReturn(loan)}
+                            className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded"
+                          >
+                            Re-sync
                           </button>
                         )}
                       </td>

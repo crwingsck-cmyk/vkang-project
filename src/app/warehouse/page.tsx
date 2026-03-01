@@ -11,13 +11,28 @@ import Link from 'next/link';
 const hubItems = [
   {
     href: '/warehouse/transfers',
-    badge: 'TRANSFER',
-    badgeColor: 'text-info bg-info/10 border-info/20',
-    title: 'Warehouse Transfers',
-    desc: 'Transfer inventory between warehouse locations with full traceability.',
+    badge: 'DISPATCH',
+    badgeColor: 'text-blue-700 bg-blue-100 border-blue-200',
+    cardBg: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
+    title: 'Manual Dispatch',
+    desc: 'Manually dispatch inventory to downlines.',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+      </svg>
+    ),
+    roles: ['ADMIN', 'STOCKIST'],
+  },
+  {
+    href: '/warehouse/swap',
+    badge: 'SWAP',
+    badgeColor: 'text-teal-700 bg-teal-100 border-teal-200',
+    cardBg: 'bg-teal-50 border-teal-200 hover:bg-teal-100',
+    title: 'Product Swap',
+    desc: 'Exchange products between two parties simultaneously. Both sides update at once.',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
       </svg>
     ),
     roles: ['ADMIN', 'STOCKIST'],
@@ -25,11 +40,12 @@ const hubItems = [
   {
     href: '/warehouse/loans',
     badge: 'LOANS',
-    badgeColor: 'text-accent-text bg-accent-muted border-accent/20',
+    badgeColor: 'text-violet-700 bg-violet-100 border-violet-200',
+    cardBg: 'bg-violet-50 border-violet-200 hover:bg-violet-100',
     title: 'Inter-Warehouse Loans',
     desc: 'Manage inventory loans and returns between locations with due dates.',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
       </svg>
     ),
@@ -38,37 +54,40 @@ const hubItems = [
   {
     href: '/warehouse/config',
     badge: 'CONFIG',
-    badgeColor: 'text-warning bg-warning/10 border-warning/20',
+    badgeColor: 'text-amber-700 bg-amber-100 border-amber-200',
+    cardBg: 'bg-amber-50 border-amber-200 hover:bg-amber-100',
     title: 'Warehouse Configuration',
     desc: 'Manage warehouse locations, zones, and operational settings.',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
       </svg>
     ),
-    roles: ['ADMIN'],
+    roles: [],
   },
   {
     href: '/warehouse/reconciliation',
     badge: 'RECONCILE',
-    badgeColor: 'text-success bg-success/10 border-success/20',
+    badgeColor: 'text-green-700 bg-green-100 border-green-200',
+    cardBg: 'bg-green-50 border-green-200 hover:bg-green-100',
     title: 'Stock Reconciliation',
     desc: 'Verify physical counts against system records and resolve discrepancies.',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12"/>
       </svg>
     ),
-    roles: ['ADMIN'],
+    roles: [],
   },
   {
     href: '/warehouse/product-conversion',
     badge: 'TR',
     badgeColor: 'text-white bg-purple-600 border-purple-700',
-    title: '产品转换调拨单',
-    desc: '将临时过渡品（如 TEMP-PLACE-001）转换为正式产品，支持一转多，数量守恒校验。',
+    cardBg: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
+    title: 'Product Conversion',
+    desc: 'Convert placeholder SKUs (e.g. TEMP-PLACE-001) into real products. Supports one-to-many with quantity conservation.',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
       </svg>
     ),
@@ -128,32 +147,32 @@ export default function WarehousePage() {
             <Link
               key={item.href}
               href={item.href}
-              className="group bg-surface-1 border border-border rounded-2xl p-5 flex flex-col gap-4 hover:border-border-strong hover:bg-surface-2 transition-all"
+              className={`group border rounded-2xl p-6 flex flex-col gap-4 transition-all ${item.cardBg}`}
             >
               {/* Badge + Icon */}
               <div className="flex items-center justify-between">
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${item.badgeColor}`}>
+                <span className={`inline-flex items-center px-3 py-1 rounded-lg border text-sm font-bold uppercase tracking-widest ${item.badgeColor}`}>
                   {item.badge}
                 </span>
-                <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-2 text-txt-subtle group-hover:text-txt-primary group-hover:bg-surface-3 transition-colors">
+                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/60 text-gray-500 group-hover:text-gray-800 transition-colors">
                   {item.icon}
                 </div>
               </div>
 
               {/* Title + Desc */}
               <div>
-                <h2 className="text-sm font-bold text-txt-primary mb-1.5 group-hover:text-accent-text transition-colors">
+                <h2 className="text-lg font-bold text-gray-800 mb-2">
                   {item.title}
                 </h2>
-                <p className="text-xs text-txt-secondary leading-relaxed">
+                <p className="text-base text-gray-600 leading-relaxed">
                   {item.desc}
                 </p>
               </div>
 
               {/* Arrow hint */}
-              <div className="flex items-center gap-1 text-[10px] font-medium text-txt-subtle group-hover:text-accent-text transition-colors">
+              <div className="flex items-center gap-1 text-sm font-medium text-gray-500 group-hover:text-gray-800 transition-colors">
                 <span>Open</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
                 </svg>
               </div>
@@ -162,21 +181,20 @@ export default function WarehousePage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="glass-card p-5">
-          <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-4">Quick Stats</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Warehouses</p>
-              <p className="text-2xl font-bold tabular-nums text-txt-primary">{loading ? '...' : warehouseCount}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Active Transfers</p>
-              <p className="text-2xl font-bold tabular-nums text-info">{loading ? '...' : activeTransfers}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Pending Loans</p>
-              <p className="text-2xl font-bold tabular-nums text-accent-text">{loading ? '...' : pendingLoans}</p>
-            </div>
+        <div className="inline-flex bg-gray-900 rounded-2xl p-4 gap-6">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Warehouses</p>
+            <p className="text-xl font-bold tabular-nums text-white">{loading ? '...' : warehouseCount}</p>
+          </div>
+          <div className="w-px bg-gray-700" />
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Active Transfers</p>
+            <p className="text-xl font-bold tabular-nums text-blue-400">{loading ? '...' : activeTransfers}</p>
+          </div>
+          <div className="w-px bg-gray-700" />
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Pending Loans</p>
+            <p className="text-xl font-bold tabular-nums text-violet-400">{loading ? '...' : pendingLoans}</p>
           </div>
         </div>
       </div>
