@@ -432,8 +432,16 @@ export default function StockLedgerPage() {
                           </td>
                         </>
                       )}
-                      <td className="px-1.5 py-1 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-xs">
-                        {row.runningInventory}
+                      <td className="px-1.5 py-1 text-right tabular-nums">
+                        <span className={`inline-block px-2 py-0.5 rounded font-bold text-sm tabular-nums ${
+                          row.runningInventory === 0
+                            ? 'bg-red-100 text-red-700'
+                            : row.runningInventory <= 3
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {row.runningInventory}
+                        </span>
                       </td>
                       <td className="px-1.5 py-1 text-center">
                         <div className="flex gap-1 justify-center">
@@ -442,14 +450,14 @@ export default function StockLedgerPage() {
                             onClick={() => setEditTransactionId(row.transactionId)}
                             className="px-1.5 py-0.5 text-xs font-medium bg-blue-700 hover:bg-blue-800 text-white rounded"
                           >
-                            修改
+                            Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeleteTransactionId(row.transactionId)}
                             className="px-1.5 py-0.5 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded"
                           >
-                            刪除
+                            Del
                           </button>
                         </div>
                       </td>
