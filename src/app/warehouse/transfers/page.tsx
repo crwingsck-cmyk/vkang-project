@@ -277,6 +277,21 @@ export default function TransfersPage() {
   }
 
   async function handleApprove(transfer: Transaction) {
+    // 先驗證來源庫存是否足夠
+    if (transfer.fromUser?.userId) {
+      const { ok: hasStock, insufficient } = await InventorySyncService.validateSaleInventory(
+        transfer.fromUser.userId,
+        transfer.items
+      );
+      if (!hasStock) {
+        const lines = insufficient
+          .map((i) => `• ${i.productName}：需要 ${i.need}，庫存僅 ${i.have}`)
+          .join('\n');
+        toast.error(`${transfer.fromUser.userName} 庫存不足，無法批准：\n${lines}`);
+        return;
+      }
+    }
+
     const ok = await toast.confirm('Approve this transfer? Inventory will be moved.');
     if (!ok) return;
     try {
@@ -291,9 +306,9 @@ export default function TransfersPage() {
       }
       toast.success('Transfer approved. Inventory updated.');
       await loadTransfers();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Failed to approve transfer.');
+      toast.error(err?.message || 'Failed to approve transfer.');
     }
   }
 
