@@ -10,6 +10,7 @@ import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
 import { InventorySyncService } from '@/services/database/inventorySync';
 import { InventoryService } from '@/services/database/inventory';
+import { InventoryReconcileService } from '@/services/database/inventoryReconcile';
 import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem, ReceivableStatus } from '@/types/models';
 import { generateDocumentNumber } from '@/lib/documentNumber';
 import { ReceivableService } from '@/services/database/receivables';
@@ -49,6 +50,8 @@ export default function StockLedgerPage() {
   const [deleteTransactionId, setDeleteTransactionId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [addError, setAddError] = useState('');
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) load();
@@ -134,6 +137,25 @@ export default function StockLedgerPage() {
     }
   }
 
+  async function handleReconcile() {
+    setReconciling(true);
+    setReconcileMsg(null);
+    try {
+      const changes = await InventoryReconcileService.reconcileFromTransactions(userId);
+      if (changes.length === 0) {
+        setReconcileMsg('✅ 庫存已是最新，無需調整');
+      } else {
+        const detail = changes.map((c) => `${c.productId}: ${c.oldQty} → ${c.newQty}`).join('、');
+        setReconcileMsg(`✅ 已修復 ${changes.length} 個 SKU：${detail}`);
+        load();
+      }
+    } catch (err) {
+      setReconcileMsg(`❌ 錯誤：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   async function handleForceDeleteConfirm() {
     if (!deleteTransactionId) return;
     setDeleting(true);
@@ -208,6 +230,14 @@ export default function StockLedgerPage() {
           <div className="flex gap-2">
             <button
               type="button"
+              onClick={handleReconcile}
+              disabled={reconciling}
+              className="px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
+            >
+              {reconciling ? '計算中...' : '重新計算庫存'}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowAddModal(true)}
               className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg"
             >
@@ -227,6 +257,16 @@ export default function StockLedgerPage() {
             </Link>
           </div>
         </div>
+
+        {reconcileMsg && (
+          <div className={`px-4 py-2 rounded-lg text-sm ${
+            reconcileMsg.startsWith('✅')
+              ? 'bg-green-900/30 border border-green-700 text-green-300'
+              : 'bg-red-900/30 border border-red-700 text-red-300'
+          }`}>
+            {reconcileMsg}
+          </div>
+        )}
 
         {showAddModal && (
           <AddMovementModal
