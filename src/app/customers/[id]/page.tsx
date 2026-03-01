@@ -24,30 +24,6 @@ import Link from 'next/link';
 
 // ─── Labels & colours ────────────────────────────────────────────────────────
 
-const soLabel: Record<SalesOrderStatus, string> = {
-  [SalesOrderStatus.DRAFT]: '草稿',
-  [SalesOrderStatus.SUBMITTED]: '待審核',
-  [SalesOrderStatus.APPROVED]: '已審核',
-  [SalesOrderStatus.CANCELLED]: '已取消',
-};
-const soColor: Record<SalesOrderStatus, string> = {
-  [SalesOrderStatus.DRAFT]: 'bg-gray-100 text-gray-600',
-  [SalesOrderStatus.SUBMITTED]: 'bg-yellow-100 text-yellow-700',
-  [SalesOrderStatus.APPROVED]: 'bg-green-100 text-green-700',
-  [SalesOrderStatus.CANCELLED]: 'bg-red-100 text-red-700',
-};
-const dnLabel: Record<DeliveryNoteStatus, string> = {
-  [DeliveryNoteStatus.PENDING]: '待倉庫審核',
-  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: '已出庫',
-  [DeliveryNoteStatus.DELIVERED]: '已送達',
-  [DeliveryNoteStatus.CANCELLED]: '已取消',
-};
-const dnColor: Record<DeliveryNoteStatus, string> = {
-  [DeliveryNoteStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
-  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-100 text-blue-700',
-  [DeliveryNoteStatus.DELIVERED]: 'bg-green-100 text-green-700',
-  [DeliveryNoteStatus.CANCELLED]: 'bg-red-100 text-red-700',
-};
 const arLabel: Record<ReceivableStatus, string> = {
   [ReceivableStatus.OUTSTANDING]: '未收',
   [ReceivableStatus.PARTIAL_PAID]: '部分已收',
@@ -96,8 +72,8 @@ export default function CustomerFinancialPage() {
   const { user } = useAuth();
 
   const [customer, setCustomer] = useState<User | null>(null);
-  const [orders, setOrders] = useState<SalesOrder[]>([]);
-  const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
+  const [, setOrders] = useState<SalesOrder[]>([]);
+  const [, setDeliveries] = useState<DeliveryNote[]>([]);
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
   const [saleTxns, setSaleTxns] = useState<Transaction[]>([]);
@@ -105,7 +81,6 @@ export default function CustomerFinancialPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('ar');
   const [actionError, setActionError] = useState('');
-  const [bulkBackfilling, setBulkBackfilling] = useState(false);
 
   // ── SO Modal ─────────────────────────────────────────────────────────────
   const [showSOModal, setShowSOModal] = useState(false);
@@ -118,7 +93,7 @@ export default function CustomerFinancialPage() {
 
   // ── DN Modal ─────────────────────────────────────────────────────────────
   const [showDNModal, setShowDNModal] = useState(false);
-  const [approvedOrders, setApprovedOrders] = useState<SalesOrder[]>([]);
+  const [approvedOrders] = useState<SalesOrder[]>([]);
   const [selOrder, setSelOrder] = useState<SalesOrder | null>(null);
   const [dnItems, setDnItems] = useState<TransactionItem[]>([]);
   const [carrier, setCarrier] = useState('');
@@ -215,15 +190,6 @@ export default function CustomerFinancialPage() {
     });
   };
 
-  const openSOModal = () => {
-    setShowSOModal(true);
-    setSOItems([{ ...EMPTY_ITEM }]);
-    setSOCurrency('RM');
-    setSONotes('');
-    setSOError('');
-    setCreditWarning('');
-  };
-
   const handleSOSave = async () => {
     if (soItems.some((i) => !i.productId)) { setSOError('請選擇每一行的商品'); return; }
     if (soItems.some((i) => i.quantity <= 0)) { setSOError('數量必須大於 0'); return; }
@@ -255,27 +221,9 @@ export default function CustomerFinancialPage() {
     }
   };
 
-  const handleSOSubmit = async (so: SalesOrder) => { await SalesOrderService.submit(so.id!); await load(); };
-  const handleSOApprove = async (so: SalesOrder) => { await SalesOrderService.approve(so.id!); await load(); };
-  const handleSOCancel = async (so: SalesOrder) => {
-    if (!confirm(`確定取消訂單 ${so.orderNo}？`)) return;
-    await SalesOrderService.cancel(so.id!); await load();
-  };
-  const handleSODelete = async (so: SalesOrder) => {
-    if (!confirm(`確定永久刪除訂單 ${so.orderNo}？此操作無法復原。`)) return;
-    await SalesOrderService.delete(so.id!); await load();
-  };
-
   // ═════════════════════════════════════════════════════════════════════════
   // DN handlers
   // ═════════════════════════════════════════════════════════════════════════
-
-  const openDNModal = async () => {
-    setShowDNModal(true); setDNError(''); setItemErrors([]);
-    setSelOrder(null); setDnItems([]); setCarrier(''); setTrackingNo(''); setDNNotes('');
-    const approved = await SalesOrderService.getApprovedByCustomer(id);
-    setApprovedOrders(approved);
-  };
 
   const handleOrderSelect = (orderId: string) => {
     const order = approvedOrders.find((o) => o.id === orderId) ?? null;
@@ -333,77 +281,6 @@ export default function CustomerFinancialPage() {
       setDNError(e.message ?? '儲存失敗');
     } finally {
       setDNSaving(false);
-    }
-  };
-
-  const handleDNWarehouseApprove = async (dn: DeliveryNote) => {
-    setActionError('');
-    try { await DeliveryNoteService.warehouseApprove(dn.id!, user?.id ?? ''); await load(); }
-    catch (e: any) { setActionError(e.message ?? '審核失敗'); }
-  };
-  const handleDNMarkDelivered = async (dn: DeliveryNote) => { await DeliveryNoteService.markDelivered(dn.id!); await load(); };
-  const handleDNCancel = async (dn: DeliveryNote) => {
-    if (!confirm(`確定取消發貨單 ${dn.deliveryNo}？`)) return;
-    await DeliveryNoteService.cancel(dn.id!); await load();
-  };
-  const handleDNDelete = async (dn: DeliveryNote) => {
-    if (!confirm(`確定永久刪除發貨單 ${dn.deliveryNo}？此操作無法復原。`)) return;
-    await DeliveryNoteService.delete(dn.id!); await load();
-  };
-
-  /** 為舊 DN（已出庫但缺少 AR）補建應收款記錄 */
-  const handleBackfillAR = async (dn: DeliveryNote) => {
-    setActionError('');
-    try {
-      await ReceivableService.create({
-        deliveryNoteId: dn.id!,
-        deliveryNoteNo: dn.deliveryNo,
-        salesOrderId: dn.salesOrderId,
-        salesOrderNo: dn.salesOrderNo,
-        customerId: dn.toUserId,
-        customerName: dn.toUserName,
-        fromUserId: dn.fromUserId,
-        totalAmount: dn.totals.grandTotal,
-        paidAmount: 0,
-        remainingAmount: dn.totals.grandTotal,
-        status: ReceivableStatus.OUTSTANDING,
-      });
-      await load();
-    } catch (e: any) {
-      setActionError(e.message ?? '補建失敗');
-    }
-  };
-
-  const handleBulkBackfillAR = async () => {
-    const missing = deliveries.filter(
-      (dn) =>
-        (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) &&
-        !arDnIds.has(dn.id!),
-    );
-    if (missing.length === 0) return;
-    setBulkBackfilling(true);
-    setActionError('');
-    try {
-      for (const dn of missing) {
-        await ReceivableService.create({
-          deliveryNoteId: dn.id!,
-          deliveryNoteNo: dn.deliveryNo,
-          salesOrderId: dn.salesOrderId,
-          salesOrderNo: dn.salesOrderNo,
-          customerId: dn.toUserId,
-          customerName: dn.toUserName,
-          fromUserId: dn.fromUserId,
-          totalAmount: dn.totals.grandTotal,
-          paidAmount: 0,
-          remainingAmount: dn.totals.grandTotal,
-          status: ReceivableStatus.OUTSTANDING,
-        });
-      }
-      await load();
-    } catch (e: any) {
-      setActionError(e.message ?? '批量補建失敗');
-    } finally {
-      setBulkBackfilling(false);
     }
   };
 
