@@ -146,10 +146,10 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-5 py-3 text-txt-secondary">{product.category || '—'}</td>
                     <td className="px-5 py-3 text-right">
-                      <div className="tabular-nums font-medium text-txt-primary">USD {product.unitPrice}</div>
+                      <div className="tabular-nums font-medium text-txt-primary">RM {product.unitPrice}</div>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <div className="tabular-nums text-txt-subtle">USD {product.costPrice ?? '—'}</div>
+                      <div className="tabular-nums text-txt-subtle">RM {product.costPrice ?? '—'}</div>
                     </td>
                     <td className="px-5 py-3 text-txt-subtle text-xs max-w-[240px] break-words">
                       {product.priceNote || '—'}

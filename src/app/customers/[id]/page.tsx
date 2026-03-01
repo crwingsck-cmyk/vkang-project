@@ -10,8 +10,10 @@ import { SalesOrderService } from '@/services/database/salesOrders';
 import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 import { ReceivableService } from '@/services/database/receivables';
 import { PaymentReceiptService } from '@/services/database/paymentReceipts';
+import { OrderService } from '@/services/database/orders';
 import {
   User, UserRole, Product, TransactionItem,
+  Transaction, TransactionType,
   SalesOrder, SalesOrderStatus,
   DeliveryNote, DeliveryNoteStatus,
   Receivable, ReceivableStatus,
@@ -29,10 +31,10 @@ const soLabel: Record<SalesOrderStatus, string> = {
   [SalesOrderStatus.CANCELLED]: '已取消',
 };
 const soColor: Record<SalesOrderStatus, string> = {
-  [SalesOrderStatus.DRAFT]: 'bg-gray-700/60 text-gray-300',
-  [SalesOrderStatus.SUBMITTED]: 'bg-yellow-900/40 text-yellow-300',
-  [SalesOrderStatus.APPROVED]: 'bg-green-900/40 text-green-300',
-  [SalesOrderStatus.CANCELLED]: 'bg-red-900/40 text-red-300',
+  [SalesOrderStatus.DRAFT]: 'bg-gray-100 text-gray-600',
+  [SalesOrderStatus.SUBMITTED]: 'bg-yellow-100 text-yellow-700',
+  [SalesOrderStatus.APPROVED]: 'bg-green-100 text-green-700',
+  [SalesOrderStatus.CANCELLED]: 'bg-red-100 text-red-700',
 };
 const dnLabel: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.PENDING]: '待倉庫審核',
@@ -41,10 +43,10 @@ const dnLabel: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.CANCELLED]: '已取消',
 };
 const dnColor: Record<DeliveryNoteStatus, string> = {
-  [DeliveryNoteStatus.PENDING]: 'bg-yellow-900/40 text-yellow-300',
-  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-900/40 text-blue-300',
-  [DeliveryNoteStatus.DELIVERED]: 'bg-green-900/40 text-green-300',
-  [DeliveryNoteStatus.CANCELLED]: 'bg-red-900/40 text-red-300',
+  [DeliveryNoteStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
+  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-100 text-blue-700',
+  [DeliveryNoteStatus.DELIVERED]: 'bg-green-100 text-green-700',
+  [DeliveryNoteStatus.CANCELLED]: 'bg-red-100 text-red-700',
 };
 const arLabel: Record<ReceivableStatus, string> = {
   [ReceivableStatus.OUTSTANDING]: '未收',
@@ -52,9 +54,9 @@ const arLabel: Record<ReceivableStatus, string> = {
   [ReceivableStatus.PAID]: '已收清',
 };
 const arColor: Record<ReceivableStatus, string> = {
-  [ReceivableStatus.OUTSTANDING]: 'bg-red-900/40 text-red-300',
-  [ReceivableStatus.PARTIAL_PAID]: 'bg-yellow-900/40 text-yellow-300',
-  [ReceivableStatus.PAID]: 'bg-green-900/40 text-green-300',
+  [ReceivableStatus.OUTSTANDING]: 'bg-red-100 text-red-700',
+  [ReceivableStatus.PARTIAL_PAID]: 'bg-yellow-100 text-yellow-700',
+  [ReceivableStatus.PAID]: 'bg-green-100 text-green-700',
 };
 const prLabel: Record<PaymentReceiptStatus, string> = {
   [PaymentReceiptStatus.DRAFT]: '草稿',
@@ -63,10 +65,10 @@ const prLabel: Record<PaymentReceiptStatus, string> = {
   [PaymentReceiptStatus.CANCELLED]: '已取消',
 };
 const prColor: Record<PaymentReceiptStatus, string> = {
-  [PaymentReceiptStatus.DRAFT]: 'bg-gray-700/60 text-gray-300',
-  [PaymentReceiptStatus.SUBMITTED]: 'bg-yellow-900/40 text-yellow-300',
-  [PaymentReceiptStatus.APPROVED]: 'bg-green-900/40 text-green-300',
-  [PaymentReceiptStatus.CANCELLED]: 'bg-red-900/40 text-red-300',
+  [PaymentReceiptStatus.DRAFT]: 'bg-gray-100 text-gray-600',
+  [PaymentReceiptStatus.SUBMITTED]: 'bg-yellow-100 text-yellow-700',
+  [PaymentReceiptStatus.APPROVED]: 'bg-green-100 text-green-700',
+  [PaymentReceiptStatus.CANCELLED]: 'bg-red-100 text-red-700',
 };
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -83,7 +85,7 @@ function agingLabel(createdAt?: number): string {
   return `${days}天 🔴`;
 }
 
-type Tab = 'orders' | 'deliveries' | 'ar' | 'payments';
+type Tab = 'ar' | 'payments' | 'transactions';
 type PRStep = 1 | 2;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -98,16 +100,17 @@ export default function CustomerFinancialPage() {
   const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
+  const [saleTxns, setSaleTxns] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('orders');
+  const [tab, setTab] = useState<Tab>('ar');
   const [actionError, setActionError] = useState('');
   const [bulkBackfilling, setBulkBackfilling] = useState(false);
 
   // ── SO Modal ─────────────────────────────────────────────────────────────
   const [showSOModal, setShowSOModal] = useState(false);
   const [soItems, setSOItems] = useState<TransactionItem[]>([{ ...EMPTY_ITEM }]);
-  const [soCurrency, setSOCurrency] = useState<'USD' | 'MYR'>('MYR');
+  const [soCurrency, setSOCurrency] = useState<'RM'>('RM');
   const [soNotes, setSONotes] = useState('');
   const [soSaving, setSOSaving] = useState(false);
   const [soError, setSOError] = useState('');
@@ -141,13 +144,14 @@ export default function CustomerFinancialPage() {
     if (!id) return;
     setLoading(true);
     try {
-      const [cust, sos, dns, ars, prs, prods] = await Promise.all([
-        UserService.getById(id),
-        SalesOrderService.getByCustomer(id),
-        DeliveryNoteService.getByToUser(id),
-        ReceivableService.getByCustomer(id),
-        PaymentReceiptService.getByCustomer(id),
-        ProductService.getAll(),
+      const [cust, sos, dns, ars, prs, prods, txns] = await Promise.all([
+        UserService.getById(id).catch(() => null),
+        SalesOrderService.getByCustomer(id).catch(() => [] as SalesOrder[]),
+        DeliveryNoteService.getByToUser(id).catch(() => [] as DeliveryNote[]),
+        ReceivableService.getByCustomer(id).catch(() => [] as Receivable[]),
+        PaymentReceiptService.getByCustomer(id).catch(() => [] as PaymentReceipt[]),
+        ProductService.getAll().catch(() => [] as Product[]),
+        OrderService.getByToUser(id, 200).catch(() => [] as Transaction[]),
       ]);
       setCustomer(cust);
       setOrders(sos);
@@ -155,6 +159,14 @@ export default function CustomerFinancialPage() {
       setReceivables(ars);
       setReceipts(prs);
       setProducts(prods.filter((p) => !p.isTemporary));
+      setSaleTxns(txns.filter((t) =>
+        t.transactionType === TransactionType.SALE ||
+        t.transactionType === TransactionType.TRANSFER ||
+        // 自用：ADJUSTMENT + description='自用' + fromUser===toUser
+        (t.transactionType === TransactionType.ADJUSTMENT &&
+          t.description === '自用' &&
+          t.fromUser?.userId === t.toUser?.userId)
+      ));
     } finally {
       setLoading(false);
     }
@@ -206,7 +218,7 @@ export default function CustomerFinancialPage() {
   const openSOModal = () => {
     setShowSOModal(true);
     setSOItems([{ ...EMPTY_ITEM }]);
-    setSOCurrency('MYR');
+    setSOCurrency('RM');
     setSONotes('');
     setSOError('');
     setCreditWarning('');
@@ -248,6 +260,10 @@ export default function CustomerFinancialPage() {
   const handleSOCancel = async (so: SalesOrder) => {
     if (!confirm(`確定取消訂單 ${so.orderNo}？`)) return;
     await SalesOrderService.cancel(so.id!); await load();
+  };
+  const handleSODelete = async (so: SalesOrder) => {
+    if (!confirm(`確定永久刪除訂單 ${so.orderNo}？此操作無法復原。`)) return;
+    await SalesOrderService.delete(so.id!); await load();
   };
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -330,6 +346,10 @@ export default function CustomerFinancialPage() {
     if (!confirm(`確定取消發貨單 ${dn.deliveryNo}？`)) return;
     await DeliveryNoteService.cancel(dn.id!); await load();
   };
+  const handleDNDelete = async (dn: DeliveryNote) => {
+    if (!confirm(`確定永久刪除發貨單 ${dn.deliveryNo}？此操作無法復原。`)) return;
+    await DeliveryNoteService.delete(dn.id!); await load();
+  };
 
   /** 為舊 DN（已出庫但缺少 AR）補建應收款記錄 */
   const handleBackfillAR = async (dn: DeliveryNote) => {
@@ -385,6 +405,49 @@ export default function CustomerFinancialPage() {
     } finally {
       setBulkBackfilling(false);
     }
+  };
+
+  const handleDeleteAR = async (arId: string) => {
+    if (!confirm('確定刪除此應收款記錄？此操作無法復原。')) return;
+    try {
+      await ReceivableService.delete(arId);
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? '刪除失敗');
+    }
+  };
+
+  /** 從層級庫存表（SALE/TRANSFER/自用）補建應收款 */
+  const handleBackfillARFromTxn = async (txn: Transaction & { id: string }) => {
+    setActionError('');
+    // 自用判斷：與 saleTxns filter 保持一致（description + fromUser===toUser）
+    const isSelfUse = txn.description === '自用' && txn.fromUser?.userId === txn.toUser?.userId;
+    const fromUserId = isSelfUse
+      ? (customer?.parentUserId ?? txn.fromUser?.userId ?? '')
+      : (txn.fromUser?.userId ?? '');
+    try {
+      await ReceivableService.create({
+        deliveryNoteId: txn.id,
+        deliveryNoteNo: txn.poNumber ?? txn.id,
+        salesOrderId: '',
+        salesOrderNo: '',
+        customerId: txn.toUser?.userId ?? id,
+        customerName: customer?.displayName ?? txn.toUser?.userName ?? '',
+        fromUserId,
+        totalAmount: txn.totals.grandTotal,
+        paidAmount: 0,
+        remainingAmount: txn.totals.grandTotal,
+        status: ReceivableStatus.OUTSTANDING,
+      });
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? '補建失敗');
+    }
+  };
+
+  const handleTxnDelete = async (txn: Transaction & { id: string }) => {
+    if (!confirm(`確定永久刪除交易記錄 ${txn.poNumber ?? txn.id}？此操作無法復原。`)) return;
+    await OrderService.delete(txn.id); await load();
   };
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -465,330 +528,284 @@ export default function CustomerFinancialPage() {
       <div className="space-y-6">
 
         {/* Back link */}
-        <Link href="/customers" className="inline-flex items-center gap-1.5 text-xs text-txt-subtle hover:text-accent-text transition-colors">
+        <Link href="/customers" className="inline-flex items-center gap-1.5 text-sm text-txt-subtle hover:text-accent-text transition-colors">
           ← 返回客戶列表
         </Link>
 
         {loading ? (
           <div className="py-16 text-center">
-            <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-violet-600 mb-3" />
+            <p className="text-gray-500 text-sm">載入中...</p>
           </div>
         ) : (
           <>
             {/* Header */}
-            <div className="glass-card p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-                <div>
-                  <h1 className="text-xl font-bold text-txt-primary">{customer?.displayName ?? '—'}</h1>
-                  <p className="text-sm text-txt-subtle">{customer?.email}</p>
-                  {customer?.company?.name && (
-                    <p className="text-xs text-txt-subtle mt-0.5">{customer.company.name}</p>
-                  )}
+            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 pt-6 pb-5">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-5 justify-between">
+                  {/* Identity */}
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg">
+                      <span className="text-xl font-bold text-white uppercase">
+                        {(customer?.displayName ?? '?')[0]}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h1 className="text-lg font-bold text-gray-900 name-lowercase leading-tight">
+                          {customer?.displayName ?? '—'}
+                        </h1>
+                        {customer?.role && (
+                          <span className="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                            {customer.role === UserRole.CUSTOMER ? '顧客' : customer.role === UserRole.ADMIN ? '總經銷商' : '經銷商'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-0.5">{customer?.email}</p>
+                      {customer?.company?.name && (
+                        <p className="text-xs text-gray-400 mt-0.5">{customer.company.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 text-center min-w-[64px]">
+                      <p className="text-lg font-bold text-red-600 tabular-nums leading-none">
+                        {totalOutstanding > 0 ? totalOutstanding.toFixed(0) : '0'}
+                      </p>
+                      <p className="text-xs text-red-500 mt-1 font-medium">未收款</p>
+                    </div>
+                    <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 text-center min-w-[64px]">
+                      <p className="text-lg font-bold text-green-600 tabular-nums leading-none">
+                        {totalPaid > 0 ? totalPaid.toFixed(0) : '0'}
+                      </p>
+                      <p className="text-xs text-green-500 mt-1 font-medium">已收款</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 gap-3 text-center">
-                  <div>
-                    <p className="text-xl font-bold text-red-400 tabular-nums">
-                      {totalOutstanding > 0 ? totalOutstanding.toFixed(0) : '0'}
-                    </p>
-                    <p className="text-xs text-txt-subtle mt-0.5">未收款</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-txt-primary tabular-nums">{orders.length}</p>
-                    <p className="text-xs text-txt-subtle mt-0.5">訂貨單</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-txt-primary tabular-nums">{deliveries.length}</p>
-                    <p className="text-xs text-txt-subtle mt-0.5">發貨單</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-green-400 tabular-nums">
-                      {totalPaid > 0 ? totalPaid.toFixed(0) : '0'}
-                    </p>
-                    <p className="text-xs text-txt-subtle mt-0.5">已收款</p>
-                  </div>
-                </div>
+              </div>
+              {/* Tab bar inside header card */}
+              <div className="flex items-center gap-0 border-t border-gray-200 px-2 overflow-x-auto">
+                {([
+                  { key: 'transactions', label: '交易記錄', count: saleTxns.length },
+                  { key: 'ar',           label: '應收款',   count: receivables.length },
+                  { key: 'payments',     label: '收款記錄', count: receipts.length },
+                ] as { key: Tab; label: string; count: number }[]).map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-all ${
+                      tab === t.key
+                        ? 'border-violet-600 text-violet-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {t.label}
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded text-xs font-bold ${
+                      tab === t.key ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {t.count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
             {actionError && (
-              <div className="rounded-lg bg-red-900/40 border border-red-600/50 px-4 py-3 text-sm text-red-300">
-                {actionError}
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                <span className="text-base">⚠️</span> {actionError}
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 border-b border-border">
-              {([
-                { key: 'orders', label: `訂貨單（${orders.length}）` },
-                { key: 'deliveries', label: `發貨單（${deliveries.length}）` },
-                { key: 'ar', label: `應收款（${receivables.length}）` },
-                { key: 'payments', label: `收款記錄（${receipts.length}）` },
-              ] as { key: Tab; label: string }[]).map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    tab === t.key
-                      ? 'border-accent text-accent-text'
-                      : 'border-transparent text-txt-subtle hover:text-txt-primary'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* ── Tab: 訂貨單 ────────────────────────────────────────────── */}
-            {tab === 'orders' && (
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <button
-                    onClick={openSOModal}
-                    className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
-                  >
-                    + 新增訂單
-                  </button>
+            {/* ── Tab: 交易記錄（層級庫存表 SALE 交易）──────────────────── */}
+            {tab === 'transactions' && (
+              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold text-gray-900">交易記錄</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium tabular-nums">{saleTxns.length}</span>
+                  </div>
+                  <span className="text-xs text-gray-400">資料來自層級庫存表</span>
                 </div>
-                {orders.length === 0 ? (
-                  <div className="glass-card p-10 text-center"><p className="text-txt-subtle text-sm">尚無訂貨單</p></div>
+                {saleTxns.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <p className="text-gray-400 text-sm">尚無交易記錄</p>
+                  </div>
                 ) : (
-                  <div className="glass-card overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 text-left">訂單號</th>
-                          <th className="px-4 py-3 text-left">日期</th>
-                          <th className="px-4 py-3 text-right">品項</th>
-                          <th className="px-4 py-3 text-right">總額</th>
-                          <th className="px-4 py-3 text-center">狀態</th>
-                          <th className="px-4 py-3 text-right">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {orders.map((so) => (
-                          <tr key={so.id} className="hover:bg-surface-2/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs text-accent-text">{so.orderNo}</td>
-                            <td className="px-4 py-3 text-txt-subtle text-xs">
-                              {so.createdAt ? new Date(so.createdAt).toLocaleDateString('zh-TW') : '—'}
+                  <table className="w-full text-base">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <th className="px-5 py-3 text-left">單號</th>
+                        <th className="px-5 py-3 text-left">日期</th>
+                        <th className="px-5 py-3 text-right">數量</th>
+                        <th className="px-5 py-3 text-right">總額</th>
+                        <th className="px-5 py-3 text-right">應收款</th>
+                        <th className="px-5 py-3 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {saleTxns.map((txn) => {
+                        const txnId = (txn as Transaction & { id: string }).id;
+                        const hasAR = arDnIds.has(txnId);
+                        const totalQty = (txn.items ?? []).reduce((s, i) => s + i.quantity, 0);
+                        return (
+                          <tr key={txnId} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{txn.poNumber ?? txnId}</td>
+                            <td className="px-5 py-3.5 text-gray-500 text-sm">
+                              {txn.createdAt ? new Date(txn.createdAt).toLocaleDateString('zh-TW') : '—'}
                             </td>
-                            <td className="px-4 py-3 text-right text-txt-secondary">{so.items.length}</td>
-                            <td className="px-4 py-3 text-right font-medium tabular-nums">
-                              {so.currency ?? 'MYR'} {so.totals.grandTotal.toFixed(2)}
+                            <td className="px-5 py-3.5 text-right text-gray-600 tabular-nums">{totalQty}</td>
+                            <td className="px-5 py-3.5 text-right font-semibold tabular-nums text-gray-900">{txn.totals.grandTotal.toFixed(2)}</td>
+                            <td className="px-5 py-3.5 text-right">
+                              {hasAR ? (
+                                <span className="text-[11px] text-green-600 font-medium">已建應收款</span>
+                              ) : (
+                                <button
+                                  onClick={() => handleBackfillARFromTxn(txn as Transaction & { id: string })}
+                                  className="text-[11px] px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                                >
+                                  補建應收款
+                                </button>
+                              )}
                             </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${soColor[so.status]}`}>
-                                {soLabel[so.status]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {so.status === SalesOrderStatus.DRAFT && (
-                                  <button onClick={() => handleSOSubmit(so)} className="text-xs px-2 py-1 rounded bg-yellow-800/40 text-yellow-300 hover:bg-yellow-700/50">提交</button>
-                                )}
-                                {so.status === SalesOrderStatus.SUBMITTED && (
-                                  <button onClick={() => handleSOApprove(so)} className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50">審核</button>
-                                )}
-                                {(so.status === SalesOrderStatus.DRAFT || so.status === SalesOrderStatus.SUBMITTED) && (
-                                  <button onClick={() => handleSOCancel(so)} className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50">取消</button>
-                                )}
-                              </div>
+                            <td className="px-5 py-3.5 text-right">
+                              <button onClick={() => handleTxnDelete(txn as Transaction & { id: string })} className="text-[11px] px-2.5 py-1 rounded-md bg-red-700 text-white hover:bg-red-800 transition-colors font-medium">Delete</button>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Tab: 發貨單 ────────────────────────────────────────────── */}
-            {tab === 'deliveries' && (
-              <div className="space-y-4">
-                <div className="flex justify-end gap-2">
-                  {deliveries.some(
-                    (dn) =>
-                      (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) &&
-                      !arDnIds.has(dn.id!),
-                  ) && (
-                    <button
-                      onClick={handleBulkBackfillAR}
-                      disabled={bulkBackfilling}
-                      className="px-4 py-2 bg-purple-800/50 text-purple-300 rounded-lg text-sm font-medium hover:bg-purple-700/60 transition-colors disabled:opacity-50"
-                    >
-                      {bulkBackfilling
-                        ? '補建中…'
-                        : `一次補建全部應收款（${deliveries.filter((dn) => (dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) && !arDnIds.has(dn.id!)).length} 筆）`}
-                    </button>
-                  )}
-                  <button
-                    onClick={openDNModal}
-                    className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
-                  >
-                    + 新增發貨單
-                  </button>
-                </div>
-                {deliveries.length === 0 ? (
-                  <div className="glass-card p-10 text-center"><p className="text-txt-subtle text-sm">尚無發貨單</p></div>
-                ) : (
-                  <div className="glass-card overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 text-left">發貨單號</th>
-                          <th className="px-4 py-3 text-left">關聯訂單</th>
-                          <th className="px-4 py-3 text-left">日期</th>
-                          <th className="px-4 py-3 text-right">總額</th>
-                          <th className="px-4 py-3 text-center">狀態</th>
-                          <th className="px-4 py-3 text-right">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {deliveries.map((dn) => (
-                          <tr key={dn.id} className="hover:bg-surface-2/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs text-accent-text">{dn.deliveryNo}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-txt-subtle">{dn.salesOrderNo}</td>
-                            <td className="px-4 py-3 text-txt-subtle text-xs">
-                              {dn.createdAt ? new Date(dn.createdAt).toLocaleDateString('zh-TW') : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right font-medium tabular-nums">{dn.totals.grandTotal.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${dnColor[dn.status]}`}>
-                                {dnLabel[dn.status]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {dn.status === DeliveryNoteStatus.PENDING && (
-                                  <button onClick={() => handleDNWarehouseApprove(dn)} className="text-xs px-2 py-1 rounded bg-blue-800/40 text-blue-300 hover:bg-blue-700/50">倉庫審核</button>
-                                )}
-                                {dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED && (
-                                  <button onClick={() => handleDNMarkDelivered(dn)} className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50">標記送達</button>
-                                )}
-                                {(dn.status === DeliveryNoteStatus.WAREHOUSE_APPROVED || dn.status === DeliveryNoteStatus.DELIVERED) && !arDnIds.has(dn.id!) && (
-                                  <button onClick={() => handleBackfillAR(dn)} className="text-xs px-2 py-1 rounded bg-purple-800/40 text-purple-300 hover:bg-purple-700/50">補建應收款</button>
-                                )}
-                                {dn.status === DeliveryNoteStatus.PENDING && (
-                                  <button onClick={() => handleDNCancel(dn)} className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50">取消</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
             )}
 
             {/* ── Tab: 應收款 ────────────────────────────────────────────── */}
             {tab === 'ar' && (
-              <div className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold text-gray-900">Receivables</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium tabular-nums">{receivables.length}</span>
+                  </div>
+                  {totalOutstanding > 0 && (
+                    <span className="text-sm font-semibold text-red-600 tabular-nums">Outstanding Total: {totalOutstanding.toFixed(2)}</span>
+                  )}
+                </div>
                 {receivables.length === 0 ? (
-                  <div className="glass-card p-10 text-center">
-                    <p className="text-txt-subtle text-sm">尚無應收款記錄（倉庫審核發貨單後自動生成）</p>
+                  <div className="py-14 text-center">
+                    <p className="text-gray-400 text-sm">No receivables (auto-generated after warehouse approval)</p>
                   </div>
                 ) : (
-                  <div className="glass-card overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 text-left">發貨單號</th>
-                          <th className="px-4 py-3 text-right">總額</th>
-                          <th className="px-4 py-3 text-right">已收</th>
-                          <th className="px-4 py-3 text-right">未收</th>
-                          <th className="px-4 py-3 text-center">狀態</th>
-                          <th className="px-4 py-3 text-center">帳齡</th>
+                  <table className="w-full text-base">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <th className="px-5 py-3 text-left">DN No.</th>
+                        <th className="px-5 py-3 text-right">Total</th>
+                        <th className="px-5 py-3 text-right">Paid</th>
+                        <th className="px-5 py-3 text-right">Outstanding</th>
+                        <th className="px-5 py-3 text-center">Status</th>
+                        <th className="px-5 py-3 text-center">Aging</th>
+                        <th className="px-5 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {receivables.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{r.deliveryNoteNo}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-gray-600">{r.totalAmount.toFixed(2)}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-green-600 font-medium">
+                            {r.paidAmount > 0 ? r.paidAmount.toFixed(2) : '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-red-600 font-semibold">
+                            {r.remainingAmount > 0 ? r.remainingAmount.toFixed(2) : '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${arColor[r.status]}`}>
+                              {arLabel[r.status]}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-center text-sm text-gray-500">
+                            {r.status !== ReceivableStatus.PAID ? agingLabel(r.createdAt) : '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <button
+                              onClick={() => handleDeleteAR(r.id!)}
+                              className="text-[11px] px-2.5 py-1 rounded-md bg-red-700 text-white hover:bg-red-800 transition-colors font-medium"
+                            >
+                              Delete
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {receivables.map((r) => (
-                          <tr key={r.id} className="hover:bg-surface-2/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs text-accent-text">{r.deliveryNoteNo}</td>
-                            <td className="px-4 py-3 text-right tabular-nums">{r.totalAmount.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right tabular-nums text-green-400">
-                              {r.paidAmount > 0 ? r.paidAmount.toFixed(2) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right tabular-nums text-red-400 font-medium">
-                              {r.remainingAmount > 0 ? r.remainingAmount.toFixed(2) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${arColor[r.status]}`}>
-                                {arLabel[r.status]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center text-xs text-txt-subtle">
-                              {r.status !== ReceivableStatus.PAID ? agingLabel(r.createdAt) : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             )}
 
             {/* ── Tab: 收款記錄 ───────────────────────────────────────────── */}
             {tab === 'payments' && (
-              <div className="space-y-4">
-                <div className="flex justify-end">
+              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold text-gray-900">收款記錄</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium tabular-nums">{receipts.length}</span>
+                  </div>
                   <button
                     onClick={openPRModal}
-                    className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
+                    className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition-colors"
                   >
                     + 新增收款單
                   </button>
                 </div>
                 {receipts.length === 0 ? (
-                  <div className="glass-card p-10 text-center"><p className="text-txt-subtle text-sm">尚無收款記錄</p></div>
-                ) : (
-                  <div className="glass-card overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 text-left">收款單號</th>
-                          <th className="px-4 py-3 text-left">日期</th>
-                          <th className="px-4 py-3 text-left">核銷發貨單</th>
-                          <th className="px-4 py-3 text-right">金額</th>
-                          <th className="px-4 py-3 text-center">狀態</th>
-                          <th className="px-4 py-3 text-right">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {receipts.map((pr) => (
-                          <tr key={pr.id} className="hover:bg-surface-2/50 transition-colors">
-                            <td className="px-4 py-3 font-mono text-xs text-accent-text">{pr.receiptNo}</td>
-                            <td className="px-4 py-3 text-txt-subtle text-xs">
-                              {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('zh-TW') : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-txt-subtle">{pr.items.map((i) => i.deliveryNoteNo).join(', ')}</td>
-                            <td className="px-4 py-3 text-right font-medium tabular-nums">{pr.totalAmount.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${prColor[pr.status]}`}>
-                                {prLabel[pr.status]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {pr.status === PaymentReceiptStatus.DRAFT && (
-                                  <button onClick={() => handlePRSubmit(pr)} className="text-xs px-2 py-1 rounded bg-yellow-800/40 text-yellow-300 hover:bg-yellow-700/50">提交</button>
-                                )}
-                                {pr.status === PaymentReceiptStatus.SUBMITTED && (
-                                  <button onClick={() => handlePRApprove(pr)} className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50">審核</button>
-                                )}
-                                {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.SUBMITTED) && (
-                                  <button onClick={() => handlePRCancel(pr)} className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50">取消</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="py-14 text-center">
+                    <p className="text-gray-400 text-sm">尚無收款記錄</p>
                   </div>
+                ) : (
+                  <table className="w-full text-base">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <th className="px-5 py-3 text-left">收款單號</th>
+                        <th className="px-5 py-3 text-left">日期</th>
+                        <th className="px-5 py-3 text-left">核銷單號</th>
+                        <th className="px-5 py-3 text-right">金額</th>
+                        <th className="px-5 py-3 text-center">狀態</th>
+                        <th className="px-5 py-3 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {receipts.map((pr) => (
+                        <tr key={pr.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-3.5 font-mono text-sm text-violet-600">{pr.receiptNo}</td>
+                          <td className="px-5 py-3.5 text-gray-500 text-sm">
+                            {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('zh-TW') : '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-sm text-gray-400 font-mono">{pr.items.map((i) => i.deliveryNoteNo).join(', ')}</td>
+                          <td className="px-5 py-3.5 text-right font-semibold tabular-nums text-green-600">{pr.totalAmount.toFixed(2)}</td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${prColor[pr.status]}`}>
+                              {prLabel[pr.status]}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {pr.status === PaymentReceiptStatus.DRAFT && (
+                                <button onClick={() => handlePRSubmit(pr)} className="text-[11px] px-2.5 py-1 rounded-md bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors">提交</button>
+                              )}
+                              {pr.status === PaymentReceiptStatus.SUBMITTED && (
+                                <button onClick={() => handlePRApprove(pr)} className="text-[11px] px-2.5 py-1 rounded-md bg-green-100 text-green-700 hover:bg-green-200 transition-colors">審核</button>
+                              )}
+                              {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.SUBMITTED) && (
+                                <button onClick={() => handlePRCancel(pr)} className="text-[11px] px-2.5 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 transition-colors">取消</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             )}
@@ -799,24 +816,24 @@ export default function CustomerFinancialPage() {
       {/* ═══════════════ SO Modal ═══════════════ */}
       {showSOModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-              <h2 className="text-base font-semibold text-txt-primary">新增訂貨單 — {customer?.displayName}</h2>
-              <button onClick={() => setShowSOModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900">新增訂貨單 — {customer?.displayName}</h2>
+              <button onClick={() => setShowSOModal(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
               {creditWarning && (
-                <div className="rounded-lg bg-red-900/40 border border-red-600/50 px-4 py-3 text-sm text-red-300">
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                   ⚠️ 信用額度超限：{creditWarning}
                 </div>
               )}
               {/* Currency */}
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">幣別</label>
+                <label className="block text-sm text-gray-500 mb-1">幣別</label>
                 <div className="flex gap-3">
-                  {(['MYR', 'USD'] as const).map((cur) => (
-                    <label key={cur} className="flex items-center gap-1.5 text-sm text-txt-secondary cursor-pointer">
-                      <input type="radio" name="so-currency" value={cur} checked={soCurrency === cur} onChange={() => setSOCurrency(cur)} className="accent-accent" />
+                  {(['RM'] as const).map((cur) => (
+                    <label key={cur} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                      <input type="radio" name="so-currency" value={cur} checked={soCurrency === cur} onChange={() => setSOCurrency(cur)} className="accent-violet-600" />
                       {cur}
                     </label>
                   ))}
@@ -825,50 +842,50 @@ export default function CustomerFinancialPage() {
               {/* Items */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-txt-subtle">品項 *</label>
-                  <button onClick={() => setSOItems((p) => [...p, { ...EMPTY_ITEM }])} className="text-xs text-accent-text hover:underline">+ 新增一行</button>
+                  <label className="text-sm text-gray-500">品項 *</label>
+                  <button onClick={() => setSOItems((p) => [...p, { ...EMPTY_ITEM }])} className="text-xs text-violet-600 hover:underline">+ 新增一行</button>
                 </div>
                 <div className="space-y-2">
                   {soItems.map((item, idx) => (
                     <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-5">
                         <select value={item.productId} onChange={(e) => updateSOItem(idx, 'productId', e.target.value)}
-                          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent">
+                          className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-violet-500">
                           <option value="">— 選商品 —</option>
                           {products.map((p) => <option key={p.id} value={p.id ?? p.sku}>{p.name}</option>)}
                         </select>
                       </div>
                       <div className="col-span-2">
                         <input type="number" min={1} value={item.quantity} onChange={(e) => updateSOItem(idx, 'quantity', Number(e.target.value))}
-                          placeholder="數量" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent" />
+                          placeholder="數量" className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-violet-500" />
                       </div>
                       <div className="col-span-3">
                         <input type="number" min={0} step="0.01" value={item.unitPrice} onChange={(e) => updateSOItem(idx, 'unitPrice', Number(e.target.value))}
-                          placeholder="單價" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent" />
+                          placeholder="單價" className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-violet-500" />
                       </div>
-                      <div className="col-span-1 text-right text-xs text-txt-subtle tabular-nums">{item.total.toFixed(0)}</div>
+                      <div className="col-span-1 text-right text-xs text-gray-500 tabular-nums">{item.total.toFixed(0)}</div>
                       <div className="col-span-1 text-right">
-                        {soItems.length > 1 && <button onClick={() => setSOItems((p) => p.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 text-xs">✕</button>}
+                        {soItems.length > 1 && <button onClick={() => setSOItems((p) => p.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 text-xs">✕</button>}
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 text-right text-sm font-semibold text-txt-primary tabular-nums">
+                <div className="mt-2 text-right text-base font-semibold text-gray-900 tabular-nums">
                   總計：{soCurrency} {soGrandTotal.toFixed(2)}
                 </div>
               </div>
               {/* Notes */}
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">備注（選填）</label>
+                <label className="block text-sm text-gray-500 mb-1">備注（選填）</label>
                 <textarea value={soNotes} onChange={(e) => setSONotes(e.target.value)} rows={2}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent resize-none" />
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500 resize-none" />
               </div>
-              {soError && <p className="text-sm text-red-400 bg-red-900/30 px-3 py-2 rounded-lg">{soError}</p>}
+              {soError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{soError}</p>}
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
-              <button onClick={() => setShowSOModal(false)} className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors">取消</button>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button onClick={() => setShowSOModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">取消</button>
               <button onClick={handleSOSave} disabled={soSaving}
-                className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors">
+                className="px-5 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 disabled:opacity-50 transition-colors">
                 {soSaving ? '儲存中...' : '儲存草稿'}
               </button>
             </div>
@@ -879,73 +896,73 @@ export default function CustomerFinancialPage() {
       {/* ═══════════════ DN Modal ═══════════════ */}
       {showDNModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-              <h2 className="text-base font-semibold text-txt-primary">新增發貨單 — {customer?.displayName}</h2>
-              <button onClick={() => setShowDNModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900">新增發貨單 — {customer?.displayName}</h2>
+              <button onClick={() => setShowDNModal(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">關聯銷售訂單（已審核）*</label>
+                <label className="block text-sm text-gray-500 mb-1">關聯銷售訂單（已審核）*</label>
                 <select value={selOrder?.id ?? ''} onChange={(e) => handleOrderSelect(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent">
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
                   <option value="">— 選擇已審核訂單 —</option>
                   {approvedOrders.map((o) => (
-                    <option key={o.id} value={o.id}>{o.orderNo} | {o.currency ?? 'MYR'} {o.totals.grandTotal.toFixed(2)}</option>
+                    <option key={o.id} value={o.id}>{o.orderNo} | RM {o.totals.grandTotal.toFixed(2)}</option>
                   ))}
                 </select>
                 {approvedOrders.length === 0 && (
-                  <p className="mt-1 text-xs text-yellow-400">此客戶目前沒有已審核的訂單。</p>
+                  <p className="mt-1 text-xs text-yellow-600">此客戶目前沒有已審核的訂單。</p>
                 )}
               </div>
               {selOrder && dnItems.length > 0 && (
                 <div>
-                  <label className="block text-xs text-txt-subtle mb-2">實際出貨數量（不可超過訂單數量）</label>
+                  <label className="block text-sm text-gray-500 mb-2">實際出貨數量（不可超過訂單數量）</label>
                   <div className="space-y-2">
                     {dnItems.map((item, idx) => (
                       <div key={idx} className="space-y-1">
                         <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-6 text-sm text-txt-primary">{item.productName}</div>
+                          <div className="col-span-6 text-sm text-gray-900">{item.productName}</div>
                           <div className="col-span-3">
                             <input type="number" min={0} max={selOrder.items[idx]?.quantity ?? 0} value={item.quantity}
                               onChange={(e) => updateDnQty(idx, Number(e.target.value))}
-                              className={`w-full bg-gray-700 border rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none ${itemErrors[idx] ? 'border-red-500' : 'border-gray-600 focus:border-accent'}`} />
+                              className={`w-full bg-white border rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none ${itemErrors[idx] ? 'border-red-500' : 'border-gray-300 focus:border-violet-500'}`} />
                           </div>
-                          <div className="col-span-2 text-xs text-txt-subtle text-center">/ {selOrder.items[idx]?.quantity ?? 0}</div>
-                          <div className="col-span-1 text-xs text-right tabular-nums text-txt-secondary">{item.total.toFixed(0)}</div>
+                          <div className="col-span-2 text-xs text-gray-500 text-center">/ {selOrder.items[idx]?.quantity ?? 0}</div>
+                          <div className="col-span-1 text-xs text-right tabular-nums text-gray-600">{item.total.toFixed(0)}</div>
                         </div>
-                        {itemErrors[idx] && <p className="text-xs text-red-400">{itemErrors[idx]}</p>}
+                        {itemErrors[idx] && <p className="text-xs text-red-500">{itemErrors[idx]}</p>}
                       </div>
                     ))}
                   </div>
-                  <div className="mt-2 text-right text-sm font-semibold text-txt-primary tabular-nums">
-                    總計：{selOrder.currency ?? 'MYR'} {dnItems.reduce((s, i) => s + i.total, 0).toFixed(2)}
+                  <div className="mt-2 text-right text-base font-semibold text-gray-900 tabular-nums">
+                    總計：RM {dnItems.reduce((s, i) => s + i.total, 0).toFixed(2)}
                   </div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-txt-subtle mb-1">物流商（選填）</label>
+                  <label className="block text-sm text-gray-500 mb-1">物流商（選填）</label>
                   <input type="text" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="e.g. J&T"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent" />
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500" />
                 </div>
                 <div>
-                  <label className="block text-xs text-txt-subtle mb-1">追蹤號碼（選填）</label>
+                  <label className="block text-sm text-gray-500 mb-1">追蹤號碼（選填）</label>
                   <input type="text" value={trackingNo} onChange={(e) => setTrackingNo(e.target.value)} placeholder="e.g. JT123"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent" />
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">備注（選填）</label>
+                <label className="block text-sm text-gray-500 mb-1">備注（選填）</label>
                 <textarea value={dnNotes} onChange={(e) => setDNNotes(e.target.value)} rows={2}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent resize-none" />
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500 resize-none" />
               </div>
-              {dnError && <p className="text-sm text-red-400 bg-red-900/30 px-3 py-2 rounded-lg">{dnError}</p>}
+              {dnError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{dnError}</p>}
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
-              <button onClick={() => setShowDNModal(false)} className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors">取消</button>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button onClick={() => setShowDNModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">取消</button>
               <button onClick={handleDNSave} disabled={dnSaving || !selOrder || hasQtyError}
-                className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors">
+                className="px-5 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 disabled:opacity-50 transition-colors">
                 {dnSaving ? '儲存中...' : '建立發貨單'}
               </button>
             </div>
@@ -956,115 +973,115 @@ export default function CustomerFinancialPage() {
       {/* ═══════════════ PR Modal ═══════════════ */}
       {showPRModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div>
-                <h2 className="text-base font-semibold text-txt-primary">新增收款單 — {customer?.displayName}</h2>
+                <h2 className="text-base font-semibold text-gray-900">新增收款單 — {customer?.displayName}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   {([1, 2] as PRStep[]).map((s) => (
                     <div key={s} className="flex items-center gap-1">
-                      <div className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-medium ${prStep === s ? 'bg-accent text-white' : prStep > s ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-400'}`}>{s}</div>
-                      {s < 2 && <div className={`w-6 h-px ${prStep > s ? 'bg-green-600' : 'bg-gray-600'}`} />}
+                      <div className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-medium ${prStep === s ? 'bg-violet-600 text-white' : prStep > s ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{s}</div>
+                      {s < 2 && <div className={`w-6 h-px ${prStep > s ? 'bg-green-600' : 'bg-gray-300'}`} />}
                     </div>
                   ))}
-                  <span className="text-xs text-txt-subtle ml-1">{prStep === 1 ? '選發貨單號' : '填寫收款'}</span>
+                  <span className="text-xs text-gray-500 ml-1">{prStep === 1 ? '選發貨單號' : '填寫收款'}</span>
                 </div>
               </div>
-              <button onClick={() => setShowPRModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
+              <button onClick={() => setShowPRModal(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4">
               {/* Step 1: Select DNs */}
               {prStep === 1 && (
                 <div className="space-y-4">
                   {outstanding.length === 0 ? (
-                    <div className="rounded-lg bg-yellow-900/30 border border-yellow-700/50 px-4 py-3">
-                      <p className="text-yellow-300 text-sm font-medium">此客戶目前沒有未收的應收款</p>
-                      <p className="text-yellow-400/70 text-xs mt-1">請確認已有已出庫的發貨單</p>
+                    <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+                      <p className="text-yellow-700 text-sm font-medium">此客戶目前沒有未收的應收款</p>
+                      <p className="text-yellow-600 text-xs mt-1">請確認已有已出庫的發貨單</p>
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs text-txt-subtle">勾選要核銷的發貨單號（必須至少選一個）：</p>
+                      <p className="text-xs text-gray-500">勾選要核銷的發貨單號（必須至少選一個）：</p>
                       <div className="space-y-2">
                         {outstanding.map((r) => (
                           <label key={r.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checkedIds.has(r.id!) ? 'border-accent/50 bg-accent/10' : 'border-gray-600 hover:border-gray-500 bg-gray-700/50'}`}>
-                            <input type="checkbox" checked={checkedIds.has(r.id!)} onChange={() => toggleCheck(r.id!)} className="accent-accent" />
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checkedIds.has(r.id!) ? 'border-violet-300 bg-violet-50' : 'border-gray-200 hover:border-gray-300 bg-gray-50'}`}>
+                            <input type="checkbox" checked={checkedIds.has(r.id!)} onChange={() => toggleCheck(r.id!)} className="accent-violet-600" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-mono text-accent-text">{r.deliveryNoteNo}</p>
-                              <p className="text-xs text-txt-subtle">訂單：{r.salesOrderNo}</p>
+                              <p className="text-sm font-mono text-violet-600">{r.deliveryNoteNo}</p>
+                              <p className="text-xs text-gray-500">訂單：{r.salesOrderNo}</p>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-xs text-txt-subtle">總額 {r.totalAmount.toFixed(2)}</p>
-                              <p className="text-sm font-semibold text-red-400 tabular-nums">未收 {r.remainingAmount.toFixed(2)}</p>
+                              <p className="text-xs text-gray-500">總額 {r.totalAmount.toFixed(2)}</p>
+                              <p className="text-sm font-semibold text-red-600 tabular-nums">未收 {r.remainingAmount.toFixed(2)}</p>
                             </div>
                           </label>
                         ))}
                       </div>
                       {checkedIds.size > 0 && (
-                        <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                          <span className="text-txt-subtle">可核銷上限：</span>
-                          <span className="font-semibold text-txt-primary tabular-nums">{maxPRAmount.toFixed(2)}</span>
+                        <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-2 flex justify-between text-sm">
+                          <span className="text-gray-500">可核銷上限：</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">{maxPRAmount.toFixed(2)}</span>
                         </div>
                       )}
                     </>
                   )}
-                  {prError && <div className="rounded-lg bg-red-900/40 border border-red-600/50 px-4 py-3 text-sm text-red-300">⚠️ {prError}</div>}
+                  {prError && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">⚠️ {prError}</div>}
                 </div>
               )}
               {/* Step 2: Payment details */}
               {prStep === 2 && (
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                    <span className="text-txt-subtle">可核銷上限：</span>
-                    <span className="font-semibold text-txt-primary tabular-nums">{maxPRAmount.toFixed(2)}</span>
+                  <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-2 flex justify-between text-sm">
+                    <span className="text-gray-500">可核銷上限：</span>
+                    <span className="font-semibold text-gray-900 tabular-nums">{maxPRAmount.toFixed(2)}</span>
                   </div>
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">本次收款金額 *</label>
+                    <label className="block text-sm text-gray-500 mb-1">本次收款金額 *</label>
                     <input type="number" min={0.01} max={maxPRAmount} step="0.01" value={prAmount}
                       onChange={(e) => { setPRAmount(e.target.value); setPRError(''); }}
                       placeholder={`最多 ${maxPRAmount.toFixed(2)}`}
-                      className={`w-full bg-gray-700 border rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none ${prOverLimit ? 'border-red-500' : 'border-gray-600 focus:border-accent'}`} />
-                    {prOverLimit && <p className="mt-1 text-xs text-red-400">⚠️ 核銷金額超過剩餘未收（{maxPRAmount.toFixed(2)}），請調整！</p>}
+                      className={`w-full bg-white border rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none ${prOverLimit ? 'border-red-500' : 'border-gray-300 focus:border-violet-500'}`} />
+                    {prOverLimit && <p className="mt-1 text-xs text-red-600">⚠️ 核銷金額超過剩餘未收（{maxPRAmount.toFixed(2)}），請調整！</p>}
                   </div>
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">付款方式</label>
+                    <label className="block text-sm text-gray-500 mb-1">付款方式</label>
                     <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent">
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
                       {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">銀行流水號（選填）</label>
+                    <label className="block text-sm text-gray-500 mb-1">銀行流水號（選填）</label>
                     <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="e.g. TT2026022800001"
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent" />
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500" />
                   </div>
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">備注（選填）</label>
+                    <label className="block text-sm text-gray-500 mb-1">備注（選填）</label>
                     <textarea value={prNotes} onChange={(e) => setPRNotes(e.target.value)} rows={2}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent resize-none" />
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-violet-500 resize-none" />
                   </div>
-                  {prError && <div className="rounded-lg bg-red-900/40 border border-red-600/50 px-4 py-3 text-sm text-red-300">⚠️ {prError}</div>}
+                  {prError && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">⚠️ {prError}</div>}
                 </div>
               )}
             </div>
-            <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-700">
+            <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200">
               <div>
                 {prStep > 1 && (
-                  <button onClick={() => setPRStep((s) => (s - 1) as PRStep)} className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors">← 上一步</button>
+                  <button onClick={() => setPRStep((s) => (s - 1) as PRStep)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">← 上一步</button>
                 )}
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowPRModal(false)} className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors">取消</button>
+                <button onClick={() => setShowPRModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">取消</button>
                 {prStep === 1 && (
                   <button onClick={() => { if (checkedIds.size === 0) { setPRError('必須選擇至少一個發貨單號'); return; } setPRError(''); setPRStep(2); }}
                     disabled={outstanding.length === 0}
-                    className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors">
+                    className="px-5 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 disabled:opacity-50 transition-colors">
                     下一步 →
                   </button>
                 )}
                 {prStep === 2 && (
                   <button onClick={handlePRSave} disabled={prSaving || !prAmountNum || prAmountNum <= 0 || prOverLimit}
-                    className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors">
+                    className="px-5 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 disabled:opacity-50 transition-colors">
                     {prSaving ? '儲存中...' : '儲存草稿'}
                   </button>
                 )}

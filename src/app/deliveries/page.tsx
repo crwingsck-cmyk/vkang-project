@@ -318,7 +318,7 @@ export default function DeliveriesPage() {
                   <option value="">— 選擇已審核訂單 —</option>
                   {approvedOrders.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {o.orderNo} | {o.customerName} | {o.currency ?? 'MYR'} {o.totals.grandTotal.toFixed(2)}
+                      {o.orderNo} | {o.customerName} | RM {o.totals.grandTotal.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -364,7 +364,7 @@ export default function DeliveriesPage() {
                     ))}
                   </div>
                   <div className="mt-2 text-right text-sm font-semibold text-txt-primary tabular-nums">
-                    總計：{selOrder.currency ?? 'MYR'} {dnItems.reduce((s, i) => s + i.total, 0).toFixed(2)}
+                    總計：RM {dnItems.reduce((s, i) => s + i.total, 0).toFixed(2)}
                   </div>
                 </div>
               )}

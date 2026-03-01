@@ -260,7 +260,7 @@ export default function CreateProductPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Unit Price (USD) {!form.isTemporary && <span className="text-red-400">*</span>}
+                Unit Price (RM) {!form.isTemporary && <span className="text-red-400">*</span>}
               </label>
               <input
                 type="number"
@@ -276,7 +276,7 @@ export default function CreateProductPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Cost Price (USD) {!form.isTemporary && <span className="text-red-400">*</span>}
+                Cost Price (RM) {!form.isTemporary && <span className="text-red-400">*</span>}
               </label>
               <input
                 type="number"

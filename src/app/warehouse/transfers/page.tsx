@@ -206,7 +206,7 @@ function CreateTransferModal({
             ))}
 
             <div className="text-right text-sm text-gray-400">
-              Total value: <span className="text-gray-100 font-medium">USD {subtotal.toFixed(2)}</span>
+              Total value: <span className="text-gray-100 font-medium">RM {subtotal.toFixed(2)}</span>
             </div>
           </div>
 
@@ -360,7 +360,7 @@ export default function TransfersPage() {
                     <td className="px-6 py-4 text-sm text-gray-300">{t.toUser?.userName || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-300 text-right">{t.items.length}</td>
                     <td className="px-6 py-4 text-sm text-gray-300 text-right">
-                      USD {t.totals.grandTotal.toFixed(2)}
+                      RM {t.totals.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[t.status]}`}>

@@ -34,7 +34,7 @@ export default function DashboardPage() {
         setStats({
           totalProducts: products.length,
           activeStockists: stockists.filter((s) => s.isActive).length,
-          monthlyRevenue: `USD ${income.toFixed(0)}`,
+          monthlyRevenue: `RM ${income.toFixed(0)}`,
         });
 
       } else if (role === UserRole.STOCKIST && user?.id) {
@@ -44,7 +44,7 @@ export default function DashboardPage() {
           (i) => i.status === InventoryStatus.LOW_STOCK || i.status === InventoryStatus.OUT_OF_STOCK
         ).length;
         setStats({
-          inventoryValue: `USD ${invValue.toFixed(0)}`,
+          inventoryValue: `RM ${invValue.toFixed(0)}`,
           lowStockItems: lowStock,
         });
 
@@ -103,12 +103,12 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <StatCard title="Total Products"    value={String(stats.totalProducts ?? 0)}       textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
               <StatCard title="Active Stockists"  value={String(stats.activeStockists ?? 0)}      textColor="text-success" bgClass="bg-green-50 border-green-200" />
-              <StatCard title="Total Revenue"     value={String(stats.monthlyRevenue ?? 'USD 0')} textColor="text-accent-text" bgClass="bg-amber-50 border-amber-200" />
+              <StatCard title="Total Revenue"     value={String(stats.monthlyRevenue ?? 'RM 0')} textColor="text-accent-text" bgClass="bg-amber-50 border-amber-200" />
             </div>
           )}
           {role === UserRole.STOCKIST && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <StatCard title="Inventory Value"    value={String(stats.inventoryValue ?? 'USD 0')} textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
+              <StatCard title="Inventory Value"    value={String(stats.inventoryValue ?? 'RM 0')} textColor="text-info"    bgClass="bg-blue-50 border-blue-200" />
               <StatCard title="Low / Out of Stock" value={String(stats.lowStockItems ?? 0)}        textColor="text-warning" bgClass="bg-amber-50 border-amber-200" />
             </div>
           )}

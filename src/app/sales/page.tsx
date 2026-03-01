@@ -49,7 +49,7 @@ export default function SalesPage() {
   const [selCustomer, setSelCustomer] = useState<User | null>(null);
   const [items, setItems] = useState<TransactionItem[]>([{ ...EMPTY_ITEM }]);
   const [notes, setNotes] = useState('');
-  const [currency, setCurrency] = useState<'USD' | 'MYR'>('MYR');
+  const [currency, setCurrency] = useState<'RM'>('RM');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,7 +73,7 @@ export default function SalesPage() {
     setSelCustomer(null);
     setItems([{ ...EMPTY_ITEM }]);
     setNotes('');
-    setCurrency('MYR');
+    setCurrency('RM');
     const [custs, prods] = await Promise.all([
       UserService.getByRole(UserRole.CUSTOMER),
       ProductService.getAll(),
@@ -267,7 +267,7 @@ export default function SalesPage() {
                     <td className="px-4 py-3 text-txt-primary">{so.customerName}</td>
                     <td className="px-4 py-3 text-right text-txt-secondary">{so.items.length}</td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums">
-                      {so.currency ?? 'MYR'} {so.totals.grandTotal.toFixed(2)}
+                      RM {so.totals.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[so.status]}`}>
@@ -348,7 +348,7 @@ export default function SalesPage() {
               <div>
                 <label className="block text-xs text-txt-subtle mb-1">幣別</label>
                 <div className="flex gap-3">
-                  {(['MYR', 'USD'] as const).map((cur) => (
+                  {(['RM'] as const).map((cur) => (
                     <label key={cur} className="flex items-center gap-1.5 text-sm text-txt-secondary cursor-pointer">
                       <input
                         type="radio"

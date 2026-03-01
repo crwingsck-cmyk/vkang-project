@@ -45,6 +45,20 @@ export const ReceivableService = {
     );
   },
 
+  async delete(id: string): Promise<void> {
+    await FirestoreService.delete(COLLECTION, id);
+  },
+
+  /** 刪除與某筆交易關聯的所有應收款（交易刪除時同步呼叫）*/
+  async deleteByTransactionId(txnId: string): Promise<void> {
+    const records = await FirestoreService.query<Receivable>(COLLECTION, [
+      where('deliveryNoteId', '==', txnId),
+    ]);
+    await Promise.all(
+      records.map((r) => FirestoreService.delete(COLLECTION, (r as Receivable & { id: string }).id))
+    );
+  },
+
   /**
    * 核銷金額：更新 paidAmount / remainingAmount / status
    * 由 PaymentReceiptService.approve() 批量呼叫

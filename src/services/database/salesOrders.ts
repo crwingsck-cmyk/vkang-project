@@ -91,6 +91,10 @@ export const SalesOrderService = {
   },
 
   /** 取得所有現有 SO 的 orderNo，用於生成下一個不衝突的單號 */
+  async delete(id: string): Promise<void> {
+    await FirestoreService.delete(COLLECTION, id);
+  },
+
   async getAllOrderNos(): Promise<string[]> {
     const all = await FirestoreService.query<SalesOrder>(COLLECTION, [
       orderBy('createdAt', 'desc'),

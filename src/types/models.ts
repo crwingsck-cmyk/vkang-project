@@ -453,7 +453,7 @@ export interface SalesOrder {
     tax?: number;
     grandTotal: number;
   };
-  currency?: 'USD' | 'MYR';
+  currency?: 'RM' | 'MYR' | 'USD';
   notes?: string;
   creditCheckPassed?: boolean;  // 管理員信用額度特批旗標
   linkedDeliveryNoteIds?: string[];
@@ -501,7 +501,7 @@ export interface Receivable {
   totalAmount: number;
   paidAmount: number;
   remainingAmount: number;
-  currency?: 'USD' | 'MYR';
+  currency?: 'RM' | 'MYR' | 'USD';
   status: ReceivableStatus;
   dueDate?: number;
   createdAt?: number;

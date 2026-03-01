@@ -10,8 +10,9 @@ import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
 import { InventorySyncService } from '@/services/database/inventorySync';
 import { InventoryService } from '@/services/database/inventory';
-import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem } from '@/types/models';
+import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem, ReceivableStatus } from '@/types/models';
 import { generateDocumentNumber } from '@/lib/documentNumber';
+import { ReceivableService } from '@/services/database/receivables';
 
 type RowKind = 'order' | 'shipment';
 
@@ -40,7 +41,7 @@ export default function StockLedgerPage() {
   const userId = (params?.userId ?? '') as string;
   useAuth();
 
-  const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string } | null>(null);
+  const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -61,11 +62,16 @@ export default function StockLedgerPage() {
         OrderService.getByUserRelated(userId, 300),
       ]);
       let upstreamDisplayName = '';
+      let grandUpstreamDisplayName = '';
       if (u?.parentUserId) {
         const parent = await UserService.getById(u.parentUserId);
         upstreamDisplayName = parent?.displayName ?? '';
+        if (parent?.parentUserId) {
+          const grandParent = await UserService.getById(parent.parentUserId);
+          grandUpstreamDisplayName = grandParent?.displayName ?? '';
+        }
       }
-      setUser(u ? { displayName: u.displayName ?? '', upstreamDisplayName } : null);
+      setUser(u ? { displayName: u.displayName ?? '', upstreamDisplayName, grandUpstreamDisplayName, role: u.role } : null);
 
       const flat: Omit<StockLedgerRow, 'runningInventory'>[] = [];
       for (const t of txList) {
@@ -105,9 +111,16 @@ export default function StockLedgerPage() {
           });
         }
       }
-      // 依日期升序以正確計算庫存累計（公式：當前列庫存 = 前一列庫存 + (入 ? +數量 : -數量)，不小於 0）
-      flat.sort((a, b) => a.date - b.date);
+      // 依日期升序，同日期訂貨先於發貨，確保庫存累計正確
+      flat.sort((a, b) => {
+        if (a.date !== b.date) return a.date - b.date;
+        // 同日期：訂貨先，發貨後
+        if (a.kind === 'order' && b.kind === 'shipment') return -1;
+        if (a.kind === 'shipment' && b.kind === 'order') return 1;
+        return 0;
+      });
 
+      // 跨商品合計：Temporary Placement SKU 訂貨與實際商品發貨屬同一庫存池
       let running = 0;
       const withInventory: StockLedgerRow[] = flat.map((r) => {
         running += r.direction === 'in' ? r.quantity : -r.quantity;
@@ -125,7 +138,10 @@ export default function StockLedgerPage() {
     if (!deleteTransactionId) return;
     setDeleting(true);
     try {
-      await OrderService.delete(deleteTransactionId);
+      await Promise.all([
+        OrderService.delete(deleteTransactionId),
+        ReceivableService.deleteByTransactionId(deleteTransactionId),
+      ]);
       setDeleteTransactionId(null);
       load();
     } catch (err) {
@@ -162,7 +178,10 @@ export default function StockLedgerPage() {
           }
         }
       }
-      await OrderService.delete(deleteTransactionId);
+      await Promise.all([
+        OrderService.delete(deleteTransactionId),
+        ReceivableService.deleteByTransactionId(deleteTransactionId),
+      ]);
       setDeleteTransactionId(null);
       load();
     } catch (err) {
@@ -195,6 +214,12 @@ export default function StockLedgerPage() {
               + 新增異動
             </button>
             <Link
+              href={`/customers/${userId}`}
+              className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-medium rounded-lg"
+            >
+              財務表
+            </Link>
+            <Link
               href={`/users/${userId}`}
               className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-xs font-medium rounded-lg"
             >
@@ -207,6 +232,7 @@ export default function StockLedgerPage() {
           <AddMovementModal
             userId={userId}
             userName={user?.displayName ?? ''}
+            rows={rows}
             error={addError}
             onClose={() => { setShowAddModal(false); setAddError(''); }}
             onDone={() => { setShowAddModal(false); setAddError(''); load(); }}
@@ -218,6 +244,7 @@ export default function StockLedgerPage() {
             transactionId={editTransactionId}
             userId={userId}
             userName={user?.displayName ?? ''}
+            rows={rows}
             error={addError}
             onClose={() => { setEditTransactionId(null); setAddError(''); }}
             onDone={() => { setEditTransactionId(null); setAddError(''); load(); }}
@@ -270,54 +297,45 @@ export default function StockLedgerPage() {
           </div>
         ) : (
           <div className="glass-panel overflow-x-auto">
+            {(() => {
+              const isCustomer = user?.role === UserRole.CUSTOMER;
+              const colSpan = isCustomer ? 10 : 14;
+              const thCls = 'px-2 py-2 text-xs font-semibold uppercase tracking-wide whitespace-nowrap';
+              return (
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-border bg-gray-900 text-white [&>th]:text-white">
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    上游
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    經銷商
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    下線/自用
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    商品
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    訂貨日
-                  </th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    訂貨數
-                  </th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    經銷商價
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    發貨日
-                  </th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    發貨數
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    單號
-                  </th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    發貨價銷
-                  </th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                    庫存
-                  </th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap w-20">
-                    操作
-                  </th>
+                  <th className={`${thCls} text-left`}>上游</th>
+                  <th className={`${thCls} text-left`}>經銷商</th>
+                  <th className={`${thCls} text-left`}>下線/自用</th>
+                  <th className={`${thCls} text-left`}>商品</th>
+                  {isCustomer ? (
+                    <>
+                      <th className={`${thCls} text-left`}>發貨日期</th>
+                      <th className={`${thCls} text-right`}>發貨數量</th>
+                      <th className={`${thCls} text-left`}>發貨號碼</th>
+                      <th className={`${thCls} text-right`}>經銷商價</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className={`${thCls} text-left`}>訂貨日</th>
+                      <th className={`${thCls} text-right`}>訂貨數</th>
+                      <th className={`${thCls} text-left`}>訂貨號碼</th>
+                      <th className={`${thCls} text-right`}>經銷商價</th>
+                      <th className={`${thCls} text-left`}>發貨日</th>
+                      <th className={`${thCls} text-right`}>發貨數</th>
+                      <th className={`${thCls} text-left`}>發貨號碼</th>
+                      <th className={`${thCls} text-right`}>發貨價銷</th>
+                    </>
+                  )}
+                  <th className={`${thCls} text-right`}>庫存</th>
+                  <th className={`${thCls} text-center w-20`}>操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="px-4 py-12 text-center text-txt-subtle text-base">
+                    <td colSpan={colSpan} className="px-4 py-12 text-center text-txt-subtle text-base">
                       尚無庫存異動紀錄
                     </td>
                   </tr>
@@ -326,50 +344,65 @@ export default function StockLedgerPage() {
                     const stockistName = user?.displayName ?? '';
                     const isSelfUse = row.kind === 'shipment' && row.recipientUserId === userId;
                     const downlineDisplay = row.kind === 'shipment' ? (isSelfUse ? stockistName : row.partyName) : '';
-                    // 經銷商欄位一律顯示該表格所屬經銷商名字
                     const distributorDisplay = stockistName;
                     return (
                     <tr
                       key={`${row.date}-${row.refId}-${row.productId}-${row.direction}-${idx}`}
                       className={`hover:bg-surface-2/50 ${idx % 2 === 0 ? 'bg-white/5' : 'bg-emerald-50/10 dark:bg-emerald-950/10'}`}
                     >
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">
-                        {user?.upstreamDisplayName ?? ''}
-                      </td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">
-                        {distributorDisplay}
-                      </td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">
-                        {downlineDisplay}
-                      </td>
-                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">
-                        {row.productName}
-                      </td>
-                      <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
-                        {row.kind === 'order' && row.date
-                          ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
-                          : ''}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums font-medium text-sm">
-                        {row.kind === 'order' ? row.quantity : ''}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
-                        {row.kind === 'order' && row.amount ? `USD ${row.amount}` : ''}
-                      </td>
-                      <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
-                        {row.kind === 'shipment' && row.date
-                          ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
-                          : ''}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-sm">
-                        {row.kind === 'shipment' ? row.quantity : ''}
-                      </td>
-                      <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
-                        {row.refId}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
-                        {row.kind === 'shipment' && row.amount ? `USD ${row.amount}` : ''}
-                      </td>
+                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.grandUpstreamDisplayName ?? '') : (user?.upstreamDisplayName ?? '')}</td>
+                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.upstreamDisplayName ?? '') : distributorDisplay}</td>
+                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{isCustomer ? (user?.displayName ?? '') : downlineDisplay}</td>
+                      <td className="px-2 py-1.5 text-txt-primary whitespace-nowrap text-sm">{row.productName}</td>
+                      {isCustomer ? (
+                        <>
+                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                            {row.kind === 'order' && row.date
+                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-medium text-sm">
+                            {row.kind === 'order' ? row.quantity : ''}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                            {row.kind === 'order' ? row.refId : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                            {row.kind === 'order' && row.amount ? `RM ${row.amount}` : ''}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                            {row.kind === 'order' && row.date
+                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-medium text-sm">
+                            {row.kind === 'order' ? row.quantity : ''}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                            {row.kind === 'order' ? row.refId : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                            {row.kind === 'order' && row.amount ? `RM ${row.amount}` : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-txt-secondary tabular-nums whitespace-nowrap text-sm">
+                            {row.kind === 'shipment' && row.date
+                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-sm">
+                            {row.kind === 'shipment' ? row.quantity : ''}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-xs text-txt-secondary">
+                            {row.kind === 'shipment' ? row.refId : ''}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-txt-secondary text-sm">
+                            {row.kind === 'shipment' && row.amount ? `RM ${row.amount}` : ''}
+                          </td>
+                        </>
+                      )}
                       <td className="px-2 py-1.5 text-right tabular-nums font-semibold bg-emerald-50/20 dark:bg-emerald-950/20 text-sm">
                         {row.runningInventory}
                       </td>
@@ -397,6 +430,8 @@ export default function StockLedgerPage() {
                 )}
               </tbody>
             </table>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -423,6 +458,7 @@ type UpstreamOption = { id: string; displayName: string };
 function AddMovementModal({
   userId,
   userName,
+  rows,
   error,
   onClose,
   onDone,
@@ -430,6 +466,7 @@ function AddMovementModal({
 }: {
   userId: string;
   userName: string;
+  rows: StockLedgerRow[];
   error: string;
   onClose: () => void;
   onDone: () => void;
@@ -548,10 +585,11 @@ function AddMovementModal({
       return;
     }
 
-    // 出庫前驗證當前用戶庫存
+    // 出庫前驗證當前用戶庫存（從交易記錄計算，與庫存表顯示一致）
     if (form.direction === 'out') {
-      const inv = await InventoryService.getByUserAndProduct(userId, productId);
-      const have = inv?.quantityOnHand ?? 0;
+      const have = Math.max(0, rows
+        .filter(r => r.productId === productId)
+        .reduce((sum, r) => sum + (r.direction === 'in' ? r.quantity : -r.quantity), 0));
       if (have < quantity) {
         setAlertMsg(`⚠️ 庫存不足\n\n${productName} 需要 ${quantity} 個，但目前庫存只有 ${have} 個。\n\n請先補貨後再操作。`);
         return;
@@ -610,7 +648,7 @@ function AddMovementModal({
           : { userId: form.downlineId, userName: form.downlineName };
 
         if (form.downlineId === userId) {
-          await OrderService.create(
+          const txnResult = await OrderService.create(
             {
               transactionType: TransactionType.ADJUSTMENT,
               status: TransactionStatus.COMPLETED,
@@ -623,9 +661,20 @@ function AddMovementModal({
             },
             { createdAt: dateMs }
           );
-          await InventorySyncService.onAdjustment(userId, null, items, refId);
+          const txnId = (txnResult as { id: string }).id ?? refId;
+          const arSelfUse = items[0].total > 0 && form.upstreamId && form.upstreamId !== 'TW'
+            ? ReceivableService.create({
+                deliveryNoteId: txnId, deliveryNoteNo: refId,
+                salesOrderId: '', salesOrderNo: '',
+                customerId: userId, customerName: userName,
+                fromUserId: form.upstreamId,
+                totalAmount: items[0].total, paidAmount: 0,
+                remainingAmount: items[0].total, status: ReceivableStatus.OUTSTANDING,
+              })
+            : Promise.resolve();
+          await Promise.all([InventorySyncService.onAdjustment(userId, null, items, refId), arSelfUse]);
         } else {
-          await OrderService.create(
+          const txnResult = await OrderService.create(
             {
               transactionType: TransactionType.TRANSFER,
               status: TransactionStatus.COMPLETED,
@@ -638,7 +687,18 @@ function AddMovementModal({
             },
             { createdAt: dateMs }
           );
-          await InventorySyncService.onTransferCompleted(userId, form.downlineId, items, refId);
+          const txnId = (txnResult as { id: string }).id ?? refId;
+          const arTransfer = items[0].total > 0
+            ? ReceivableService.create({
+                deliveryNoteId: txnId, deliveryNoteNo: refId,
+                salesOrderId: '', salesOrderNo: '',
+                customerId: form.downlineId, customerName: form.downlineName,
+                fromUserId: userId,
+                totalAmount: items[0].total, paidAmount: 0,
+                remainingAmount: items[0].total, status: ReceivableStatus.OUTSTANDING,
+              })
+            : Promise.resolve();
+          await Promise.all([InventorySyncService.onTransferCompleted(userId, form.downlineId, items, refId), arTransfer]);
         }
       }
       onDone();
@@ -778,7 +838,7 @@ function AddMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (USD)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -839,7 +899,7 @@ function AddMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (USD)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -890,6 +950,7 @@ function EditMovementModal({
   transactionId,
   userId,
   userName,
+  rows,
   error,
   onClose,
   onDone,
@@ -898,6 +959,7 @@ function EditMovementModal({
   transactionId: string;
   userId: string;
   userName: string;
+  rows: StockLedgerRow[];
   error: string;
   onClose: () => void;
   onDone: () => void;
@@ -1076,10 +1138,15 @@ function EditMovementModal({
         }
       }
 
-      // 2. Validate inventory AFTER revert (so restored stock is counted)
+      // 2. Validate inventory AFTER revert（從交易記錄計算，調整已撤銷的舊筆）
       if (form.direction === 'out') {
-        const inv = await InventoryService.getByUserAndProduct(userId, productId);
-        const have = inv?.quantityOnHand ?? 0;
+        const rowsStock = rows
+          .filter(r => r.productId === productId)
+          .reduce((sum, r) => sum + (r.direction === 'in' ? r.quantity : -r.quantity), 0);
+        // Adjust for the reverted old transaction: if old was 'out' from this user, it was restored (+qty); if old was 'in', it was deducted (-qty)
+        const oldQtyForProduct = oldItems.reduce((sum, i) => i.productId === productId ? sum + i.quantity : sum, 0);
+        const revertAdjustment = oldFrom === userId ? oldQtyForProduct : -oldQtyForProduct;
+        const have = Math.max(0, rowsStock + revertAdjustment);
         if (have < quantity) {
           // Revert was already applied — undo it to restore previous state
           await InventorySyncService.onAdjustment(null, userId, oldItems, `REVERT-UNDO-${transactionId}`);
@@ -1241,7 +1308,7 @@ function EditMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (USD)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -1301,7 +1368,7 @@ function EditMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (USD)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (RM)</label>
                     <input
                       type="number"
                       min="0"

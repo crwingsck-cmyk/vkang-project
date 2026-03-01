@@ -340,7 +340,7 @@ export default function UserDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Credit Limit (USD)</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Credit Limit (RM)</label>
                   <input
                     type="number"
                     name="creditLimit"
@@ -413,13 +413,13 @@ export default function UserDetailPage() {
                   <div>
                     <p className="text-gray-400">Credit Limit</p>
                     <p className="text-gray-100 font-medium">
-                      {user.creditLimit !== undefined ? `USD ${user.creditLimit.toFixed(2)}` : '-'}
+                      {user.creditLimit !== undefined ? `RM ${user.creditLimit.toFixed(2)}` : '-'}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400">Credit Used</p>
                     <p className="text-gray-100 font-medium">
-                      {user.creditUsed !== undefined ? `USD ${user.creditUsed.toFixed(2)}` : '-'}
+                      {user.creditUsed !== undefined ? `RM ${user.creditUsed.toFixed(2)}` : '-'}
                     </p>
                   </div>
                   <div>

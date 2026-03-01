@@ -104,6 +104,10 @@ export const DeliveryNoteService = {
   },
 
   /** 取得所有現有 DN 的 deliveryNo，用於生成下一個不衝突的單號 */
+  async delete(id: string): Promise<void> {
+    await FirestoreService.delete(COLLECTION, id);
+  },
+
   async getAllDeliveryNos(): Promise<string[]> {
     const all = await FirestoreService.query<DeliveryNote>(COLLECTION, [
       orderBy('createdAt', 'desc'),

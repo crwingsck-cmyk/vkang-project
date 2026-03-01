@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { InventoryService } from '@/services/database/inventory';
-import { User, UserRole } from '@/types/models';
+import { OrderService } from '@/services/database/orders';
+import { User, UserRole, TransactionType } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -73,13 +73,35 @@ export default function StockistsPage() {
 
   async function loadUserStats(userId: string): Promise<{ invValue: number; totalQuantity: number }> {
     try {
-      const inv = await InventoryService.getByUser(userId, 200);
-      const invValue = inv.reduce(
-        (sum, i) => sum + (i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand)),
-        0
-      );
-      const totalQuantity = inv.reduce((sum, i) => sum + i.quantityOnHand, 0);
-      return { invValue, totalQuantity };
+      const txns = await OrderService.getByUserRelated(userId, 300);
+      // Mirror hierarchy page direction logic exactly
+      const flat: { quantity: number; direction: 'in' | 'out'; date: number; unitPrice: number }[] = [];
+      for (const txn of txns) {
+        const isOut = txn.fromUser?.userId === userId;
+        const isIn = txn.toUser?.userId === userId;
+        const direction: 'in' | 'out' | null = isOut ? 'out' : isIn ? 'in' : null;
+        if (!direction) continue;
+        for (const item of txn.items ?? []) {
+          let itemDir = direction;
+          if (txn.transactionType === TransactionType.CONVERSION) {
+            itemDir = item.productId === txn.conversionSource?.productId ? 'out' : 'in';
+          }
+          flat.push({ quantity: item.quantity, direction: itemDir, date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+        }
+      }
+      flat.sort((a, b) => a.date - b.date);
+      let running = 0;
+      let invValue = 0;
+      for (const row of flat) {
+        if (row.direction === 'in') {
+          running += row.quantity;
+          invValue += row.quantity * row.unitPrice;
+        } else {
+          running -= row.quantity;
+          invValue -= row.quantity * row.unitPrice;
+        }
+      }
+      return { invValue: Math.max(0, invValue), totalQuantity: Math.max(0, running) };
     } catch {
       return { invValue: 0, totalQuantity: 0 };
     }

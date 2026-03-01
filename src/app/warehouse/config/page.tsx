@@ -107,7 +107,7 @@ export default function WarehouseConfigPage() {
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <p className="text-gray-400 text-sm">Total Credit Limit</p>
             <p className="text-2xl font-bold text-blue-400">
-              USD {stockists.reduce((sum, s) => sum + (s.creditLimit || 0), 0).toFixed(2)}
+              RM {stockists.reduce((sum, s) => sum + (s.creditLimit || 0), 0).toFixed(2)}
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function WarehouseConfigPage() {
                           />
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-300 text-right">
-                          USD {(s.creditUsed ?? 0).toFixed(2)}
+                          RM {(s.creditUsed ?? 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.isActive ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
@@ -206,11 +206,11 @@ export default function WarehouseConfigPage() {
                         <td className="px-6 py-4 text-sm text-gray-300">{s.company?.name || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-300">{s.phoneNumber || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-100 font-medium text-right">
-                          USD {(s.creditLimit ?? 0).toFixed(2)}
+                          RM {(s.creditLimit ?? 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-sm text-right">
                           <span className={(s.creditUsed ?? 0) > (s.creditLimit ?? 0) * 0.8 ? 'text-yellow-400' : 'text-gray-300'}>
-                            USD {(s.creditUsed ?? 0).toFixed(2)}
+                            RM {(s.creditUsed ?? 0).toFixed(2)}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">

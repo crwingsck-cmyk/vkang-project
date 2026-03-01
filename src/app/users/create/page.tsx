@@ -209,7 +209,7 @@ function CreateUserForm() {
           {(form.role === UserRole.STOCKIST || form.role === UserRole.CUSTOMER) && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Credit Limit (USD)
+                Credit Limit (RM)
               </label>
               <input
                 type="number"

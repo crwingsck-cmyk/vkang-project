@@ -104,7 +104,7 @@ export default function StockistDetailPage() {
                 <div className="rounded-lg bg-chip-dark p-4">
                   <p className="text-xs text-gray-300">庫存價值</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
-                    USD {invValue.toFixed(0)}
+                    RM {invValue.toFixed(0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
@@ -167,7 +167,7 @@ export default function StockistDetailPage() {
                             </span>
                           </td>
                           <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
-                            USD {invItemValue(i).toFixed(2)}
+                            RM {invItemValue(i).toFixed(2)}
                           </td>
                         </tr>
                       ))}

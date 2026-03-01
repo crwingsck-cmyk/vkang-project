@@ -60,7 +60,7 @@ function AddRecordModal({
         type: form.type as FinancialType,
         category: form.category as FinancialCategory,
         amount: parseFloat(form.amount),
-        currency: 'USD',
+        currency: 'RM',
         description: form.description.trim() || undefined,
         paymentStatus: form.paymentStatus as PaymentStatus,
         reconciled: false,
@@ -133,7 +133,7 @@ function AddRecordModal({
 
           <div>
             <label className="block text-xs font-medium text-gray-300 mb-1.5">
-              Amount (USD) <span className="text-red-400">*</span>
+              Amount (RM) <span className="text-red-400">*</span>
             </label>
             <input
               type="number"
@@ -254,16 +254,16 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="p-4 rounded-xl border shadow-sm bg-green-50 border-green-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total Income</p>
-            <p className="text-2xl font-bold tabular-nums text-success">USD {summary.totalIncome.toFixed(2)}</p>
+            <p className="text-2xl font-bold tabular-nums text-success">RM {summary.totalIncome.toFixed(2)}</p>
           </div>
           <div className="p-4 rounded-xl border shadow-sm bg-red-50 border-red-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Total Expense</p>
-            <p className="text-2xl font-bold tabular-nums text-error">USD {summary.totalExpense.toFixed(2)}</p>
+            <p className="text-2xl font-bold tabular-nums text-error">RM {summary.totalExpense.toFixed(2)}</p>
           </div>
           <div className="p-4 rounded-xl border shadow-sm bg-blue-50 border-blue-200">
             <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1.5">Net P&amp;L</p>
             <p className={`text-2xl font-bold tabular-nums ${summary.net >= 0 ? 'text-success' : 'text-error'}`}>
-              USD {summary.net.toFixed(2)}
+              RM {summary.net.toFixed(2)}
             </p>
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function FinancialsPage() {
                     <td className="px-5 py-3.5 text-xs text-txt-subtle capitalize">{record.category}</td>
                     <td className="px-5 py-3.5 text-xs text-txt-secondary">{record.description || '-'}</td>
                     <td className="px-5 py-3.5 text-xs text-txt-primary text-right font-semibold tabular-nums">
-                      USD {record.amount.toFixed(2)}
+                      RM {record.amount.toFixed(2)}
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${paymentBadge[record.paymentStatus]}`}>

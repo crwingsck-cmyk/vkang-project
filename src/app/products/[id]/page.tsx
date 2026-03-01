@@ -288,7 +288,7 @@ export default function ProductDetailPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Unit Price (USD)（預設值）</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Unit Price (RM)（預設值）</label>
                     <input
                       type="number"
                       name="unitPrice"
@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Cost Price (USD)（預設值）</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Cost Price (RM)（預設值）</label>
                     <input
                       type="number"
                       name="costPrice"
@@ -409,11 +409,11 @@ export default function ProductDetailPage() {
                   )}
                   <div>
                     <p className="text-gray-400">Unit Price（預設）</p>
-                    <p className="text-gray-100 font-medium">USD {product.unitPrice.toFixed(2)}</p>
+                    <p className="text-gray-100 font-medium">RM {product.unitPrice.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-gray-400">Cost Price（預設）</p>
-                    <p className="text-gray-100 font-medium">USD {product.costPrice.toFixed(2)}</p>
+                    <p className="text-gray-100 font-medium">RM {product.costPrice.toFixed(2)}</p>
                   </div>
                   {product.priceNote && (
                     <div className="col-span-2">

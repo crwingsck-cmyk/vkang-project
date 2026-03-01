@@ -163,11 +163,11 @@ export default function SettingsPage() {
               <>
                 <div className="bg-surface-2 rounded-lg px-3 py-2.5">
                   <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Credit Limit</p>
-                  <p className="text-xs text-txt-primary font-semibold tabular-nums">USD {user.creditLimit.toFixed(2)}</p>
+                  <p className="text-xs text-txt-primary font-semibold tabular-nums">RM {user.creditLimit.toFixed(2)}</p>
                 </div>
                 <div className="bg-surface-2 rounded-lg px-3 py-2.5">
                   <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Credit Used</p>
-                  <p className="text-xs text-txt-primary font-semibold tabular-nums">USD {(user.creditUsed ?? 0).toFixed(2)}</p>
+                  <p className="text-xs text-txt-primary font-semibold tabular-nums">RM {(user.creditUsed ?? 0).toFixed(2)}</p>
                 </div>
               </>
             )}
@@ -189,7 +189,7 @@ export default function SettingsPage() {
               </div>
               <div className="bg-surface-2 rounded-lg px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Currency</p>
-                <p className="text-xs text-txt-primary">USD</p>
+                <p className="text-xs text-txt-primary">RM</p>
               </div>
               <div className="bg-surface-2 rounded-lg px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-1">Timezone</p>

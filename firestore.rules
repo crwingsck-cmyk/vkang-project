@@ -171,5 +171,59 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update, delete: if false;
     }
+
+    // ========== SALES ORDERS (銷售訂單) ==========
+    match /salesOrders/{soId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.customerId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.fromUserId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ========== DELIVERY NOTES (發貨單) ==========
+    match /deliveryNotes/{dnId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.fromUserId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ========== RECEIVABLES (應收款) ==========
+    match /receivables/{arId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.fromUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ========== PAYMENT RECEIPTS (收款單) ==========
+    match /paymentReceipts/{prId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

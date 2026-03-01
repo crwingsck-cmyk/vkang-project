@@ -4,77 +4,52 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
+import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 import { OrderService } from '@/services/database/orders';
-import { ReceivableService } from '@/services/database/receivables';
-import { User, UserRole, TransactionType, ReceivableStatus } from '@/types/models';
+import { User, UserRole, TransactionType } from '@/types/models';
 import Link from 'next/link';
 
-interface SelfUseStats {
-  totalValue: number;
-  totalQty: number;
-}
+const CUSTOMER_COLORS = [
+  'bg-sky-50 border-sky-200/60 hover:bg-sky-100/80',
+  'bg-blue-50 border-blue-200/60 hover:bg-blue-100/80',
+  'bg-cyan-50 border-cyan-200/60 hover:bg-cyan-100/80',
+];
 
-interface ARStats {
-  outstanding: number;
-  paid: number;
-}
+const STOCKIST_COLORS = [
+  'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
+  'bg-orange-50 border-orange-200/60 hover:bg-orange-100/80',
+  'bg-yellow-50 border-yellow-200/60 hover:bg-yellow-100/80',
+];
 
-function CustomerCard({ user, arStats, idx }: { user: User; arStats: ARStats; idx: number }) {
-  const cardColors = [
-    'bg-sky-50 border-sky-200/60 hover:bg-sky-100/80',
-    'bg-teal-50 border-teal-200/60 hover:bg-teal-100/80',
-    'bg-cyan-50 border-cyan-200/60 hover:bg-cyan-100/80',
-  ];
+const ADMIN_COLORS = [
+  'bg-emerald-50 border-emerald-200/60 hover:bg-emerald-100/80',
+  'bg-violet-50 border-violet-200/60 hover:bg-violet-100/80',
+];
+
+function UserCard({
+  user,
+  buyQty,
+  cardClass,
+  badge,
+}: {
+  user: User;
+  buyQty: number;
+  cardClass: string;
+  badge?: string;
+}) {
+  const isCustomer = user.role === UserRole.CUSTOMER;
+  const qtyLabel = isCustomer ? '購買數量' : '自用數量';
+
   return (
     <Link
       href={`/customers/${user.id}`}
-      className={`block p-5 rounded-xl border ${cardColors[idx % 3]} hover:border-accent/40 transition-all shadow-sm relative`}
+      className={`block p-5 rounded-xl border ${cardClass} hover:border-accent/40 transition-all shadow-sm relative`}
     >
-      <span className="absolute top-3 right-10 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
-        客戶
-      </span>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="font-semibold text-txt-primary name-lowercase truncate">{user.displayName}</h2>
-          <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.email}</p>
-          {user.company?.name && (
-            <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.company.name}</p>
-          )}
-        </div>
-        <span className="text-accent-text text-xs shrink-0">財務 →</span>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-        <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">未收款</p>
-          <p className="text-sm font-semibold text-red-400 tabular-nums">
-            {arStats.outstanding > 0 ? arStats.outstanding.toFixed(0) : '—'}
-          </p>
-        </div>
-        <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">已收款</p>
-          <p className="text-sm font-semibold text-green-400 tabular-nums">
-            {arStats.paid > 0 ? arStats.paid.toFixed(0) : '—'}
-          </p>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function SelfUseCard({ user, stats, idx }: { user: User; stats: SelfUseStats; idx: number }) {
-  const cardColors = [
-    'bg-orange-50 border-orange-200/60 hover:bg-orange-100/80',
-    'bg-amber-50 border-amber-200/60 hover:bg-amber-100/80',
-    'bg-yellow-50 border-yellow-200/60 hover:bg-yellow-100/80',
-  ];
-  return (
-    <Link
-      href={`/hierarchy/${user.id}`}
-      className={`block p-5 rounded-xl border ${cardColors[idx % 3]} hover:border-accent/40 transition-all shadow-sm relative`}
-    >
-      <span className="absolute top-3 right-10 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
-        自用
-      </span>
+      {badge && (
+        <span className="absolute top-3 right-10 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
+          {badge}
+        </span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-semibold text-txt-primary name-lowercase truncate">{user.displayName}</h2>
@@ -87,24 +62,56 @@ function SelfUseCard({ user, stats, idx }: { user: User; stats: SelfUseStats; id
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">自用總額</p>
-          <p className="text-sm font-semibold text-white tabular-nums">${stats.totalValue.toFixed(0)}</p>
+          <p className="text-xs text-gray-300">{qtyLabel}</p>
+          <p className="text-sm font-semibold text-white tabular-nums">{buyQty}</p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">自用總數</p>
-          <p className="text-sm font-semibold text-white tabular-nums">{stats.totalQty}</p>
+          <p className="text-xs text-gray-300">財務明細</p>
+          <p className="text-sm font-semibold text-accent-text">→</p>
         </div>
       </div>
     </Link>
   );
 }
 
+function UserSection({
+  title,
+  users,
+  buyQtyMap,
+  colors,
+  badge,
+}: {
+  title: string;
+  users: User[];
+  buyQtyMap: Record<string, number>;
+  colors: string[];
+  badge?: string;
+}) {
+  if (users.length === 0) return null;
+  return (
+    <section>
+      <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">{title}</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {users.map((u, idx) => (
+          <UserCard
+            key={u.id}
+            user={u}
+            buyQty={buyQtyMap[u.id!] ?? 0}
+            cardClass={colors[idx % colors.length]}
+            badge={badge}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function CustomersPage() {
   const { role } = useAuth();
   const [customers, setCustomers] = useState<User[]>([]);
-  const [selfUseUsers, setSelfUseUsers] = useState<User[]>([]);
-  const [customerARStats, setCustomerARStats] = useState<Record<string, ARStats>>({});
-  const [selfUseStats, setSelfUseStats] = useState<Record<string, SelfUseStats>>({});
+  const [stockists, setStockists] = useState<User[]>([]);
+  const [admins, setAdmins] = useState<User[]>([]);
+  const [buyQtyMap, setBuyQtyMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -115,49 +122,45 @@ export default function CustomersPage() {
   async function load() {
     setLoading(true);
     try {
-      const [customerList, adminList, stockistList, allAdjustments, allReceivables] = await Promise.all([
+      const [customerList, stockistList, adminList, allDNs, allSaleTxns, allTransferTxns, allAdjTxns] = await Promise.all([
         UserService.getByRole(UserRole.CUSTOMER),
-        UserService.getAdmins(),
         UserService.getStockists(),
-        OrderService.getByType(TransactionType.ADJUSTMENT, 1000),
-        ReceivableService.getAll(1000),
+        UserService.getAdmins(),
+        DeliveryNoteService.getAll(500).catch(() => [] as Awaited<ReturnType<typeof DeliveryNoteService.getAll>>),
+        OrderService.getByType(TransactionType.SALE, 1000).catch(() => []),
+        OrderService.getByType(TransactionType.TRANSFER, 1000).catch(() => []),
+        OrderService.getByType(TransactionType.ADJUSTMENT, 1000).catch(() => []),
       ]);
 
       setCustomers(customerList);
+      setStockists(stockistList);
+      setAdmins(adminList);
 
-      // Customer AR stats from receivables
-      const arStats: Record<string, ARStats> = {};
-      for (const r of allReceivables) {
-        const cid = r.customerId;
-        if (!arStats[cid]) arStats[cid] = { outstanding: 0, paid: 0 };
-        if (r.status !== ReceivableStatus.PAID) {
-          arStats[cid].outstanding += r.remainingAmount;
-        }
-        arStats[cid].paid += r.paidAmount;
+      const customerIds = new Set(customerList.map((u) => u.id!));
+      const bqMap: Record<string, number> = {};
+
+      for (const dn of allDNs) {
+        if (!dn.toUserId || !customerIds.has(dn.toUserId)) continue;
+        const qty = (dn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
+        bqMap[dn.toUserId] = (bqMap[dn.toUserId] ?? 0) + qty;
       }
-      setCustomerARStats(arStats);
+      for (const txn of [...allSaleTxns, ...allTransferTxns]) {
+        const uid = txn.toUser?.userId;
+        if (!uid || !customerIds.has(uid)) continue;
+        const qty = (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
+        bqMap[uid] = (bqMap[uid] ?? 0) + qty;
+      }
 
-      // Self-use stats: ADJUSTMENT where description='自用' AND fromUser.userId === toUser.userId
-      const allUsers = [...adminList, ...stockistList];
-      const userMap = new Map(allUsers.map((u) => [u.id!, u]));
-      const suStats: Record<string, SelfUseStats> = {};
-      for (const txn of allAdjustments) {
-        const fromUid = txn.fromUser?.userId;
-        const toUid = txn.toUser?.userId;
-        if (!fromUid || fromUid !== toUid) continue;
+      for (const txn of allAdjTxns) {
+        const uid = txn.fromUser?.userId;
+        if (!uid) continue;
         if (txn.description !== '自用') continue;
-        if (!suStats[fromUid]) suStats[fromUid] = { totalValue: 0, totalQty: 0 };
-        suStats[fromUid].totalValue += txn.totals?.grandTotal ?? 0;
-        suStats[fromUid].totalQty += (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
+        if (txn.fromUser?.userId !== txn.toUser?.userId) continue;
+        const qty = (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
+        bqMap[uid] = (bqMap[uid] ?? 0) + qty;
       }
-      setSelfUseStats(suStats);
 
-      // Only show self-use cards for users who have records
-      const suUserList = Object.keys(suStats)
-        .map((uid) => userMap.get(uid))
-        .filter((u): u is NonNullable<typeof u> => !!u)
-        .sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? ''));
-      setSelfUseUsers(suUserList);
+      setBuyQtyMap(bqMap);
     } catch (err) {
       console.error(err);
     } finally {
@@ -169,10 +172,10 @@ export default function CustomersPage() {
 
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-txt-primary tracking-tight">客戶財務總覽</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">點擊客戶卡片查看訂貨、發貨、應收款及收款記錄</p>
+          <h1 className="text-xl font-bold text-txt-primary tracking-tight">用戶購買總覽</h1>
+          <p className="text-sm text-txt-subtle mt-0.5">顧客購買數量來自發貨單；經銷商自用數量來自庫存表</p>
         </div>
 
         {loading ? (
@@ -181,55 +184,10 @@ export default function CustomersPage() {
             <p className="text-txt-subtle text-sm">載入中...</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {/* Section 1: Customers */}
-            <section>
-              <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">
-                客戶（{customers.length}）
-              </h2>
-              {customers.length === 0 ? (
-                <div className="glass-card p-8 text-center">
-                  <p className="text-txt-subtle text-sm">尚無客戶</p>
-                  <Link href="/users" className="mt-2 inline-block text-xs text-accent-text hover:underline">
-                    至使用者管理建立 →
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {customers.map((c, idx) => (
-                    <CustomerCard
-                      key={c.id}
-                      user={c}
-                      arStats={customerARStats[c.id!] ?? { outstanding: 0, paid: 0 }}
-                      idx={idx}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {/* Section 2: Self-use by distributors */}
-            <section>
-              <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">
-                經銷商自用（{selfUseUsers.length}）
-              </h2>
-              {selfUseUsers.length === 0 ? (
-                <div className="glass-card p-8 text-center">
-                  <p className="text-txt-subtle text-sm">尚無自用記錄</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {selfUseUsers.map((u, idx) => (
-                    <SelfUseCard
-                      key={u.id}
-                      user={u}
-                      stats={selfUseStats[u.id!] ?? { totalValue: 0, totalQty: 0 }}
-                      idx={idx}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+          <div className="space-y-6">
+            <UserSection title="顧客" users={customers} buyQtyMap={buyQtyMap} colors={CUSTOMER_COLORS} />
+            <UserSection title="經銷商" users={stockists} buyQtyMap={buyQtyMap} colors={STOCKIST_COLORS} />
+            <UserSection title="總經銷商" users={admins} buyQtyMap={buyQtyMap} colors={ADMIN_COLORS} badge="總經銷商" />
           </div>
         )}
       </div>
