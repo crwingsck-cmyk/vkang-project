@@ -304,6 +304,19 @@ export default function SwapPage() {
     }
   }
 
+  async function handleDelete(swap: Transaction) {
+    const ok = await toast.confirm(`Delete this swap record? This only removes the record — inventory is NOT reversed.`);
+    if (!ok) return;
+    try {
+      await OrderService.delete(swap.id!);
+      toast.success('Record deleted.');
+      await loadSwaps();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete record.');
+    }
+  }
+
   async function handleRevert(swap: Transaction) {
     const ok = await toast.confirm(`Revert this swap? Both parties' inventory will be restored.`);
     if (!ok) return;
@@ -415,14 +428,22 @@ export default function SwapPage() {
                     </td>
                     {role === UserRole.ADMIN && (
                       <td className="px-6 py-4 text-center">
-                        {s.status === TransactionStatus.COMPLETED && (
+                        <div className="flex items-center justify-center gap-2">
+                          {s.status === TransactionStatus.COMPLETED && (
+                            <button
+                              onClick={() => handleRevert(s)}
+                              className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
+                            >
+                              Revert
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleRevert(s)}
-                            className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
+                            onClick={() => handleDelete(s)}
+                            className="px-3 py-1 text-xs bg-red-800 hover:bg-red-700 text-white rounded"
                           >
-                            Revert
+                            Del
                           </button>
-                        )}
+                        </div>
                       </td>
                     )}
                   </tr>

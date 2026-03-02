@@ -296,6 +296,40 @@ export default function LoansPage() {
     }
   }
 
+  async function handleRevert(loan: Transaction) {
+    const ok = await toast.confirm(`Revert this loan? Inventory will be moved back from ${loan.toUser?.userName} to ${loan.fromUser?.userName}.`);
+    if (!ok) return;
+    try {
+      if (loan.fromUser?.userId && loan.toUser?.userId) {
+        await InventorySyncService.onLoanReturned(
+          loan.fromUser.userId,
+          loan.toUser.userId,
+          loan.items,
+          `REVERT-${loan.id!}`
+        );
+      }
+      await OrderService.updateStatus(loan.id!, TransactionStatus.CANCELLED);
+      toast.success('Loan reverted. Inventory restored.');
+      await loadLoans();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to revert loan.');
+    }
+  }
+
+  async function handleDelete(loan: Transaction) {
+    const ok = await toast.confirm(`Delete this loan record? This only removes the record — inventory is NOT reversed.`);
+    if (!ok) return;
+    try {
+      await OrderService.delete(loan.id!);
+      toast.success('Record deleted.');
+      await loadLoans();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete record.');
+    }
+  }
+
   async function handleResyncReturn(loan: Transaction) {
     const ok = await toast.confirm('Re-sync inventory for this completed loan? Safe to run — duplicates are skipped automatically.');
     if (!ok) return;
@@ -416,22 +450,40 @@ export default function LoansPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {loan.status === TransactionStatus.PENDING && (
-                          <button
-                            onClick={() => handleReturn(loan)}
-                            className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
-                          >
-                            Mark Returned
-                          </button>
-                        )}
-                        {loan.status === TransactionStatus.COMPLETED && role === UserRole.ADMIN && (
-                          <button
-                            onClick={() => handleResyncReturn(loan)}
-                            className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded"
-                          >
-                            Re-sync
-                          </button>
-                        )}
+                        <div className="flex items-center justify-center gap-2">
+                          {loan.status === TransactionStatus.PENDING && (
+                            <button
+                              onClick={() => handleReturn(loan)}
+                              className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
+                            >
+                              Mark Returned
+                            </button>
+                          )}
+                          {loan.status === TransactionStatus.PENDING && role === UserRole.ADMIN && (
+                            <button
+                              onClick={() => handleRevert(loan)}
+                              className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
+                            >
+                              Revert
+                            </button>
+                          )}
+                          {loan.status === TransactionStatus.COMPLETED && role === UserRole.ADMIN && (
+                            <button
+                              onClick={() => handleResyncReturn(loan)}
+                              className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-300 rounded"
+                            >
+                              Re-sync
+                            </button>
+                          )}
+                          {role === UserRole.ADMIN && (
+                            <button
+                              onClick={() => handleDelete(loan)}
+                              className="px-3 py-1 text-xs bg-red-800 hover:bg-red-700 text-white rounded"
+                            >
+                              Del
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -5,10 +5,17 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { InventoryService } from '@/services/database/inventory';
+import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
-import { User, UserRole, Inventory, InventoryStatus } from '@/types/models';
+import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
 import Link from 'next/link';
+
+type ComputedRow = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  value: number;
+};
 
 export default function StockistDetailPage() {
   const params = useParams();
@@ -16,8 +23,8 @@ export default function StockistDetailPage() {
   const { role } = useAuth();
 
   const [stockist, setStockist] = useState<User | null>(null);
-  const [inventory, setInventory] = useState<Inventory[]>([]);
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [rows, setRows] = useState<ComputedRow[]>([]);
+  const [runningTotal, setRunningTotal] = useState<{ qty: number; value: number }>({ qty: 0, value: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,18 +35,77 @@ export default function StockistDetailPage() {
   async function load() {
     setLoading(true);
     try {
-      const [u, inv, products] = await Promise.all([
+      const [u, products, txns] = await Promise.all([
         UserService.getById(stockistId),
-        InventoryService.getByUser(stockistId, 100),
         ProductService.getAll(undefined, 200),
+        OrderService.getByUserRelated(stockistId, 300),
       ]);
       setStockist(u ?? null);
-      setInventory(inv);
+
       const names: Record<string, string> = {};
+      const costs: Record<string, number> = {};
       for (const p of products) {
-        if (p.sku) names[p.sku] = p.name || p.sku;
+        if (p.sku) { names[p.sku] = p.name || p.sku; costs[p.sku] = p.costPrice ?? 0; }
       }
-      setProductNames(names);
+
+      // Compute per-product from transactions
+      const perProduct: Record<string, { quantity: number; value: number }> = {};
+
+      const add = (productId: string, qty: number, unitPrice: number, dir: 'in' | 'out') => {
+        if (!perProduct[productId]) perProduct[productId] = { quantity: 0, value: 0 };
+        const sign = dir === 'in' ? 1 : -1;
+        perProduct[productId].quantity += sign * qty;
+        perProduct[productId].value += sign * qty * unitPrice;
+      };
+
+      for (const txn of txns) {
+        if (txn.status === TransactionStatus.CANCELLED) continue;
+        if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
+
+        const isOut = txn.fromUser?.userId === stockistId;
+        const isIn = txn.toUser?.userId === stockistId;
+        if (!isOut && !isIn) continue;
+        const dir: 'in' | 'out' = isOut ? 'out' : 'in';
+
+        if (txn.transactionType === TransactionType.SWAP) {
+          for (const item of txn.items ?? []) {
+            add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, dir);
+          }
+          const swapDir: 'in' | 'out' = dir === 'out' ? 'in' : 'out';
+          for (const item of (txn as any).swapItems ?? []) {
+            add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, swapDir);
+          }
+          continue;
+        }
+
+        for (const item of txn.items ?? []) {
+          let itemDir = dir;
+          if (txn.transactionType === TransactionType.CONVERSION) {
+            itemDir = item.productId === (txn as any).conversionSource?.productId ? 'out' : 'in';
+          }
+          add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, itemDir);
+        }
+      }
+
+      const computed: ComputedRow[] = Object.entries(perProduct)
+        .map(([productId, { quantity, value }]) => ({
+          productId,
+          productName: names[productId] || productId,
+          quantity: Math.max(0, quantity),
+          value: Math.max(0, value),
+        }))
+        .filter((r) => r.quantity > 0)
+        .sort((a, b) => b.quantity - a.quantity);
+
+      // Single running total — matches hierarchy page
+      let runQty = 0;
+      let runVal = 0;
+      for (const { quantity, value } of Object.values(perProduct)) {
+        runQty += quantity;
+        runVal += value;
+      }
+      setRunningTotal({ qty: Math.max(0, runQty), value: Math.max(0, runVal) });
+      setRows(computed);
     } catch (err) {
       console.error(err);
     } finally {
@@ -49,19 +115,14 @@ export default function StockistDetailPage() {
 
   if (role !== UserRole.ADMIN) return null;
 
-  const invItemValue = (i: { quantityOnHand: number; marketValue?: number; cost: number }) =>
-    i.quantityOnHand === 0 ? 0 : (i.marketValue ?? i.cost * i.quantityOnHand);
-  const invValue = inventory.reduce((s, i) => s + invItemValue(i), 0);
-  const totalQuantity = inventory.reduce((s, i) => s + i.quantityOnHand, 0);
+  const totalQty = runningTotal.qty;
+  const totalValue = runningTotal.value;
 
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="space-y-5">
         <div className="flex items-center gap-4">
-          <Link
-            href="/stockists"
-            className="text-txt-subtle hover:text-txt-primary text-sm"
-          >
+          <Link href="/stockists" className="text-txt-subtle hover:text-txt-primary text-sm">
             ← 返回經銷商總覽
           </Link>
         </div>
@@ -104,78 +165,47 @@ export default function StockistDetailPage() {
                 <div className="rounded-lg bg-chip-dark p-4">
                   <p className="text-xs text-gray-300">庫存價值</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
-                    RM {invValue.toFixed(0)}
+                    RM {totalValue.toFixed(0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
                   <p className="text-xs text-gray-300">庫存總數</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
-                    {totalQuantity}
+                    {totalQty}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="glass-panel overflow-hidden">
-                {inventory.length === 0 ? (
-                  <div className="p-12 text-center text-txt-subtle text-sm">尚無庫存</div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-surface-base">
-                        <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">
-                          產品
-                        </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">
-                          現有
-                        </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">
-                          可用
-                        </th>
-                        <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase">
-                          狀態
-                        </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">
-                          價值
-                        </th>
+              {rows.length === 0 ? (
+                <div className="p-12 text-center text-txt-subtle text-sm">尚無庫存</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-surface-base">
+                      <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">產品</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">數量</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">價值</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-muted">
+                    {rows.map((r) => (
+                      <tr key={r.productId} className="hover:bg-surface-2/50">
+                        <td className="px-5 py-3 text-txt-primary">
+                          <span className="font-medium">{r.productName}</span>
+                          <span className="font-mono text-xs text-txt-subtle ml-1">({r.productId})</span>
+                        </td>
+                        <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">{r.quantity}</td>
+                        <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
+                          RM {r.value.toFixed(2)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-muted">
-                      {inventory.map((i) => (
-                        <tr key={i.id} className="hover:bg-surface-2/50">
-                          <td className="px-5 py-3 text-txt-primary">
-                            <span className="font-medium">{productNames[i.productId] || i.productId}</span>
-                            <span className="font-mono text-xs text-txt-subtle ml-1">({i.productId})</span>
-                          </td>
-                          <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
-                            {i.quantityOnHand}
-                          </td>
-                          <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
-                            {i.quantityAvailable}
-                          </td>
-                          <td className="px-5 py-3 text-center whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap shrink-0 ${
-                                i.status === InventoryStatus.IN_STOCK
-                                  ? 'bg-success/10 text-success'
-                                  : i.status === InventoryStatus.LOW_STOCK
-                                    ? 'bg-warning/10 text-warning'
-                                    : 'bg-error/10 text-error'
-                              }`}
-                            >
-                              {i.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-txt-secondary text-right tabular-nums">
-                            RM {invItemValue(i).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </>
         )}
       </div>

@@ -74,50 +74,41 @@ export default function StockistsPage() {
   async function loadUserStats(userId: string): Promise<{ invValue: number; totalQuantity: number }> {
     try {
       const txns = await OrderService.getByUserRelated(userId, 300);
-      // Mirror hierarchy page direction logic exactly
-      const flat: { quantity: number; direction: 'in' | 'out'; date: number; unitPrice: number }[] = [];
+      const flat: { productId: string; quantity: number; direction: 'in' | 'out'; unitPrice: number }[] = [];
       for (const txn of txns) {
-        // Cancelled = no net inventory effect (never executed or already reverted)
         if (txn.status === TransactionStatus.CANCELLED) continue;
-        // Completed loans = net-zero for both parties (inventory already restored via onLoanReturned)
         if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
         const isOut = txn.fromUser?.userId === userId;
         const isIn = txn.toUser?.userId === userId;
         const direction: 'in' | 'out' | null = isOut ? 'out' : isIn ? 'in' : null;
         if (!direction) continue;
         if (txn.transactionType === TransactionType.SWAP) {
-          // A's items: fromUser=out, toUser=in
           for (const item of txn.items ?? []) {
-            flat.push({ quantity: item.quantity, direction: direction as 'in' | 'out', date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+            flat.push({ productId: item.productId, quantity: item.quantity, direction, unitPrice: item.unitPrice ?? 0 });
           }
-          // B's swapItems: toUser=out, fromUser=in
           const swapDir: 'in' | 'out' = direction === 'out' ? 'in' : 'out';
           for (const item of (txn as any).swapItems ?? []) {
-            flat.push({ quantity: item.quantity, direction: swapDir, date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+            flat.push({ productId: item.productId, quantity: item.quantity, direction: swapDir, unitPrice: item.unitPrice ?? 0 });
           }
           continue;
         }
         for (const item of txn.items ?? []) {
           let itemDir = direction;
           if (txn.transactionType === TransactionType.CONVERSION) {
-            itemDir = item.productId === txn.conversionSource?.productId ? 'out' : 'in';
+            itemDir = item.productId === (txn as any).conversionSource?.productId ? 'out' : 'in';
           }
-          flat.push({ quantity: item.quantity, direction: itemDir, date: txn.createdAt ?? 0, unitPrice: item.unitPrice ?? 0 });
+          flat.push({ productId: item.productId, quantity: item.quantity, direction: itemDir, unitPrice: item.unitPrice ?? 0 });
         }
       }
-      flat.sort((a, b) => a.date - b.date);
-      let running = 0;
+      // Single running total — matches hierarchy page (Temp SKU and actual products share the same pool)
+      let totalQuantity = 0;
       let invValue = 0;
       for (const row of flat) {
-        if (row.direction === 'in') {
-          running += row.quantity;
-          invValue += row.quantity * row.unitPrice;
-        } else {
-          running -= row.quantity;
-          invValue -= row.quantity * row.unitPrice;
-        }
+        const sign = row.direction === 'in' ? 1 : -1;
+        totalQuantity += sign * row.quantity;
+        invValue += sign * row.quantity * row.unitPrice;
       }
-      return { invValue: Math.max(0, invValue), totalQuantity: Math.max(0, running) };
+      return { invValue: Math.max(0, invValue), totalQuantity: Math.max(0, totalQuantity) };
     } catch {
       return { invValue: 0, totalQuantity: 0 };
     }

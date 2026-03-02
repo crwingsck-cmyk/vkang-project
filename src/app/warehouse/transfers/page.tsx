@@ -282,7 +282,54 @@ export default function TransfersPage() {
   }
 
   async function handleApprove(transfer: Transaction) {
-    // 先驗證來源庫存是否足夠
+    // 交易記錄本位庫存核驗（每個商品獨立計算，避免 Temp SKU 掩蓋問題）
+    if (transfer.fromUser?.userId) {
+      try {
+        const fromId = transfer.fromUser.userId;
+        const txns = await OrderService.getByUserRelated(fromId, 300);
+        const perProduct: Record<string, number> = {};
+        for (const txn of txns) {
+          if (txn.status === TransactionStatus.CANCELLED) continue;
+          if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
+          const isOut = txn.fromUser?.userId === fromId;
+          const isIn = txn.toUser?.userId === fromId;
+          if (!isOut && !isIn) continue;
+          const dir: 'in' | 'out' = isOut ? 'out' : 'in';
+          if (txn.transactionType === TransactionType.SWAP) {
+            for (const item of txn.items ?? []) {
+              perProduct[item.productId] = (perProduct[item.productId] ?? 0) + (dir === 'in' ? item.quantity : -item.quantity);
+            }
+            const swapDir: 'in' | 'out' = dir === 'out' ? 'in' : 'out';
+            for (const item of (txn as any).swapItems ?? []) {
+              perProduct[item.productId] = (perProduct[item.productId] ?? 0) + (swapDir === 'in' ? item.quantity : -item.quantity);
+            }
+            continue;
+          }
+          for (const item of txn.items ?? []) {
+            let itemDir = dir;
+            if (txn.transactionType === TransactionType.CONVERSION) {
+              itemDir = item.productId === (txn as any).conversionSource?.productId ? 'out' : 'in';
+            }
+            perProduct[item.productId] = (perProduct[item.productId] ?? 0) + (itemDir === 'in' ? item.quantity : -item.quantity);
+          }
+        }
+        const insufficient: string[] = [];
+        for (const item of transfer.items) {
+          const have = perProduct[item.productId] ?? 0;
+          if (have < item.quantity) {
+            insufficient.push(`${item.productName}：庫存 ${Math.max(0, have)}，需要 ${item.quantity}`);
+          }
+        }
+        if (insufficient.length > 0) {
+          toast.error(`無法批准：${transfer.fromUser.userName} 庫存不足\n${insufficient.join('\n')}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Transaction stock check error:', err);
+      }
+    }
+
+    // 庫存 collection 核驗（硬性攔截）
     if (transfer.fromUser?.userId) {
       try {
         const { ok: hasStock, insufficient } = await InventorySyncService.validateSaleInventory(
@@ -306,7 +353,6 @@ export default function TransfersPage() {
     const ok = await toast.confirm('Approve this transfer? Inventory will be moved.');
     if (!ok) return;
     try {
-      await OrderService.updateStatus(transfer.id!, TransactionStatus.COMPLETED);
       if (transfer.fromUser?.userId && transfer.toUser?.userId) {
         await InventorySyncService.onTransferCompleted(
           transfer.fromUser.userId,
@@ -351,20 +397,38 @@ export default function TransfersPage() {
           status: ReceivableStatus.OUTSTANDING,
         });
       }
+      await OrderService.updateStatus(transfer.id!, TransactionStatus.COMPLETED);
       toast.success('Transfer approved. Inventory updated.');
-      await loadTransfers();
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || 'Failed to approve transfer.');
+    } finally {
+      await loadTransfers();
+    }
+  }
+
+  async function handleDelete(transfer: Transaction) {
+    const ok = await toast.confirm(`Delete this dispatch record? This only removes the record — inventory is NOT reversed.`);
+    if (!ok) return;
+    try {
+      await OrderService.delete(transfer.id!);
+      toast.success('Record deleted.');
+      await loadTransfers();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete record.');
     }
   }
 
   async function handleRevert(transfer: Transaction) {
-    const ok = await toast.confirm(`Revert this dispatch? Inventory will be moved back from ${transfer.toUser?.userName} to ${transfer.fromUser?.userName}.`);
+    const isCompleted = transfer.status === TransactionStatus.COMPLETED;
+    const msg = isCompleted
+      ? `Revert this dispatch? Inventory will be moved back from ${transfer.toUser?.userName} to ${transfer.fromUser?.userName}.`
+      : `Cancel this pending dispatch? No inventory will be moved.`;
+    const ok = await toast.confirm(msg);
     if (!ok) return;
     try {
-      // Reverse inventory: swap from/to
-      if (transfer.fromUser?.userId && transfer.toUser?.userId) {
+      if (isCompleted && transfer.fromUser?.userId && transfer.toUser?.userId) {
         await InventorySyncService.onTransferCompleted(
           transfer.toUser.userId,
           transfer.fromUser.userId,
@@ -373,7 +437,7 @@ export default function TransfersPage() {
         );
       }
       await OrderService.updateStatus(transfer.id!, TransactionStatus.CANCELLED);
-      toast.success('Dispatch reverted. Inventory restored.');
+      toast.success(isCompleted ? 'Dispatch reverted. Inventory restored.' : 'Dispatch cancelled.');
       await loadTransfers();
     } catch (err) {
       console.error(err);
@@ -473,22 +537,30 @@ export default function TransfersPage() {
                     </td>
                     {role === UserRole.ADMIN && (
                       <td className="px-6 py-4 text-center">
-                        {t.status === TransactionStatus.PENDING && (
+                        <div className="flex items-center justify-center gap-2">
+                          {t.status === TransactionStatus.PENDING && (
+                            <button
+                              onClick={() => handleApprove(t)}
+                              className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {(t.status === TransactionStatus.PENDING || t.status === TransactionStatus.COMPLETED) && (
+                            <button
+                              onClick={() => handleRevert(t)}
+                              className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
+                            >
+                              Revert
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleApprove(t)}
-                            className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded"
+                            onClick={() => handleDelete(t)}
+                            className="px-3 py-1 text-xs bg-red-800 hover:bg-red-700 text-white rounded"
                           >
-                            Approve
+                            Del
                           </button>
-                        )}
-                        {t.status === TransactionStatus.COMPLETED && (
-                          <button
-                            onClick={() => handleRevert(t)}
-                            className="px-3 py-1 text-xs bg-orange-700 hover:bg-orange-600 text-white rounded"
-                          >
-                            Revert
-                          </button>
-                        )}
+                        </div>
                       </td>
                     )}
                   </tr>
