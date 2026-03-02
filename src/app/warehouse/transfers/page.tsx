@@ -7,6 +7,9 @@ import { OrderService } from '@/services/database/orders';
 import { ProductService } from '@/services/database/products';
 import { UserService } from '@/services/database/users';
 import { InventorySyncService } from '@/services/database/inventorySync';
+import { DeliveryNoteService } from '@/services/database/deliveryNotes';
+import { ReceivableService } from '@/services/database/receivables';
+import { generateDocumentNumber } from '@/lib/documentNumber';
 import { useToast } from '@/context/ToastContext';
 import {
   Transaction,
@@ -17,6 +20,8 @@ import {
   TransactionItem,
   Product,
   User,
+  DeliveryNoteStatus,
+  ReceivableStatus,
 } from '@/types/models';
 import Link from 'next/link';
 
@@ -279,15 +284,21 @@ export default function TransfersPage() {
   async function handleApprove(transfer: Transaction) {
     // 先驗證來源庫存是否足夠
     if (transfer.fromUser?.userId) {
-      const { ok: hasStock, insufficient } = await InventorySyncService.validateSaleInventory(
-        transfer.fromUser.userId,
-        transfer.items
-      );
-      if (!hasStock) {
-        const lines = insufficient
-          .map((i) => `• ${i.productName}：需要 ${i.need}，庫存僅 ${i.have}`)
-          .join('\n');
-        toast.error(`${transfer.fromUser.userName} 庫存不足，無法批准：\n${lines}`);
+      try {
+        const { ok: hasStock, insufficient } = await InventorySyncService.validateSaleInventory(
+          transfer.fromUser.userId,
+          transfer.items
+        );
+        if (!hasStock) {
+          const lines = insufficient
+            .map((i) => `${i.productName}：需要 ${i.need}，庫存僅 ${i.have}`)
+            .join('；');
+          toast.error(`${transfer.fromUser.userName} 庫存不足：${lines}`);
+          return;
+        }
+      } catch (err: any) {
+        console.error('validateSaleInventory error:', err);
+        toast.error(err?.message || '驗證庫存時發生錯誤，請重試。');
         return;
       }
     }
@@ -303,6 +314,42 @@ export default function TransfersPage() {
           transfer.items,
           transfer.id!
         );
+
+        // 建立發貨單（直接設為倉庫已批准，因庫存已移動）
+        const existingDNNos = await DeliveryNoteService.getAllDeliveryNos();
+        const deliveryNo = generateDocumentNumber('DN', existingDNNos);
+        const grandTotal = transfer.totals.grandTotal;
+        const dn = await DeliveryNoteService.create({
+          deliveryNo,
+          salesOrderId: transfer.id!,
+          salesOrderNo: '',
+          status: DeliveryNoteStatus.WAREHOUSE_APPROVED,
+          fromUserId: transfer.fromUser.userId,
+          fromUserName: transfer.fromUser.userName,
+          toUserId: transfer.toUser.userId,
+          toUserName: transfer.toUser.userName,
+          items: transfer.items,
+          totals: { grandTotal },
+          warehouseApprovedBy: user?.id,
+          warehouseApprovedAt: Date.now(),
+          notes: transfer.description,
+          createdBy: user?.id,
+        });
+
+        // 建立應收款
+        await ReceivableService.create({
+          deliveryNoteId: dn.id!,
+          deliveryNoteNo: deliveryNo,
+          salesOrderId: '',
+          salesOrderNo: '',
+          customerId: transfer.toUser.userId,
+          customerName: transfer.toUser.userName,
+          fromUserId: transfer.fromUser.userId,
+          totalAmount: grandTotal,
+          paidAmount: 0,
+          remainingAmount: grandTotal,
+          status: ReceivableStatus.OUTSTANDING,
+        });
       }
       toast.success('Transfer approved. Inventory updated.');
       await loadTransfers();

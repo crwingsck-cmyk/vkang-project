@@ -6,7 +6,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType } from '@/types/models';
+import { InventoryService } from '@/services/database/inventory';
+import { User, UserRole, TransactionType, TransactionStatus, DeliveryNoteStatus } from '@/types/models';
 import Link from 'next/link';
 
 const CUSTOMER_COLORS = [
@@ -38,7 +39,7 @@ function UserCard({
   badge?: string;
 }) {
   const isCustomer = user.role === UserRole.CUSTOMER;
-  const qtyLabel = isCustomer ? '購買數量' : '自用數量';
+  const qtyLabel = isCustomer ? '購買數量' : '持有數量';
 
   return (
     <Link
@@ -122,14 +123,14 @@ export default function CustomersPage() {
   async function load() {
     setLoading(true);
     try {
-      const [customerList, stockistList, adminList, allDNs, allSaleTxns, allTransferTxns, allAdjTxns] = await Promise.all([
+      const [customerList, stockistList, adminList, allDNs, allSaleTxns, allTransferTxns, allInventory] = await Promise.all([
         UserService.getByRole(UserRole.CUSTOMER),
         UserService.getStockists(),
         UserService.getAdmins(),
         DeliveryNoteService.getAll(500).catch(() => [] as Awaited<ReturnType<typeof DeliveryNoteService.getAll>>),
         OrderService.getByType(TransactionType.SALE, 1000).catch(() => []),
         OrderService.getByType(TransactionType.TRANSFER, 1000).catch(() => []),
-        OrderService.getByType(TransactionType.ADJUSTMENT, 1000).catch(() => []),
+        InventoryService.getAll(1000).catch(() => []),
       ]);
 
       setCustomers(customerList);
@@ -137,27 +138,38 @@ export default function CustomersPage() {
       setAdmins(adminList);
 
       const customerIds = new Set(customerList.map((u) => u.id!));
+      const nonCustomerIds = new Set([...stockistList, ...adminList].map((u) => u.id!));
       const bqMap: Record<string, number> = {};
 
+      // 調撥交易已建立 DN 的 transfer ID 集合（避免重複計算）
+      const transferIdsWithDN = new Set(
+        allDNs
+          .filter((dn) => dn.status !== DeliveryNoteStatus.CANCELLED && dn.salesOrderId)
+          .map((dn) => dn.salesOrderId)
+      );
+
+      // 顧客：購買數量來自發貨單（非取消）+ 已完成的銷售/調撥交易
       for (const dn of allDNs) {
         if (!dn.toUserId || !customerIds.has(dn.toUserId)) continue;
+        if (dn.status === DeliveryNoteStatus.CANCELLED) continue;
         const qty = (dn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
         bqMap[dn.toUserId] = (bqMap[dn.toUserId] ?? 0) + qty;
       }
       for (const txn of [...allSaleTxns, ...allTransferTxns]) {
         const uid = txn.toUser?.userId;
         if (!uid || !customerIds.has(uid)) continue;
+        if (txn.status !== TransactionStatus.COMPLETED) continue;
+        // 若此交易已建立對應 DN，跳過（避免重複計算）
+        if (txn.id && transferIdsWithDN.has(txn.id)) continue;
         const qty = (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
         bqMap[uid] = (bqMap[uid] ?? 0) + qty;
       }
 
-      for (const txn of allAdjTxns) {
-        const uid = txn.fromUser?.userId;
-        if (!uid) continue;
-        if (txn.description !== '自用') continue;
-        if (txn.fromUser?.userId !== txn.toUser?.userId) continue;
-        const qty = (txn.items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0);
-        bqMap[uid] = (bqMap[uid] ?? 0) + qty;
+      // 經銷商 / 總經銷商：自用數量來自庫存表（當前持有量）
+      for (const inv of allInventory) {
+        if (!inv.userId || !nonCustomerIds.has(inv.userId)) continue;
+        const qty = inv.quantityOnHand ?? 0;
+        bqMap[inv.userId] = (bqMap[inv.userId] ?? 0) + qty;
       }
 
       setBuyQtyMap(bqMap);
@@ -175,7 +187,7 @@ export default function CustomersPage() {
       <div className="space-y-5">
         <div>
           <h1 className="text-xl font-bold text-txt-primary tracking-tight">用戶購買總覽</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">顧客購買數量來自發貨單；經銷商自用數量來自庫存表</p>
+          <p className="text-sm text-txt-subtle mt-0.5">顧客購買數量來自已完成發貨單；經銷商持有數量來自庫存表</p>
         </div>
 
         {loading ? (
