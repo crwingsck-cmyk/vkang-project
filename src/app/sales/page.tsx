@@ -262,7 +262,7 @@ export default function SalesPage() {
                   <tr key={so.id} className="hover:bg-surface-2/50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-accent-text">{so.orderNo}</td>
                     <td className="px-4 py-3 text-txt-subtle">
-                      {so.createdAt ? new Date(so.createdAt).toLocaleDateString('zh-TW') : '—'}
+                      {so.createdAt ? new Date(so.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td className="px-4 py-3 text-txt-primary">{so.customerName}</td>
                     <td className="px-4 py-3 text-right text-txt-secondary">{so.items.length}</td>

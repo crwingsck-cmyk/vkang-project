@@ -45,6 +45,10 @@ export const ReceivableService = {
     );
   },
 
+  async update(id: string, updates: Partial<Receivable>): Promise<void> {
+    await FirestoreService.update<Receivable>(COLLECTION, id, updates);
+  },
+
   async delete(id: string): Promise<void> {
     await FirestoreService.delete(COLLECTION, id);
   },

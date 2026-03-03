@@ -272,7 +272,7 @@ export default function DeliveriesPage() {
                     <td className="px-4 py-3 font-mono text-xs text-accent-text">{dn.deliveryNo}</td>
                     <td className="px-4 py-3 font-mono text-xs text-txt-subtle">{dn.salesOrderNo}</td>
                     <td className="px-4 py-3 text-txt-subtle">
-                      {dn.createdAt ? new Date(dn.createdAt).toLocaleDateString('zh-TW') : '—'}
+                      {dn.createdAt ? new Date(dn.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td className="px-4 py-3 text-txt-primary">{dn.toUserName}</td>
                     <td className="px-4 py-3 text-right text-txt-secondary">{dn.items.length}</td>

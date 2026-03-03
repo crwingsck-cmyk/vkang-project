@@ -198,6 +198,7 @@ export interface Inventory {
   status: InventoryStatus;
   lastMovementDate: number;
   movements?: InventoryMovement[];
+  openingStockQty?: number;
   createdAt?: number;
   updatedAt?: number;
 }

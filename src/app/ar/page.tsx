@@ -195,7 +195,7 @@ export default function ARPage() {
                       </Link>
                     </td>
                     <td className="px-5 py-3.5 text-gray-600 text-xs">
-                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-MY') : '—'}
+                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-right tabular-nums font-bold text-gray-900">
                       RM {r.totalAmount.toFixed(2)}

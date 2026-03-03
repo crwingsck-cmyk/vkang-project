@@ -431,14 +431,14 @@ export default function LoansPage() {
                   return (
                     <tr key={loan.id} className="hover:bg-gray-700/50">
                       <td className="px-6 py-4 text-sm text-gray-400">
-                        {loan.createdAt ? new Date(loan.createdAt).toLocaleDateString() : '-'}
+                        {loan.createdAt ? new Date(loan.createdAt).toLocaleDateString('en-GB') : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-300">{loan.fromUser?.userName || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-300">{loan.toUser?.userName || '-'}</td>
                       <td className="px-6 py-4 text-sm">
                         {loan.loanDetails?.returnDueDate ? (
                           <span className={isOverdue ? 'text-red-400 font-medium' : 'text-gray-400'}>
-                            {new Date(loan.loanDetails.returnDueDate).toLocaleDateString()}
+                            {new Date(loan.loanDetails.returnDueDate).toLocaleDateString('en-GB')}
                             {isOverdue && ' (Overdue)'}
                           </span>
                         ) : '-'}

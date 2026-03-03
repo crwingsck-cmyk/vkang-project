@@ -476,7 +476,7 @@ export default function TransfersPage() {
                 {transfers.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-700/50">
                     <td className="px-6 py-4 text-sm text-gray-400">
-                      {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '-'}
+                      {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">{t.fromUser?.userName || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-300">{t.toUser?.userName || '-'}</td>

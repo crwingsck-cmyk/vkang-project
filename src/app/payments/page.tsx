@@ -291,7 +291,7 @@ export default function PaymentsPage() {
                   <tr key={pr.id} className="hover:bg-surface-2/50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-accent-text">{pr.receiptNo}</td>
                     <td className="px-4 py-3 text-txt-subtle">
-                      {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('zh-TW') : '—'}
+                      {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td className="px-4 py-3 text-txt-primary">{pr.customerName}</td>
                     <td className="px-4 py-3 text-xs text-txt-subtle">

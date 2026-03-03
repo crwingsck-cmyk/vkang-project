@@ -411,7 +411,7 @@ export default function SwapPage() {
                 {swaps.map((s) => (
                   <tr key={s.id} className="hover:bg-gray-700/50">
                     <td className="px-6 py-4 text-sm text-gray-400">
-                      {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}
+                      {s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-GB') : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">{s.fromUser?.userName || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-300">

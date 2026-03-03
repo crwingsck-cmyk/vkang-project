@@ -151,6 +151,7 @@ export default function StockSetupPage() {
         marketValue: qty * cost,
         status,
         lastMovementDate: now,
+        openingStockQty: qty,
         movements: [{ date: now, type: 'adjustment', quantity: qty, reference: 'OPENING STOCK' }],
       });
     }

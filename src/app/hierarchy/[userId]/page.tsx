@@ -11,9 +11,10 @@ import { ProductService } from '@/services/database/products';
 import { InventorySyncService } from '@/services/database/inventorySync';
 import { InventoryService } from '@/services/database/inventory';
 import { InventoryReconcileService } from '@/services/database/inventoryReconcile';
-import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem, ReceivableStatus } from '@/types/models';
+import { UserRole, Transaction, TransactionType, TransactionStatus, TransactionItem, ReceivableStatus, DeliveryNoteStatus } from '@/types/models';
 import { generateDocumentNumber } from '@/lib/documentNumber';
 import { ReceivableService } from '@/services/database/receivables';
+import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 
 type RowKind = 'order' | 'shipment';
 
@@ -45,6 +46,7 @@ export default function StockLedgerPage() {
   const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole; phoneNumber?: string; company?: string; city?: string } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
   const [firestoreInv, setFirestoreInv] = useState<{ productId: string; productName: string; quantity: number }[]>([]);
+  const [openingStockByProduct, setOpeningStockByProduct] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editTransactionId, setEditTransactionId] = useState<string | null>(null);
@@ -53,6 +55,8 @@ export default function StockLedgerPage() {
   const [addError, setAddError] = useState('');
   const [reconciling, setReconciling] = useState(false);
   const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) load();
@@ -80,6 +84,13 @@ export default function StockLedgerPage() {
           }))
           .sort((a, b) => b.quantity - a.quantity)
       );
+      // 提取每產品的 Opening Stock 數量（直接從 openingStockQty 欄位讀取）
+      const osMap: Record<string, number> = {};
+      for (const inv of invList) {
+        const osQty = inv.openingStockQty ?? 0;
+        if (osQty > 0) osMap[inv.productId] = osQty;
+      }
+      setOpeningStockByProduct(osMap);
       let upstreamDisplayName = '';
       let grandUpstreamDisplayName = '';
       if (u?.parentUserId) {
@@ -190,6 +201,67 @@ export default function StockLedgerPage() {
     }
   }
 
+  async function handleBackfillDNs() {
+    setBackfilling(true);
+    setBackfillMsg(null);
+    try {
+      // 取得此用戶已有的 DN（以 salesOrderId 存的 txnId 為鍵）
+      const existingDNs = await DeliveryNoteService.getByFromUser(userId, 500);
+      const txnIdsWithDN = new Set(existingDNs.map((dn) => dn.salesOrderId).filter(Boolean));
+
+      // 取得所有交易，篩出「發貨給下線」的 TRANSFER 及「自用」的 ADJUSTMENT（未取消、且尚未有 DN）
+      const txns = await OrderService.getByUserRelated(userId, 500);
+      const missing = txns.filter((t) => {
+        const txn = t as Transaction & { id: string };
+        if (txn.status === TransactionStatus.CANCELLED) return false;
+        if (txnIdsWithDN.has(txn.id)) return false;
+        // 發貨給下線
+        if (txn.transactionType === TransactionType.TRANSFER && txn.fromUser?.userId === userId) return true;
+        // 自用（fromUser 與 toUser 皆為自己）
+        if (
+          txn.transactionType === TransactionType.ADJUSTMENT &&
+          txn.fromUser?.userId === userId &&
+          txn.toUser?.userId === userId
+        ) return true;
+        return false;
+      }) as (Transaction & { id: string })[];
+
+      if (missing.length === 0) {
+        setBackfillMsg('✅ 所有發貨記錄已有對應 DN，無需補建');
+        return;
+      }
+
+      // 取得現有 DN 號碼，依序生成不衝突的新號碼
+      const existingDNNos = await DeliveryNoteService.getAllDeliveryNos();
+      const allDNNos = [...existingDNNos];
+
+      for (const txn of missing) {
+        const dnNo = generateDocumentNumber('DN', allDNNos);
+        allDNNos.push(dnNo);
+        await DeliveryNoteService.create({
+          deliveryNo: dnNo,
+          salesOrderId: txn.id,
+          salesOrderNo: txn.poNumber ?? txn.id,
+          status: DeliveryNoteStatus.WAREHOUSE_APPROVED,
+          fromUserId: userId,
+          fromUserName: user?.displayName ?? '',
+          toUserId: txn.toUser?.userId ?? '',
+          toUserName: txn.toUser?.userName ?? '',
+          items: txn.items ?? [],
+          totals: { grandTotal: txn.totals?.grandTotal ?? 0 },
+          warehouseApprovedBy: 'admin',
+          warehouseApprovedAt: txn.createdAt ?? Date.now(),
+        });
+      }
+
+      setBackfillMsg(`✅ 已補建 ${missing.length} 張 DN`);
+    } catch (err) {
+      setBackfillMsg(`❌ 錯誤：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
   async function handleDeleteConfirm() {
     if (!deleteTransactionId) return;
     setDeleting(true);
@@ -246,6 +318,14 @@ export default function StockLedgerPage() {
           <div className="flex flex-wrap gap-2 justify-end">
             <button
               type="button"
+              onClick={handleBackfillDNs}
+              disabled={backfilling}
+              className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
+            >
+              {backfilling ? '補建中...' : '補建 DN'}
+            </button>
+            <button
+              type="button"
               onClick={handleReconcile}
               disabled={reconciling}
               className="px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
@@ -281,6 +361,16 @@ export default function StockLedgerPage() {
               : 'bg-red-100 border border-red-400 text-red-900'
           }`}>
             {reconcileMsg}
+          </div>
+        )}
+
+        {backfillMsg && (
+          <div className={`px-4 py-2 rounded-lg text-sm ${
+            backfillMsg.startsWith('✅')
+              ? 'bg-green-100 border border-green-400 text-green-900'
+              : 'bg-red-100 border border-red-400 text-red-900'
+          }`}>
+            {backfillMsg}
           </div>
         )}
 
@@ -404,7 +494,7 @@ export default function StockLedgerPage() {
                         <>
                           <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'order' && row.date
-                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              ? new Date(row.date).toLocaleDateString('en-GB')
                               : ''}
                           </td>
                           <td className="px-1.5 py-1 text-right tabular-nums font-medium text-xs">
@@ -421,7 +511,7 @@ export default function StockLedgerPage() {
                         <>
                           <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'order' && row.date
-                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              ? new Date(row.date).toLocaleDateString('en-GB')
                               : ''}
                           </td>
                           <td className="px-1.5 py-1 text-right tabular-nums font-medium text-xs">
@@ -435,7 +525,7 @@ export default function StockLedgerPage() {
                           </td>
                           <td className="px-1.5 py-1 text-txt-secondary tabular-nums whitespace-nowrap text-xs">
                             {row.kind === 'shipment' && row.date
-                              ? new Date(row.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                              ? new Date(row.date).toLocaleDateString('en-GB')
                               : ''}
                           </td>
                           <td className="px-1.5 py-1 text-right tabular-nums font-medium bg-emerald-50/20 dark:bg-emerald-950/20 text-xs">
@@ -551,20 +641,36 @@ export default function StockLedgerPage() {
             if (!selfUse[row.productId]) selfUse[row.productId] = { productName: row.productName, quantity: 0 };
             selfUse[row.productId].quantity += row.quantity;
           }
+          const hasOpeningStock = Object.keys(openingStockByProduct).length > 0;
           const selfUseList = Object.entries(selfUse)
-            .map(([productId, { productName, quantity }]) => ({ productId, productName, quantity }))
-            .sort((a, b) => b.quantity - a.quantity);
+            .map(([productId, { productName, quantity }]) => {
+              const os = openingStockByProduct[productId] ?? 0;
+              const net = Math.max(0, quantity - os);
+              return { productId, productName, quantity, os, net };
+            })
+            .sort((a, b) => b.net - a.net);
+          const totalNet = selfUseList.reduce((s, r) => s + r.net, 0);
           return (
             <div className="glass-panel overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-surface-base">
                 <h3 className="text-lg font-semibold text-txt-primary">自用彙總</h3>
-                <p className="text-sm text-txt-subtle mt-0.5">自用出庫的產品及累計數量</p>
+                <p className="text-sm text-txt-subtle mt-0.5">
+                  {hasOpeningStock ? '自用出庫扣除 Opening Stock 後的淨消耗數量' : '自用出庫的產品及累計數量'}
+                </p>
               </div>
               <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border bg-surface-base">
                     <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
-                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">自用數量</th>
+                    {hasOpeningStock && (
+                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">自用出庫</th>
+                    )}
+                    {hasOpeningStock && (
+                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Opening Stock</th>
+                    )}
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">
+                      {hasOpeningStock ? '淨自用' : '自用數量'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-muted">
@@ -574,18 +680,28 @@ export default function StockLedgerPage() {
                         <span className="text-base font-medium">{r.productName}</span>
                         <span className="text-sm text-txt-subtle ml-1 font-mono">({r.productId})</span>
                       </td>
+                      {hasOpeningStock && (
+                        <td className="px-4 py-3 text-right text-txt-subtle tabular-nums">{r.quantity}</td>
+                      )}
+                      {hasOpeningStock && (
+                        <td className="px-4 py-3 text-right text-txt-subtle tabular-nums">
+                          {r.os > 0 ? `−${r.os}` : '—'}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         <span className="inline-block px-3 py-1 rounded-full bg-teal-100 text-teal-800 font-bold text-base tabular-nums">
-                          {r.quantity}
+                          {hasOpeningStock ? r.net : r.quantity}
                         </span>
                       </td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-surface-2/40">
                     <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    {hasOpeningStock && <td className="px-4 py-3" />}
+                    {hasOpeningStock && <td className="px-4 py-3" />}
                     <td className="px-4 py-3 text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold text-base tabular-nums">
-                        {selfUseList.reduce((s, r) => s + r.quantity, 0)}
+                        {hasOpeningStock ? totalNet : selfUseList.reduce((s, r) => s + r.quantity, 0)}
                       </span>
                     </td>
                   </tr>
@@ -861,23 +977,43 @@ function AddMovementModal({
           : { userId: form.downlineId, userName: form.downlineName };
 
         if (form.downlineId === userId) {
-          const txnResult = await OrderService.create(
-            {
-              transactionType: TransactionType.ADJUSTMENT,
-              status: TransactionStatus.COMPLETED,
-              description: '自用',
-              fromUser,
-              toUser,
-              items,
-              totals: { subtotal: items[0].total, grandTotal: items[0].total },
-              poNumber: refId,
-            },
-            { createdAt: dateMs }
-          );
+          // 並行：建立交易 + 取得現有 DN 號碼
+          const [txnResult, existingDNNos] = await Promise.all([
+            OrderService.create(
+              {
+                transactionType: TransactionType.ADJUSTMENT,
+                status: TransactionStatus.COMPLETED,
+                description: '自用',
+                fromUser,
+                toUser,
+                items,
+                totals: { subtotal: items[0].total, grandTotal: items[0].total },
+                poNumber: refId,
+              },
+              { createdAt: dateMs }
+            ),
+            DeliveryNoteService.getAllDeliveryNos(),
+          ]);
           const txnId = (txnResult as { id: string }).id ?? refId;
+          const dnNo = generateDocumentNumber('DN', existingDNNos);
+
+          const dnPromise = DeliveryNoteService.create({
+            deliveryNo: dnNo,
+            salesOrderId: txnId,
+            salesOrderNo: refId,
+            status: DeliveryNoteStatus.WAREHOUSE_APPROVED,
+            fromUserId: userId,
+            fromUserName: userName,
+            toUserId: userId,
+            toUserName: `${userName} (自用)`,
+            items,
+            totals: { grandTotal: items[0].total },
+            warehouseApprovedBy: 'admin',
+            warehouseApprovedAt: dateMs,
+          });
           const arSelfUse = items[0].total > 0 && form.upstreamId && form.upstreamId !== 'TW'
             ? ReceivableService.create({
-                deliveryNoteId: txnId, deliveryNoteNo: refId,
+                deliveryNoteId: txnId, deliveryNoteNo: dnNo,
                 salesOrderId: '', salesOrderNo: '',
                 customerId: userId, customerName: userName,
                 fromUserId: form.upstreamId,
@@ -885,33 +1021,54 @@ function AddMovementModal({
                 remainingAmount: items[0].total, status: ReceivableStatus.OUTSTANDING,
               })
             : Promise.resolve();
-          await Promise.all([InventorySyncService.onAdjustment(userId, null, items, refId), arSelfUse]);
+          await Promise.all([InventorySyncService.onAdjustment(userId, null, items, refId), dnPromise, arSelfUse]);
         } else {
-          const txnResult = await OrderService.create(
-            {
-              transactionType: TransactionType.TRANSFER,
-              status: TransactionStatus.COMPLETED,
-              description: '發貨給下線',
-              fromUser,
-              toUser,
-              items,
-              totals: { subtotal: items[0].total, grandTotal: items[0].total },
-              poNumber: refId,
-            },
-            { createdAt: dateMs }
-          );
+          // 並行：建立交易 + 取得現有 DN 號碼（用於生成新 DN 號）
+          const [txnResult, existingDNNos] = await Promise.all([
+            OrderService.create(
+              {
+                transactionType: TransactionType.TRANSFER,
+                status: TransactionStatus.COMPLETED,
+                description: '發貨給下線',
+                fromUser,
+                toUser,
+                items,
+                totals: { subtotal: items[0].total, grandTotal: items[0].total },
+                poNumber: refId,
+              },
+              { createdAt: dateMs }
+            ),
+            DeliveryNoteService.getAllDeliveryNos(),
+          ]);
           const txnId = (txnResult as { id: string }).id ?? refId;
+          const dnNo = generateDocumentNumber('DN', existingDNNos);
+
+          // 並行：建立 DeliveryNote（自動標為已出庫）+ 建立應收款 + 同步庫存
+          const dnPromise = DeliveryNoteService.create({
+            deliveryNo: dnNo,
+            salesOrderId: txnId,   // 存交易 ID 供日後反查
+            salesOrderNo: refId,
+            status: DeliveryNoteStatus.WAREHOUSE_APPROVED,
+            fromUserId: userId,
+            fromUserName: userName,
+            toUserId: form.downlineId,
+            toUserName: form.downlineName,
+            items,
+            totals: { grandTotal: items[0].total },
+            warehouseApprovedBy: 'admin',
+            warehouseApprovedAt: dateMs,
+          });
           const arTransfer = items[0].total > 0
             ? ReceivableService.create({
-                deliveryNoteId: txnId, deliveryNoteNo: refId,
-                salesOrderId: '', salesOrderNo: '',
+                deliveryNoteId: txnId, deliveryNoteNo: dnNo,
+                salesOrderId: '', salesOrderNo: refId,
                 customerId: form.downlineId, customerName: form.downlineName,
                 fromUserId: userId,
                 totalAmount: items[0].total, paidAmount: 0,
                 remainingAmount: items[0].total, status: ReceivableStatus.OUTSTANDING,
               })
             : Promise.resolve();
-          await Promise.all([InventorySyncService.onTransferCompleted(userId, form.downlineId, items, refId), arTransfer]);
+          await Promise.all([InventorySyncService.onTransferCompleted(userId, form.downlineId, items, refId), dnPromise, arTransfer]);
         }
       }
       onDone();

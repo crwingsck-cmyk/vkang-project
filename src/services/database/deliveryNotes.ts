@@ -42,6 +42,13 @@ export const DeliveryNoteService = {
     ]);
   },
 
+  async getByFromUser(fromUserId: string, pageLimit = 500): Promise<DeliveryNote[]> {
+    return FirestoreService.query<DeliveryNote>(COLLECTION, [
+      where('fromUserId', '==', fromUserId),
+      limit(pageLimit),
+    ]);
+  },
+
   /**
    * 倉庫審核：PENDING → WAREHOUSE_APPROVED，同時扣減賣方庫存、增加買方庫存
    */

@@ -515,7 +515,7 @@ export default function ProductConversionPage() {
                         {record.poNumber || record.id}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">
-                        {record.createdAt ? new Date(record.createdAt).toLocaleDateString('zh-TW') : '-'}
+                        {record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-GB') : '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-200 font-medium whitespace-nowrap">
                         {record.ownerName || '-'}

@@ -322,7 +322,7 @@ export default function FinancialsPage() {
                 {records.map((record) => (
                   <tr key={record.id} className="hover:bg-surface-2/50 transition-colors">
                     <td className="px-5 py-3.5 text-xs text-txt-subtle">
-                      {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '-'}
+                      {record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-GB') : '-'}
                     </td>
                     <td className="px-5 py-3.5 text-xs">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${typeBadge[record.type]}`}>
