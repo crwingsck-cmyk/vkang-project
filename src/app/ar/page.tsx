@@ -66,6 +66,8 @@ export default function ARPage() {
     .filter((r) => r.status !== ReceivableStatus.PAID)
     .reduce((s, r) => s + r.remainingAmount, 0);
   const countOutstanding = receivables.filter((r) => r.status === ReceivableStatus.OUTSTANDING).length;
+  const countPartial = receivables.filter((r) => r.status === ReceivableStatus.PARTIAL_PAID).length;
+  const countPaid = receivables.filter((r) => r.status === ReceivableStatus.PAID).length;
   const amountPartial = receivables
     .filter((r) => r.status === ReceivableStatus.PARTIAL_PAID)
     .reduce((s, r) => s + r.remainingAmount, 0);
