@@ -23,7 +23,7 @@ const dnStatusLabel: Record<DeliveryNoteStatus, string> = {
 };
 const dnStatusColor: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
-  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-100 text-blue-700',
+  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-800 text-white',
   [DeliveryNoteStatus.DELIVERED]: 'bg-green-100 text-green-700',
   [DeliveryNoteStatus.CANCELLED]: 'bg-gray-100 text-gray-500',
 };
@@ -253,30 +253,30 @@ export default function CustomerFinancialPage() {
               {dns.length === 0 ? (
                 <EmptyRow text="暫無發貨記錄" />
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full text-base">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-sm uppercase tracking-wide">
                       <th className="px-4 py-3 text-left">DN No.</th>
                       <th className="px-4 py-3 text-left">Sales Order</th>
                       <th className="px-4 py-3 text-left">來源</th>
                       <th className="px-4 py-3 text-left">日期</th>
                       <th className="px-4 py-3 text-right">金額</th>
                       <th className="px-4 py-3 text-center">狀態</th>
-                      <th className="px-4 py-3 text-center w-16"></th>
+                      <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {dns.map((dn) => (
                       <tr key={dn.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{dn.deliveryNo}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500">{dn.salesOrderNo || '—'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 name-lowercase">{dn.fromUserName}</td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(dn.createdAt)}</td>
+                        <td className="px-4 py-3 font-mono text-sm font-bold text-gray-900">{dn.deliveryNo}</td>
+                        <td className="px-4 py-3 font-mono text-sm text-gray-500">{dn.salesOrderNo || '—'}</td>
+                        <td className="px-4 py-3 text-base text-gray-700 name-lowercase">{dn.fromUserName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{fmtDate(dn.createdAt)}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-bold text-gray-900">
                           RM {dn.totals.grandTotal.toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${dnStatusColor[dn.status]}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-sm font-semibold ${dnStatusColor[dn.status]}`}>
                             {dnStatusLabel[dn.status]}
                           </span>
                         </td>
@@ -284,7 +284,7 @@ export default function CustomerFinancialPage() {
                           <button
                             type="button"
                             onClick={() => { setEditDN(dn); setEditAmount(dn.totals.grandTotal.toFixed(2)); }}
-                            className="px-2 py-1 text-[11px] font-medium bg-violet-100 hover:bg-violet-200 text-violet-700 rounded"
+                            className="px-4 py-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap"
                           >
                             修改金額
                           </button>

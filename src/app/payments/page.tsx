@@ -26,7 +26,7 @@ const statusLabel: Record<PaymentReceiptStatus, string> = {
 const statusColors: Record<PaymentReceiptStatus, string> = {
   [PaymentReceiptStatus.DRAFT]: 'bg-gray-700/60 text-gray-300',
   [PaymentReceiptStatus.SUBMITTED]: 'bg-yellow-900/40 text-yellow-300',
-  [PaymentReceiptStatus.APPROVED]: 'bg-green-900/40 text-green-300',
+  [PaymentReceiptStatus.APPROVED]: 'bg-teal-700 text-white',
   [PaymentReceiptStatus.CANCELLED]: 'bg-red-900/40 text-red-300',
 };
 
@@ -82,7 +82,7 @@ export default function PaymentsPage() {
     setPayMethod('bank');
     setPayRef('');
     setNotes('');
-    setCustomers(await UserService.getByRole(UserRole.CUSTOMER));
+    setCustomers(await UserService.getAll());
   };
 
   const handleCustomerSelect = async (id: string) => {
@@ -225,12 +225,12 @@ export default function PaymentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-txt-primary tracking-tight">收款單</h1>
-            <p className="text-sm text-txt-subtle mt-0.5">必須綁定發貨單號方可建立，審核後自動核銷應收款</p>
+            <h1 className="text-3xl font-bold text-txt-primary tracking-tight">收款單</h1>
+            <p className="text-base text-txt-subtle mt-0.5">必須綁定發貨單號方可建立，審核後自動核銷應收款</p>
           </div>
           <button
             onClick={openModal}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
+            className="px-5 py-2.5 bg-accent text-white rounded-lg text-base font-medium hover:bg-accent-hover transition-colors"
           >
             + 新增收款單
           </button>
@@ -249,9 +249,9 @@ export default function PaymentsPage() {
             { label: '待審核', value: counts.submitted, color: 'text-yellow-400' },
             { label: '已審核', value: counts.approved, color: 'text-green-400' },
           ].map((s) => (
-            <div key={s.label} className="glass-card p-4 text-center">
-              <p className={`text-2xl font-bold tabular-nums ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-txt-subtle mt-1">{s.label}</p>
+            <div key={s.label} className="glass-card p-6 text-center">
+              <p className={`text-4xl font-bold tabular-nums ${s.color}`}>{s.value}</p>
+              <p className="text-base text-txt-subtle mt-2">{s.label}</p>
             </div>
           ))}
         </div>
@@ -262,7 +262,7 @@ export default function PaymentsPage() {
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 filter === s
                   ? 'bg-accent/20 text-accent-text border border-accent/40'
                   : 'text-txt-subtle hover:text-txt-primary hover:bg-surface-2 border border-transparent'
@@ -284,10 +284,10 @@ export default function PaymentsPage() {
             <p className="text-txt-subtle text-sm">沒有符合條件的收款單</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-teal-800">
-            <table className="w-full text-sm">
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-base">
               <thead>
-                <tr className="bg-teal-900 text-white text-xs uppercase tracking-wide border-b border-teal-700">
+                <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wide border-b border-gray-200">
                   <th className="px-4 py-3 text-left">收款單號</th>
                   <th className="px-4 py-3 text-left">日期</th>
                   <th className="px-4 py-3 text-left">客戶</th>
@@ -297,18 +297,18 @@ export default function PaymentsPage() {
                   <th className="px-4 py-3 text-right">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-teal-800">
+              <tbody className="divide-y divide-gray-100">
                 {visible.map((pr) => (
-                  <tr key={pr.id} className="bg-teal-950 hover:bg-teal-900/80 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-teal-300">{pr.receiptNo}</td>
-                    <td className="px-4 py-3 text-white">
+                  <tr key={pr.id} className="bg-white hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-mono text-sm font-bold text-gray-900">{pr.receiptNo}</td>
+                    <td className="px-4 py-3 text-gray-700">
                       {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
-                    <td className="px-4 py-3 text-white font-medium">{pr.customerName}</td>
-                    <td className="px-4 py-3 text-xs text-white">
+                    <td className="px-4 py-3 text-gray-900 font-medium">{pr.customerName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
                       {pr.items.map((i) => i.deliveryNoteNo).join(', ')}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-white">
+                    <td className="px-4 py-3 text-right font-bold tabular-nums text-gray-900">
                       {pr.totalAmount.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -367,7 +367,7 @@ export default function PaymentsPage() {
             {/* Modal header with step indicator */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
               <div>
-                <h2 className="text-base font-semibold text-txt-primary">新增收款單</h2>
+                <h2 className="text-base font-semibold text-white">新增收款單</h2>
                 <div className="flex items-center gap-2 mt-1">
                   {([1, 2, 3] as ModalStep[]).map((s) => (
                     <div key={s} className="flex items-center gap-1">
@@ -398,7 +398,9 @@ export default function PaymentsPage() {
                     >
                       <option value="" className="bg-gray-700 text-white">— 選擇客戶 —</option>
                       {customers.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-gray-700 text-white">{c.displayName}</option>
+                        <option key={c.id} value={c.id} className="bg-gray-700 text-white">
+                          {c.displayName}（{c.role === UserRole.TAIWAN || c.role === UserRole.ADMIN ? '總經銷' : c.role === UserRole.STOCKIST ? '經銷商' : '顧客'}）
+                        </option>
                       ))}
                     </select>
                   </div>
