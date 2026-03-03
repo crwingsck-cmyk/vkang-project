@@ -60,6 +60,15 @@ export default function PaymentsPage() {
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState('');
 
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editPR, setEditPR] = useState<PaymentReceipt | null>(null);
+  const [editPayMethod, setEditPayMethod] = useState('');
+  const [editPayRef, setEditPayRef] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -212,6 +221,34 @@ export default function PaymentsPage() {
     }
   };
 
+  const openEditModal = (pr: PaymentReceipt) => {
+    setEditPR(pr);
+    setEditPayMethod(pr.paymentMethod ?? 'bank');
+    setEditPayRef(pr.paymentReference ?? '');
+    setEditNotes(pr.notes ?? '');
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editPR) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await PaymentReceiptService.updateDetails(editPR.id!, {
+        paymentMethod: editPayMethod,
+        paymentReference: editPayRef || undefined,
+        notes: editNotes || undefined,
+      });
+      setShowEditModal(false);
+      await load();
+    } catch (e: any) {
+      setEditError(e.message ?? '儲存失敗');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const visible = filter === 'ALL' ? receipts : receipts.filter((r) => r.status === filter);
   const counts = {
     all: receipts.length,
@@ -321,7 +358,7 @@ export default function PaymentsPage() {
                         {pr.status === PaymentReceiptStatus.DRAFT && (
                           <button
                             onClick={() => handleSubmit(pr)}
-                            className="text-xs px-2 py-1 rounded bg-yellow-800/40 text-yellow-300 hover:bg-yellow-700/50"
+                            className="text-xs px-2 py-1 rounded bg-yellow-700 text-white hover:bg-yellow-600"
                           >
                             提交
                           </button>
@@ -329,7 +366,7 @@ export default function PaymentsPage() {
                         {pr.status === PaymentReceiptStatus.SUBMITTED && (
                           <button
                             onClick={() => handleApprove(pr)}
-                            className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50"
+                            className="text-xs px-2 py-1 rounded bg-green-700 text-white hover:bg-green-600"
                           >
                             審核
                           </button>
@@ -337,15 +374,23 @@ export default function PaymentsPage() {
                         {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.SUBMITTED) && (
                           <button
                             onClick={() => handleCancel(pr)}
-                            className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50"
+                            className="text-xs px-2 py-1 rounded bg-gray-700 text-white hover:bg-gray-600"
                           >
                             取消
                           </button>
                         )}
-                        {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.CANCELLED) && (
+                        {pr.status === PaymentReceiptStatus.APPROVED && (
+                          <button
+                            onClick={() => openEditModal(pr)}
+                            className="text-xs px-2 py-1 rounded bg-blue-700 text-white hover:bg-blue-600"
+                          >
+                            修改
+                          </button>
+                        )}
+                        {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.CANCELLED || pr.status === PaymentReceiptStatus.APPROVED) && (
                           <button
                             onClick={() => handleDelete(pr)}
-                            className="text-xs px-2 py-1 rounded bg-red-700/50 text-red-200 hover:bg-red-600/60"
+                            className="text-xs px-2 py-1 rounded bg-red-700 text-white hover:bg-red-600"
                           >
                             刪除
                           </button>
@@ -598,6 +643,63 @@ export default function PaymentsPage() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editPR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h2 className="text-base font-semibold text-white">修改收款單 {editPR.receiptNo}</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs text-white mb-1">付款方式</label>
+                <select
+                  value={editPayMethod}
+                  onChange={(e) => setEditPayMethod(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m.value} value={m.value} className="bg-gray-700 text-white">{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-white mb-1">銀行流水號（選填）</label>
+                <input
+                  type="text"
+                  value={editPayRef}
+                  onChange={(e) => setEditPayRef(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-white mb-1">備注（選填）</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent resize-none"
+                />
+              </div>
+              {editError && (
+                <p className="text-sm text-red-400 bg-red-900/30 px-3 py-2 rounded-lg">{editError}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
+              <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm text-white hover:text-white transition-colors">取消</button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving}
+                className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+              >
+                {editSaving ? '儲存中...' : '儲存'}
+              </button>
             </div>
           </div>
         </div>

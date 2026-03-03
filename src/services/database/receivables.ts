@@ -64,6 +64,33 @@ export const ReceivableService = {
   },
 
   /**
+   * 反轉核銷：還原 paidAmount / remainingAmount / status
+   * 由 PaymentReceiptService.delete() 在刪除已審核收款單時呼叫
+   */
+  async reversePayment(id: string, amount: number): Promise<void> {
+    const r = await FirestoreService.get<Receivable>(COLLECTION, id);
+    if (!r) throw new Error(`應收款 ${id} 不存在`);
+
+    const newPaid = Math.max(0, r.paidAmount - amount);
+    const newRemaining = r.totalAmount - newPaid;
+
+    let status: ReceivableStatus;
+    if (newRemaining <= 0) {
+      status = ReceivableStatus.PAID;
+    } else if (newPaid > 0) {
+      status = ReceivableStatus.PARTIAL_PAID;
+    } else {
+      status = ReceivableStatus.OUTSTANDING;
+    }
+
+    await FirestoreService.update<Receivable>(COLLECTION, id, {
+      paidAmount: newPaid,
+      remainingAmount: Math.max(0, newRemaining),
+      status,
+    });
+  },
+
+  /**
    * 核銷金額：更新 paidAmount / remainingAmount / status
    * 由 PaymentReceiptService.approve() 批量呼叫
    */

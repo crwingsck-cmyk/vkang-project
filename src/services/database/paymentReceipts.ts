@@ -70,10 +70,22 @@ export const PaymentReceiptService = {
   async delete(id: string): Promise<void> {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
     if (!pr) throw new Error('收款單不存在');
+
+    // 若已審核，先反轉每筆 AR 核銷
     if (pr.status === PaymentReceiptStatus.APPROVED) {
-      throw new Error('已審核的收款單不可刪除');
+      for (const item of pr.items) {
+        await ReceivableService.reversePayment(item.receivableId, item.appliedAmount);
+      }
     }
+
     await FirestoreService.delete(COLLECTION, id);
+  },
+
+  async updateDetails(id: string, updates: { paymentMethod?: string; paymentReference?: string; notes?: string }): Promise<void> {
+    await FirestoreService.update<PaymentReceipt>(COLLECTION, id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
   },
 
   /** 取得所有現有 PR 單號（用於生成下一個不衝突的單號）*/

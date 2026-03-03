@@ -284,7 +284,7 @@ export default function CustomerFinancialPage() {
                           <button
                             type="button"
                             onClick={() => { setEditDN(dn); setEditAmount(dn.totals.grandTotal.toFixed(2)); }}
-                            className="px-4 py-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap"
+                            className="px-3 py-1 text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-lg whitespace-nowrap"
                           >
                             修改金額
                           </button>
