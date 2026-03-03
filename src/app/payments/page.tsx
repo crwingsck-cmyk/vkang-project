@@ -463,8 +463,8 @@ export default function PaymentsPage() {
                       </div>
                       {checkedIds.size > 0 && (
                         <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                          <span className="text-white">可核銷上限：</span>
-                          <span className="font-semibold text-white tabular-nums">
+                          <span className="text-gray-900">可核銷上限：</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">
                             {maxAmount.toFixed(2)}
                           </span>
                         </div>
@@ -483,8 +483,8 @@ export default function PaymentsPage() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                    <span className="text-white">可核銷上限：</span>
-                    <span className="font-semibold text-white tabular-nums">{maxAmount.toFixed(2)}</span>
+                    <span className="text-gray-900">可核銷上限：</span>
+                    <span className="font-semibold text-gray-900 tabular-nums">{maxAmount.toFixed(2)}</span>
                   </div>
 
                   <div>
