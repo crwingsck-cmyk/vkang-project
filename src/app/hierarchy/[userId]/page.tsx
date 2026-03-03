@@ -42,8 +42,9 @@ export default function StockLedgerPage() {
   const userId = (params?.userId ?? '') as string;
   useAuth();
 
-  const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole } | null>(null);
+  const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole; phoneNumber?: string; company?: string; city?: string } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
+  const [firestoreInv, setFirestoreInv] = useState<{ productId: string; productName: string; quantity: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editTransactionId, setEditTransactionId] = useState<string | null>(null);
@@ -60,10 +61,25 @@ export default function StockLedgerPage() {
   async function load() {
     setLoading(true);
     try {
-      const [u, txList] = await Promise.all([
+      const [u, txList, invList, products] = await Promise.all([
         UserService.getById(userId),
         OrderService.getByUserRelated(userId, 300),
+        InventoryService.getByUser(userId, 200),
+        ProductService.getAll(undefined, 200),
       ]);
+      // Build Firestore inventory panel
+      const productNames: Record<string, string> = {};
+      for (const p of products) { if (p.sku) productNames[p.sku] = p.name || p.sku; }
+      setFirestoreInv(
+        invList
+          .filter(inv => (inv.quantityOnHand ?? 0) > 0)
+          .map(inv => ({
+            productId: inv.productId,
+            productName: productNames[inv.productId] || inv.productId,
+            quantity: inv.quantityOnHand,
+          }))
+          .sort((a, b) => b.quantity - a.quantity)
+      );
       let upstreamDisplayName = '';
       let grandUpstreamDisplayName = '';
       if (u?.parentUserId) {
@@ -74,7 +90,7 @@ export default function StockLedgerPage() {
           grandUpstreamDisplayName = grandParent?.displayName ?? '';
         }
       }
-      setUser(u ? { displayName: u.displayName ?? '', upstreamDisplayName, grandUpstreamDisplayName, role: u.role } : null);
+      setUser(u ? { displayName: u.displayName ?? '', upstreamDisplayName, grandUpstreamDisplayName, role: u.role, phoneNumber: u.phoneNumber, company: u.company?.name, city: u.address?.city } : null);
 
       const flat: Omit<StockLedgerRow, 'runningInventory'>[] = [];
       for (const t of txList) {
@@ -470,6 +486,59 @@ export default function StockLedgerPage() {
             </table>
               );
             })()}
+          </div>
+        )}
+
+        {/* 現有庫存（直接從 Firestore inventory collection 讀取）*/}
+        {!loading && (
+          <div className="glass-panel overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-surface-base flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-txt-primary">現有庫存</h3>
+              </div>
+              <span className="text-xs text-txt-subtle">
+                總計：{firestoreInv.reduce((s, r) => s + r.quantity, 0)} 盒
+              </span>
+            </div>
+            {firestoreInv.length === 0 ? (
+              <div className="px-4 py-8 text-center text-txt-subtle text-sm">尚無庫存紀錄</div>
+            ) : (
+              <table className="w-full text-base">
+                <thead>
+                  <tr className="border-b border-border bg-surface-base">
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">現有數量</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-muted">
+                  {firestoreInv.map(r => (
+                    <tr key={r.productId} className="hover:bg-surface-2/50">
+                      <td className="px-4 py-3 text-txt-primary">
+                        <span className="text-base font-medium">{r.productName}</span>
+                        <span className="text-sm text-txt-subtle ml-1 font-mono">({r.productId})</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`inline-block px-3 py-1 rounded-full font-bold text-base tabular-nums ${
+                          r.quantity === 0 ? 'bg-red-100 text-red-700' :
+                          r.quantity <= 3 ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {r.quantity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-border bg-surface-2/40">
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-block px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-base tabular-nums">
+                        {firestoreInv.reduce((s, r) => s + r.quantity, 0)}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 

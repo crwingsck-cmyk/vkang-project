@@ -12,8 +12,8 @@ const NAV_ITEMS = [
   { label: 'Receivables', href: '/ar',         roles: ['ADMIN'] },
   { label: 'Multi-tier',  href: '/hierarchy',  roles: ['ADMIN'] },
   { label: 'Warehouse',  href: '/warehouse',  roles: ['ADMIN', 'STOCKIST'] },
+  { label: 'Opening Stock', href: '/warehouse/stock-setup', roles: ['ADMIN'] },
   { label: 'Financials', href: '/financials', roles: ['ADMIN', 'STOCKIST'] },
-  { label: 'P&L Report', href: '/financials/report', roles: ['ADMIN'] },
   { label: 'Settings',   href: '/settings',   roles: ['ADMIN', 'STOCKIST', 'CUSTOMER', 'TAIWAN'] },
 ];
 
