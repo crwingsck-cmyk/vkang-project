@@ -1,0 +1,345 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { UserService } from '@/services/database/users';
+import { DeliveryNoteService } from '@/services/database/deliveryNotes';
+import { ReceivableService } from '@/services/database/receivables';
+import { PaymentReceiptService } from '@/services/database/paymentReceipts';
+import {
+  User, UserRole,
+  DeliveryNote, DeliveryNoteStatus,
+  Receivable, ReceivableStatus,
+  PaymentReceipt, PaymentReceiptStatus,
+} from '@/types/models';
+
+const dnStatusLabel: Record<DeliveryNoteStatus, string> = {
+  [DeliveryNoteStatus.PENDING]: '待倉庫審核',
+  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: '已出庫',
+  [DeliveryNoteStatus.DELIVERED]: '已送達',
+  [DeliveryNoteStatus.CANCELLED]: '已取消',
+};
+const dnStatusColor: Record<DeliveryNoteStatus, string> = {
+  [DeliveryNoteStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
+  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'bg-blue-100 text-blue-700',
+  [DeliveryNoteStatus.DELIVERED]: 'bg-green-100 text-green-700',
+  [DeliveryNoteStatus.CANCELLED]: 'bg-gray-100 text-gray-500',
+};
+
+const arStatusLabel: Record<ReceivableStatus, string> = {
+  [ReceivableStatus.OUTSTANDING]: 'Outstanding',
+  [ReceivableStatus.PARTIAL_PAID]: 'Partial Paid',
+  [ReceivableStatus.PAID]: 'Paid',
+};
+const arStatusColor: Record<ReceivableStatus, string> = {
+  [ReceivableStatus.OUTSTANDING]: 'bg-red-100 text-red-700',
+  [ReceivableStatus.PARTIAL_PAID]: 'bg-yellow-100 text-yellow-700',
+  [ReceivableStatus.PAID]: 'bg-green-100 text-green-700',
+};
+
+const prStatusLabel: Record<PaymentReceiptStatus, string> = {
+  [PaymentReceiptStatus.DRAFT]: 'Draft',
+  [PaymentReceiptStatus.SUBMITTED]: 'Submitted',
+  [PaymentReceiptStatus.APPROVED]: 'Approved',
+  [PaymentReceiptStatus.CANCELLED]: 'Cancelled',
+};
+const prStatusColor: Record<PaymentReceiptStatus, string> = {
+  [PaymentReceiptStatus.DRAFT]: 'bg-gray-100 text-gray-500',
+  [PaymentReceiptStatus.SUBMITTED]: 'bg-yellow-100 text-yellow-700',
+  [PaymentReceiptStatus.APPROVED]: 'bg-green-100 text-green-700',
+  [PaymentReceiptStatus.CANCELLED]: 'bg-red-100 text-red-500',
+};
+
+function fmtDate(ts?: number) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('en-MY');
+}
+
+export default function CustomerFinancialPage() {
+  const params = useParams();
+  const customerId = (params?.id ?? '') as string;
+
+  const [customer, setCustomer] = useState<User | null>(null);
+  const [dns, setDns] = useState<DeliveryNote[]>([]);
+  const [ars, setArs] = useState<Receivable[]>([]);
+  const [prs, setPrs] = useState<PaymentReceipt[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!customerId) return;
+    setLoading(true);
+    try {
+      const [u, dnList, arList, prList] = await Promise.all([
+        UserService.getById(customerId),
+        DeliveryNoteService.getByToUser(customerId),
+        ReceivableService.getByCustomer(customerId),
+        PaymentReceiptService.getByCustomer(customerId),
+      ]);
+      setCustomer(u ?? null);
+      setDns(dnList);
+      setArs(arList);
+      setPrs(prList);
+    } finally {
+      setLoading(false);
+    }
+  }, [customerId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totalBilled = ars.reduce((s, r) => s + r.totalAmount, 0);
+  const totalPaid = ars.reduce((s, r) => s + r.paidAmount, 0);
+  const totalOutstanding = ars.reduce((s, r) => s + r.remainingAmount, 0);
+
+  return (
+    <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST]}>
+      <div className="space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight name-lowercase">
+              {customer?.displayName ?? '—'} — 財務表
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">發貨單 · 應收款 · 收款記錄</p>
+          </div>
+          <Link
+            href={`/hierarchy/${customerId}`}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+          >
+            ← 庫存台帳
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-violet-600 mb-3" />
+            <p className="text-gray-500 text-sm">Loading...</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-2xl bg-gray-50 border border-gray-200 p-5 text-center shadow-sm">
+                <p className="text-2xl font-bold tabular-nums text-gray-900 leading-none">
+                  RM {totalBilled.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wide">總發貨金額</p>
+              </div>
+              <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center shadow-sm">
+                <p className="text-2xl font-bold tabular-nums text-green-700 leading-none">
+                  RM {totalPaid.toFixed(2)}
+                </p>
+                <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">已收款</p>
+              </div>
+              <div className="rounded-2xl bg-red-50 border border-red-200 p-5 text-center shadow-sm">
+                <p className="text-2xl font-bold tabular-nums text-red-600 leading-none">
+                  RM {totalOutstanding.toFixed(2)}
+                </p>
+                <p className="text-xs text-red-500 mt-2 font-medium uppercase tracking-wide">未收餘額</p>
+              </div>
+            </div>
+
+            {/* Product Usage Summary */}
+            {(() => {
+              const summary: Record<string, { productName: string; quantity: number }> = {};
+              for (const dn of dns) {
+                if (dn.status === DeliveryNoteStatus.CANCELLED) continue;
+                for (const item of dn.items) {
+                  if (!summary[item.productId]) summary[item.productId] = { productName: item.productName, quantity: 0 };
+                  summary[item.productId].quantity += item.quantity;
+                }
+              }
+              const list = Object.entries(summary)
+                .map(([productId, { productName, quantity }]) => ({ productId, productName, quantity }))
+                .sort((a, b) => b.quantity - a.quantity);
+              if (list.length === 0) return null;
+              const totalQty = list.reduce((s, r) => s + r.quantity, 0);
+              return (
+                <Section title="產品彙總" count={list.length}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                        <th className="px-4 py-3 text-left">產品</th>
+                        <th className="px-4 py-3 text-right">數量</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {list.map((r) => (
+                        <tr key={r.productId} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            {r.productName}
+                            <span className="text-xs text-gray-400 ml-1.5 font-mono">({r.productId})</span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="inline-block px-3 py-1 rounded-full bg-teal-100 text-teal-800 font-bold tabular-nums">
+                              {r.quantity}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                        <td className="px-4 py-3 text-gray-700">總計</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold tabular-nums">
+                            {totalQty}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </Section>
+              );
+            })()}
+
+            {/* Delivery Notes */}
+            <Section title="發貨單 (DN)" count={dns.length}>
+              {dns.length === 0 ? (
+                <EmptyRow text="暫無發貨記錄" />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">DN No.</th>
+                      <th className="px-4 py-3 text-left">Sales Order</th>
+                      <th className="px-4 py-3 text-left">來源</th>
+                      <th className="px-4 py-3 text-left">日期</th>
+                      <th className="px-4 py-3 text-right">金額</th>
+                      <th className="px-4 py-3 text-center">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dns.map((dn) => (
+                      <tr key={dn.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{dn.deliveryNo}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-500">{dn.salesOrderNo || '—'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 name-lowercase">{dn.fromUserName}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(dn.createdAt)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-gray-900">
+                          RM {dn.totals.grandTotal.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${dnStatusColor[dn.status]}`}>
+                            {dnStatusLabel[dn.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Section>
+
+            {/* Accounts Receivable */}
+            <Section title="應收款 (AR)" count={ars.length}>
+              {ars.length === 0 ? (
+                <EmptyRow text="暫無應收款記錄" />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">DN No.</th>
+                      <th className="px-4 py-3 text-left">日期</th>
+                      <th className="px-4 py-3 text-right">應收金額</th>
+                      <th className="px-4 py-3 text-right">已收</th>
+                      <th className="px-4 py-3 text-right">餘額</th>
+                      <th className="px-4 py-3 text-center">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {ars.map((ar) => (
+                      <tr key={ar.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{ar.deliveryNoteNo}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(ar.createdAt)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-gray-900">
+                          RM {ar.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-green-700 font-semibold">
+                          {ar.paidAmount > 0 ? `RM ${ar.paidAmount.toFixed(2)}` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-red-600">
+                          {ar.remainingAmount > 0 ? `RM ${ar.remainingAmount.toFixed(2)}` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${arStatusColor[ar.status]}`}>
+                            {arStatusLabel[ar.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold text-sm">
+                      <td className="px-4 py-3 text-gray-700" colSpan={2}>合計</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">RM {totalBilled.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-green-700">RM {totalPaid.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-red-600">RM {totalOutstanding.toFixed(2)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </Section>
+
+            {/* Payment Receipts */}
+            <Section title="收款記錄 (PR)" count={prs.length}>
+              {prs.length === 0 ? (
+                <EmptyRow text="暫無收款記錄" />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">Receipt No.</th>
+                      <th className="px-4 py-3 text-left">日期</th>
+                      <th className="px-4 py-3 text-left">付款方式</th>
+                      <th className="px-4 py-3 text-right">收款金額</th>
+                      <th className="px-4 py-3 text-center">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {prs.map((pr) => (
+                      <tr key={pr.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{pr.receiptNo}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(pr.createdAt)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{pr.paymentMethod ?? '—'}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-green-700">
+                          RM {pr.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${prStatusColor[pr.status]}`}>
+                            {prStatusLabel[pr.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Section>
+          </>
+        )}
+      </div>
+    </ProtectedRoute>
+  );
+}
+
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-200 bg-gray-50">
+        <span className="text-sm font-semibold text-gray-900">{title}</span>
+        <span className="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium tabular-nums">{count}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function EmptyRow({ text }: { text: string }) {
+  return (
+    <div className="py-10 text-center text-sm text-gray-400">{text}</div>
+  );
+}

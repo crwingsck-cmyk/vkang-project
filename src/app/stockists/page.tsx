@@ -20,26 +20,18 @@ function DistributorCard({
   badge?: string;
 }) {
   return (
-    <Link
-      href={`/stockists/${user.id}`}
-      className={`block p-5 rounded-xl border ${cardClass} hover:border-accent/40 transition-all shadow-sm relative`}
-    >
+    <div className={`p-5 rounded-xl border ${cardClass} shadow-sm relative`}>
       {badge && (
-        <span className="absolute top-3 right-10 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
+        <span className="absolute top-3 right-3 text-[10px] font-medium text-txt-subtle bg-surface-2 px-1.5 py-0.5 rounded">
           {badge}
         </span>
       )}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="font-semibold text-txt-primary name-lowercase truncate">{user.displayName}</h2>
-          <p className="text-xs text-txt-subtle mt-0.5 truncate">
-            {user.email}
-          </p>
-          {user.company?.name && (
-            <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.company.name}</p>
-          )}
-        </div>
-        <span className="text-accent-text text-xs shrink-0">查看 →</span>
+      <div className="min-w-0 pr-16">
+        <h2 className="font-semibold text-txt-primary name-lowercase truncate">{user.displayName}</h2>
+        <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.email}</p>
+        {user.company?.name && (
+          <p className="text-xs text-txt-subtle mt-0.5 truncate">{user.company.name}</p>
+        )}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
@@ -55,7 +47,7 @@ function DistributorCard({
           </p>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 

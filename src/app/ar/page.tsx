@@ -166,6 +166,7 @@ export default function ARPage() {
                 <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
                   <th className="px-5 py-3 text-left">DN No.</th>
                   <th className="px-5 py-3 text-left">Sales Order</th>
+                  <th className="px-5 py-3 text-left">From</th>
                   <th className="px-5 py-3 text-left">Customer</th>
                   <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-right">Total</th>
@@ -185,6 +186,9 @@ export default function ARPage() {
                       </Link>
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{r.salesOrderNo || '—'}</td>
+                    <td className="px-5 py-3.5 text-gray-700 text-sm name-lowercase">
+                      {customers.find(c => c.id === r.fromUserId)?.displayName || '—'}
+                    </td>
                     <td className="px-5 py-3.5 font-semibold text-gray-900 name-lowercase">
                       <Link href={`/customers/${r.customerId}`} className="hover:text-violet-700 transition-colors">
                         {r.customerName}

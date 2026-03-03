@@ -217,7 +217,7 @@ export default function StockLedgerPage() {
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <Link href="/hierarchy" className="text-txt-subtle hover:text-txt-primary text-sm mb-1 inline-block">
               ← Multi-tier distribution structure
@@ -227,7 +227,7 @@ export default function StockLedgerPage() {
             </h1>
             <p className="text-sm text-txt-subtle mt-0.5">經銷商訂貨、下線/自用發貨、庫存累計</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
             <button
               type="button"
               onClick={handleReconcile}
@@ -318,6 +318,7 @@ export default function StockLedgerPage() {
             </div>
           </div>
         )}
+
 
         {loading ? (
           <div className="py-16 text-center">
@@ -471,6 +472,112 @@ export default function StockLedgerPage() {
             })()}
           </div>
         )}
+
+        {/* 自用彙總表 */}
+        {!loading && rows.some(r => r.kind === 'shipment' && r.recipientUserId === userId && r.type !== 'conversion' && r.direction === 'out') && (() => {
+          const selfUse: Record<string, { productName: string; quantity: number }> = {};
+          for (const row of rows) {
+            if (row.kind !== 'shipment' || row.recipientUserId !== userId || row.direction !== 'out') continue;
+            if (row.type === 'conversion') continue; // 排除 TR 轉換品
+            if (!selfUse[row.productId]) selfUse[row.productId] = { productName: row.productName, quantity: 0 };
+            selfUse[row.productId].quantity += row.quantity;
+          }
+          const selfUseList = Object.entries(selfUse)
+            .map(([productId, { productName, quantity }]) => ({ productId, productName, quantity }))
+            .sort((a, b) => b.quantity - a.quantity);
+          return (
+            <div className="glass-panel overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-surface-base">
+                <h3 className="text-lg font-semibold text-txt-primary">自用彙總</h3>
+                <p className="text-sm text-txt-subtle mt-0.5">自用出庫的產品及累計數量</p>
+              </div>
+              <table className="w-full text-base">
+                <thead>
+                  <tr className="border-b border-border bg-surface-base">
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">自用數量</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-muted">
+                  {selfUseList.map(r => (
+                    <tr key={r.productId} className="hover:bg-surface-2/50">
+                      <td className="px-4 py-3 text-txt-primary">
+                        <span className="text-base font-medium">{r.productName}</span>
+                        <span className="text-sm text-txt-subtle ml-1 font-mono">({r.productId})</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="inline-block px-3 py-1 rounded-full bg-teal-100 text-teal-800 font-bold text-base tabular-nums">
+                          {r.quantity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-border bg-surface-2/40">
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold text-base tabular-nums">
+                        {selfUseList.reduce((s, r) => s + r.quantity, 0)}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
+        {/* 產品彙總（所有收貨） */}
+        {!loading && rows.some(r => r.direction === 'in' && r.type !== 'conversion') && (() => {
+          const received: Record<string, { productName: string; quantity: number }> = {};
+          for (const row of rows) {
+            if (row.direction !== 'in' || row.type === 'conversion') continue;
+            if (!received[row.productId]) received[row.productId] = { productName: row.productName, quantity: 0 };
+            received[row.productId].quantity += row.quantity;
+          }
+          const receivedList = Object.entries(received)
+            .map(([productId, { productName, quantity }]) => ({ productId, productName, quantity }))
+            .sort((a, b) => b.quantity - a.quantity);
+          return (
+            <div className="glass-panel overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-surface-base">
+                <h3 className="text-lg font-semibold text-txt-primary">產品彙總</h3>
+                <p className="text-sm text-txt-subtle mt-0.5">收到的產品及累計數量</p>
+              </div>
+              <table className="w-full text-base">
+                <thead>
+                  <tr className="border-b border-border bg-surface-base">
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">數量</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-muted">
+                  {receivedList.map(r => (
+                    <tr key={r.productId} className="hover:bg-surface-2/50">
+                      <td className="px-4 py-3 text-txt-primary">
+                        <span className="text-base font-medium">{r.productName}</span>
+                        <span className="text-sm text-txt-subtle ml-1 font-mono">({r.productId})</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="inline-block px-3 py-1 rounded-full bg-teal-100 text-teal-800 font-bold text-base tabular-nums">
+                          {r.quantity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-border bg-surface-2/40">
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold text-base tabular-nums">
+                        {receivedList.reduce((s, r) => s + r.quantity, 0)}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
       </div>
     </ProtectedRoute>
   );
