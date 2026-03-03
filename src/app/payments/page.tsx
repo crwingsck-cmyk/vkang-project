@@ -441,9 +441,9 @@ export default function PaymentsPage() {
                       onChange={(e) => handleCustomerSelect(e.target.value)}
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
                     >
-                      <option value="" className="bg-gray-700 text-white">— 選擇客戶 —</option>
+                      <option value="" className="bg-white text-gray-900">— 選擇客戶 —</option>
                       {customers.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-gray-700 text-white">
+                        <option key={c.id} value={c.id} className="bg-white text-gray-900">
                           {c.displayName}（{c.role === UserRole.TAIWAN || c.role === UserRole.ADMIN ? '總經銷' : c.role === UserRole.STOCKIST ? '經銷商' : '顧客'}）
                         </option>
                       ))}
@@ -561,7 +561,7 @@ export default function PaymentsPage() {
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
                     >
                       {PAYMENT_METHODS.map((m) => (
-                        <option key={m.value} value={m.value} className="bg-gray-700 text-white">{m.label}</option>
+                        <option key={m.value} value={m.value} className="bg-white text-gray-900">{m.label}</option>
                       ))}
                     </select>
                   </div>
