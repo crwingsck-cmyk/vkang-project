@@ -95,6 +95,13 @@ export const InventorySyncService = {
     items: TransactionItem[],
     transactionId: string
   ) {
+    const { ok, insufficient } = await this.validateSaleInventory(fromUserId, items);
+    if (!ok) {
+      const msg = insufficient
+        .map((i) => `${i.productName} 需要 ${i.need}，庫存僅 ${i.have}`)
+        .join('；');
+      throw new Error(`調撥失敗，來源庫存不足：${msg}。請先在「產品轉換」將 SKU 轉換為對應產品。`);
+    }
     const ref = `TRANSFER: ${transactionId}`;
     await _deduct(fromUserId, items, ref);
     await _add(toUserId, items, ref);
