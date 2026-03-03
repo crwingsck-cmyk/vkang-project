@@ -201,6 +201,17 @@ export default function PaymentsPage() {
     await load();
   };
 
+  const handleDelete = async (pr: PaymentReceipt) => {
+    if (!confirm(`確定刪除收款單 ${pr.receiptNo}？此操作不可復原。`)) return;
+    setActionError('');
+    try {
+      await PaymentReceiptService.delete(pr.id!);
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? '刪除失敗');
+    }
+  };
+
   const visible = filter === 'ALL' ? receipts : receipts.filter((r) => r.status === filter);
   const counts = {
     all: receipts.length,
@@ -273,10 +284,10 @@ export default function PaymentsPage() {
             <p className="text-txt-subtle text-sm">沒有符合條件的收款單</p>
           </div>
         ) : (
-          <div className="glass-card overflow-hidden">
+          <div className="overflow-hidden rounded-xl border border-teal-800">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
+                <tr className="bg-teal-900 text-white text-xs uppercase tracking-wide border-b border-teal-700">
                   <th className="px-4 py-3 text-left">收款單號</th>
                   <th className="px-4 py-3 text-left">日期</th>
                   <th className="px-4 py-3 text-left">客戶</th>
@@ -286,18 +297,18 @@ export default function PaymentsPage() {
                   <th className="px-4 py-3 text-right">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-teal-800">
                 {visible.map((pr) => (
-                  <tr key={pr.id} className="hover:bg-surface-2/50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-accent-text">{pr.receiptNo}</td>
-                    <td className="px-4 py-3 text-txt-subtle">
+                  <tr key={pr.id} className="bg-teal-950 hover:bg-teal-900/80 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs text-teal-300">{pr.receiptNo}</td>
+                    <td className="px-4 py-3 text-white">
                       {pr.createdAt ? new Date(pr.createdAt).toLocaleDateString('en-GB') : '—'}
                     </td>
-                    <td className="px-4 py-3 text-txt-primary">{pr.customerName}</td>
-                    <td className="px-4 py-3 text-xs text-txt-subtle">
+                    <td className="px-4 py-3 text-white font-medium">{pr.customerName}</td>
+                    <td className="px-4 py-3 text-xs text-white">
                       {pr.items.map((i) => i.deliveryNoteNo).join(', ')}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-white">
                       {pr.totalAmount.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -331,6 +342,14 @@ export default function PaymentsPage() {
                             取消
                           </button>
                         )}
+                        {(pr.status === PaymentReceiptStatus.DRAFT || pr.status === PaymentReceiptStatus.CANCELLED) && (
+                          <button
+                            onClick={() => handleDelete(pr)}
+                            className="text-xs px-2 py-1 rounded bg-red-700/50 text-red-200 hover:bg-red-600/60"
+                          >
+                            刪除
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -358,7 +377,7 @@ export default function PaymentsPage() {
                       {s < 3 && <div className={`w-6 h-px ${step > s ? 'bg-green-600' : 'bg-gray-600'}`} />}
                     </div>
                   ))}
-                  <span className="text-xs text-txt-subtle ml-1">
+                  <span className="text-xs text-white ml-1">
                     {step === 1 ? '選客戶' : step === 2 ? '選發貨單號' : '填寫收款'}
                   </span>
                 </div>
@@ -371,24 +390,24 @@ export default function PaymentsPage() {
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">客戶 *</label>
+                    <label className="block text-xs text-white mb-1">客戶 *</label>
                     <select
                       value={selCustomer?.id ?? ''}
                       onChange={(e) => handleCustomerSelect(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
                     >
-                      <option value="">— 選擇客戶 —</option>
+                      <option value="" className="bg-gray-700 text-white">— 選擇客戶 —</option>
                       {customers.map((c) => (
-                        <option key={c.id} value={c.id}>{c.displayName}</option>
+                        <option key={c.id} value={c.id} className="bg-gray-700 text-white">{c.displayName}</option>
                       ))}
                     </select>
                   </div>
                   {selCustomer && (
                     <div className="rounded-lg bg-surface-2 px-4 py-3 text-sm">
-                      <p className="text-txt-subtle text-xs mb-1">客戶資訊</p>
-                      <p className="text-txt-primary font-medium">{selCustomer.displayName}</p>
+                      <p className="text-white text-xs mb-1">客戶資訊</p>
+                      <p className="text-white font-medium">{selCustomer.displayName}</p>
                       {selCustomer.company?.name && (
-                        <p className="text-txt-subtle text-xs">{selCustomer.company.name}</p>
+                        <p className="text-white text-xs">{selCustomer.company.name}</p>
                       )}
                     </div>
                   )}
@@ -410,7 +429,7 @@ export default function PaymentsPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs text-txt-subtle">勾選要核銷的發貨單號（必須至少選一個）：</p>
+                      <p className="text-xs text-white">勾選要核銷的發貨單號（必須至少選一個）：</p>
                       <div className="space-y-2">
                         {outstanding.map((r) => (
                           <label
@@ -429,10 +448,10 @@ export default function PaymentsPage() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-mono text-accent-text">{r.deliveryNoteNo}</p>
-                              <p className="text-xs text-txt-subtle">訂單：{r.salesOrderNo}</p>
+                              <p className="text-xs text-white">訂單：{r.salesOrderNo}</p>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-xs text-txt-subtle">總額 {r.totalAmount.toFixed(2)}</p>
+                              <p className="text-xs text-white">總額 {r.totalAmount.toFixed(2)}</p>
                               <p className="text-sm font-semibold text-red-400 tabular-nums">
                                 未收 {r.remainingAmount.toFixed(2)}
                               </p>
@@ -442,8 +461,8 @@ export default function PaymentsPage() {
                       </div>
                       {checkedIds.size > 0 && (
                         <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                          <span className="text-txt-subtle">可核銷上限：</span>
-                          <span className="font-semibold text-txt-primary tabular-nums">
+                          <span className="text-white">可核銷上限：</span>
+                          <span className="font-semibold text-white tabular-nums">
                             {maxAmount.toFixed(2)}
                           </span>
                         </div>
@@ -462,12 +481,12 @@ export default function PaymentsPage() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                    <span className="text-txt-subtle">可核銷上限：</span>
-                    <span className="font-semibold text-txt-primary tabular-nums">{maxAmount.toFixed(2)}</span>
+                    <span className="text-white">可核銷上限：</span>
+                    <span className="font-semibold text-white tabular-nums">{maxAmount.toFixed(2)}</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">本次收款金額 *</label>
+                    <label className="block text-xs text-white mb-1">本次收款金額 *</label>
                     <input
                       type="number"
                       min={0.01}
@@ -476,7 +495,7 @@ export default function PaymentsPage() {
                       value={amount}
                       onChange={(e) => { setAmount(e.target.value); setModalError(''); }}
                       placeholder={`最多 ${maxAmount.toFixed(2)}`}
-                      className={`w-full bg-gray-700 border rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none ${
+                      className={`w-full bg-gray-700 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none ${
                         amountOverLimit ? 'border-red-500' : 'border-gray-600 focus:border-accent'
                       }`}
                     />
@@ -488,36 +507,36 @@ export default function PaymentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">付款方式</label>
+                    <label className="block text-xs text-white mb-1">付款方式</label>
                     <select
                       value={payMethod}
                       onChange={(e) => setPayMethod(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
                     >
                       {PAYMENT_METHODS.map((m) => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
+                        <option key={m.value} value={m.value} className="bg-gray-700 text-white">{m.label}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">銀行流水號（選填）</label>
+                    <label className="block text-xs text-white mb-1">銀行流水號（選填）</label>
                     <input
                       type="text"
                       value={payRef}
                       onChange={(e) => setPayRef(e.target.value)}
                       placeholder="e.g. TT2026022800001"
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs text-txt-subtle mb-1">備注（選填）</label>
+                    <label className="block text-xs text-white mb-1">備注（選填）</label>
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={2}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent resize-none"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent resize-none"
                     />
                   </div>
 
@@ -536,7 +555,7 @@ export default function PaymentsPage() {
                 {step > 1 && (
                   <button
                     onClick={() => setStep((s) => (s - 1) as ModalStep)}
-                    className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors"
+                    className="px-4 py-2 text-sm text-white hover:text-white transition-colors"
                   >
                     ← 上一步
                   </button>
@@ -545,7 +564,7 @@ export default function PaymentsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors"
+                  className="px-4 py-2 text-sm text-white hover:text-white transition-colors"
                 >
                   取消
                 </button>

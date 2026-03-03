@@ -65,9 +65,13 @@ export default function ARPage() {
   const totalOutstanding = receivables
     .filter((r) => r.status !== ReceivableStatus.PAID)
     .reduce((s, r) => s + r.remainingAmount, 0);
-  const countPartial = receivables.filter((r) => r.status === ReceivableStatus.PARTIAL_PAID).length;
-  const countPaid = receivables.filter((r) => r.status === ReceivableStatus.PAID).length;
   const countOutstanding = receivables.filter((r) => r.status === ReceivableStatus.OUTSTANDING).length;
+  const amountPartial = receivables
+    .filter((r) => r.status === ReceivableStatus.PARTIAL_PAID)
+    .reduce((s, r) => s + r.remainingAmount, 0);
+  const amountPaid = receivables
+    .filter((r) => r.status === ReceivableStatus.PAID)
+    .reduce((s, r) => s + r.totalAmount, 0);
 
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
@@ -89,13 +93,17 @@ export default function ARPage() {
             </p>
             <p className="text-xs text-red-500 mt-2 font-medium uppercase tracking-wide">Outstanding Balance</p>
           </div>
-          <div className="rounded-2xl bg-gray-50 border border-gray-200 p-5 text-center shadow-sm">
-            <p className="text-3xl font-bold tabular-nums text-yellow-600 leading-none">{countPartial}</p>
-            <p className="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wide">Partial Paid</p>
+          <div className="rounded-2xl bg-yellow-50 border border-yellow-200 p-5 text-center shadow-sm">
+            <p className="text-3xl font-bold tabular-nums text-yellow-600 leading-none">
+              {amountPartial.toFixed(2)}
+            </p>
+            <p className="text-xs text-yellow-500 mt-2 font-medium uppercase tracking-wide">Partial Paid (餘額)</p>
           </div>
           <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center shadow-sm">
-            <p className="text-3xl font-bold tabular-nums text-green-600 leading-none">{countPaid}</p>
-            <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">Fully Paid</p>
+            <p className="text-3xl font-bold tabular-nums text-green-600 leading-none">
+              {amountPaid.toFixed(2)}
+            </p>
+            <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">Fully Paid (已收)</p>
           </div>
         </div>
 
