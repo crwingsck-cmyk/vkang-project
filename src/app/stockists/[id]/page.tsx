@@ -5,9 +5,9 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { OrderService } from '@/services/database/orders';
+import { InventoryService } from '@/services/database/inventory';
 import { ProductService } from '@/services/database/products';
-import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
+import { User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
 type ComputedRow = {
@@ -35,74 +35,33 @@ export default function StockistDetailPage() {
   async function load() {
     setLoading(true);
     try {
-      const [u, products, txns] = await Promise.all([
+      const [u, products, invList] = await Promise.all([
         UserService.getById(stockistId),
         ProductService.getAll(undefined, 200),
-        OrderService.getByUserRelated(stockistId, 300),
+        InventoryService.getByUser(stockistId, 200),
       ]);
       setStockist(u ?? null);
 
       const names: Record<string, string> = {};
-      const costs: Record<string, number> = {};
       for (const p of products) {
-        if (p.sku) { names[p.sku] = p.name || p.sku; costs[p.sku] = p.costPrice ?? 0; }
+        if (p.sku) names[p.sku] = p.name || p.sku;
       }
 
-      // Compute per-product from transactions
-      const perProduct: Record<string, { quantity: number; value: number }> = {};
-
-      const add = (productId: string, qty: number, unitPrice: number, dir: 'in' | 'out') => {
-        if (!perProduct[productId]) perProduct[productId] = { quantity: 0, value: 0 };
-        const sign = dir === 'in' ? 1 : -1;
-        perProduct[productId].quantity += sign * qty;
-        perProduct[productId].value += sign * qty * unitPrice;
-      };
-
-      for (const txn of txns) {
-        if (txn.status === TransactionStatus.CANCELLED) continue;
-        if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
-
-        const isOut = txn.fromUser?.userId === stockistId;
-        const isIn = txn.toUser?.userId === stockistId;
-        if (!isOut && !isIn) continue;
-        const dir: 'in' | 'out' = isOut ? 'out' : 'in';
-
-        if (txn.transactionType === TransactionType.SWAP) {
-          for (const item of txn.items ?? []) {
-            add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, dir);
-          }
-          const swapDir: 'in' | 'out' = dir === 'out' ? 'in' : 'out';
-          for (const item of (txn as any).swapItems ?? []) {
-            add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, swapDir);
-          }
-          continue;
-        }
-
-        for (const item of txn.items ?? []) {
-          let itemDir = dir;
-          if (txn.transactionType === TransactionType.CONVERSION) {
-            itemDir = item.productId === (txn as any).conversionSource?.productId ? 'out' : 'in';
-          }
-          add(item.productId, item.quantity, item.unitPrice ?? costs[item.productId] ?? 0, itemDir);
-        }
-      }
-
-      const computed: ComputedRow[] = Object.entries(perProduct)
-        .map(([productId, { quantity, value }]) => ({
-          productId,
-          productName: names[productId] || productId,
-          quantity: Math.max(0, quantity),
-          value: Math.max(0, value),
+      const computed: ComputedRow[] = invList
+        .filter((inv) => (inv.quantityOnHand ?? 0) > 0)
+        .map((inv) => ({
+          productId: inv.productId,
+          productName: names[inv.productId] || inv.productId,
+          quantity: inv.quantityOnHand,
+          value: inv.marketValue ?? 0,
         }))
-        .filter((r) => r.quantity > 0)
         .sort((a, b) => b.quantity - a.quantity);
 
-      // Single running total — matches hierarchy page
       let runQty = 0;
       let runVal = 0;
-      for (const { quantity, value } of Object.values(perProduct)) {
-        runQty += quantity;
-        runVal += value;
+      for (const inv of invList) {
+        runQty += inv.quantityOnHand ?? 0;
+        runVal += inv.marketValue ?? 0;
       }
       setRunningTotal({ qty: Math.max(0, runQty), value: Math.max(0, runVal) });
       setRows(computed);

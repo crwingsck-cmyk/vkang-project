@@ -1,6 +1,7 @@
 import { InventoryService } from './inventory';
 import { InventoryBatchService } from './inventoryBatches';
 import { TransactionItem, InventoryStatus, CostingMethod } from '@/types/models';
+import { ProductService } from './products';
 
 /**
  * Handles automatic inventory movements triggered by transaction status changes.
@@ -95,16 +96,17 @@ export const InventorySyncService = {
     items: TransactionItem[],
     transactionId: string
   ) {
-    const { ok, insufficient } = await this.validateSaleInventory(fromUserId, items);
-    if (!ok) {
-      const msg = insufficient
-        .map((i) => `${i.productName} 需要 ${i.need}，庫存僅 ${i.have}`)
-        .join('；');
-      throw new Error(`調撥失敗，來源庫存不足：${msg}。請先在「產品轉換」將 SKU 轉換為對應產品。`);
+    // 以總庫存核驗（來源可能以 SKU 形式存庫，未必有對應具體產品）
+    const totalNeed = items.reduce((s, i) => s + i.quantity, 0);
+    const allInv = await InventoryService.getByUser(fromUserId, 200);
+    const totalHave = allInv.reduce((s, i) => s + (i.quantityOnHand ?? 0), 0);
+    if (totalHave < totalNeed) {
+      throw new Error(`調撥失敗，來源庫存不足：需要 ${totalNeed}，庫存僅 ${totalHave}`);
     }
     const ref = `TRANSFER: ${transactionId}`;
-    await _deduct(fromUserId, items, ref);
-    await _add(toUserId, items, ref);
+    // 政策：以 SKU 形式扣減（與收貨方入庫策略一致）
+    await _deductAsSku(fromUserId, items, ref);
+    await _addAsSku(toUserId, items, ref);
   },
 
   async onSwapCompleted(
@@ -238,6 +240,64 @@ async function _deduct(userId: string, items: TransactionItem[], reference: stri
     }
     await InventoryService.deduct(userId, item.productId, item.quantity, reference);
   }
+}
+
+/**
+ * 調撥收貨：將所有 items 的總數量以「批量進貨」(SKU) 形式入庫
+ * 若找不到 SKU 產品，退而以原始 items 入庫（容錯）
+ */
+async function _addAsSku(userId: string, items: TransactionItem[], reference: string) {
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  if (totalQty <= 0) return;
+
+  // 找出「批量進貨」產品
+  const allProducts = await ProductService.getAll(undefined, 200);
+  const skuProduct = allProducts.find((p) => p.name === '批量進貨');
+
+  if (!skuProduct) {
+    // 找不到 SKU 產品時，退回原始行為
+    console.warn('[_addAsSku] 找不到「批量進貨」產品，改以原始 items 入庫');
+    await _add(userId, items, reference);
+    return;
+  }
+
+  const skuItem: TransactionItem = {
+    productId: skuProduct.sku,
+    productName: skuProduct.name,
+    quantity: totalQty,
+    unitPrice: 0,
+    total: 0,
+  };
+  await _add(userId, [skuItem], reference);
+}
+
+/**
+ * 調撥出貨：將所有 items 的總數量以「批量進貨」(SKU) 形式從來源扣減
+ * 若有其他具體產品庫存但無 SKU，先合併再扣減
+ */
+async function _deductAsSku(userId: string, items: TransactionItem[], reference: string) {
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  if (totalQty <= 0) return;
+
+  const allProducts = await ProductService.getAll(undefined, 200);
+  const skuProduct = allProducts.find((p) => p.name === '批量進貨');
+
+  if (!skuProduct) {
+    await _deduct(userId, items, reference);
+    return;
+  }
+
+  const skuItems: TransactionItem[] = [{
+    productId: skuProduct.sku,
+    productName: skuProduct.name,
+    quantity: totalQty,
+    unitPrice: 0,
+    total: 0,
+  }];
+
+  // 若 SKU 數量不足，先將其他具體產品合併進 SKU
+  await _replenishPlaceholderForBulk(userId, skuItems, reference);
+  await _deduct(userId, skuItems, reference);
 }
 
 async function _add(userId: string, items: TransactionItem[], reference: string) {

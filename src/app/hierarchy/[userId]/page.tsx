@@ -277,8 +277,8 @@ export default function StockLedgerPage() {
         {reconcileMsg && (
           <div className={`px-4 py-2 rounded-lg text-sm ${
             reconcileMsg.startsWith('✅')
-              ? 'bg-green-900/30 border border-green-700 text-green-300'
-              : 'bg-red-900/30 border border-red-700 text-red-300'
+              ? 'bg-green-100 border border-green-400 text-green-900'
+              : 'bg-red-100 border border-red-400 text-red-900'
           }`}>
             {reconcileMsg}
           </div>
@@ -596,10 +596,10 @@ export default function StockLedgerPage() {
         })()}
 
         {/* 產品彙總（所有收貨） */}
-        {!loading && rows.some(r => r.direction === 'in' && r.type !== 'conversion') && (() => {
+        {!loading && rows.some(r => r.direction === 'in' && r.type !== 'conversion' && r.productId !== 'OPENING-STOCK') && (() => {
           const received: Record<string, { productName: string; quantity: number }> = {};
           for (const row of rows) {
-            if (row.direction !== 'in' || row.type === 'conversion') continue;
+            if (row.direction !== 'in' || row.type === 'conversion' || row.productId === 'OPENING-STOCK') continue;
             if (!received[row.productId]) received[row.productId] = { productName: row.productName, quantity: 0 };
             received[row.productId].quantity += row.quantity;
           }

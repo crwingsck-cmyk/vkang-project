@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 import { SalesOrderService } from '@/services/database/salesOrders';
+import { InventoryService } from '@/services/database/inventory';
 import { DeliveryNote, DeliveryNoteStatus, SalesOrder, UserRole, TransactionItem } from '@/types/models';
 import { generateDocumentNumber } from '@/lib/documentNumber';
 
@@ -139,7 +140,29 @@ export default function DeliveriesPage() {
   const handleWarehouseApprove = async (dn: DeliveryNote) => {
     setActionError('');
     try {
+      // 出庫前驗證賣方現有庫存
+      if (dn.fromUserId && dn.items.length > 0) {
+        const insufficient: string[] = [];
+        for (const item of dn.items) {
+          const inv = await InventoryService.getByUserAndProduct(dn.fromUserId, item.productId);
+          const have = inv?.quantityOnHand ?? 0;
+          if (have < item.quantity) {
+            insufficient.push(`${item.productName}：需要 ${item.quantity}，庫存僅 ${have}`);
+          }
+        }
+        if (insufficient.length > 0) {
+          setActionError(`${dn.fromUserName} 庫存不足，無法出庫：${insufficient.join('；')}`);
+          return;
+        }
+      }
       await DeliveryNoteService.warehouseApprove(dn.id!, user?.id ?? '');
+      // 出庫後扣減賣方現有庫存（只扣具體產品，不動批量進貨）
+      if (dn.fromUserId && dn.items.length > 0) {
+        const ref = `DN-OUT: ${dn.id}`;
+        for (const item of dn.items) {
+          await InventoryService.deduct(dn.fromUserId, item.productId, item.quantity, ref);
+        }
+      }
       await load();
     } catch (e: any) {
       setActionError(e.message ?? '審核失敗');

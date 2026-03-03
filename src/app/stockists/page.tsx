@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
-import { OrderService } from '@/services/database/orders';
-import { User, UserRole, TransactionType, TransactionStatus } from '@/types/models';
+import { InventoryService } from '@/services/database/inventory';
+import { User, UserRole } from '@/types/models';
 import Link from 'next/link';
 
 function DistributorCard({
@@ -65,40 +65,12 @@ export default function StockistsPage() {
 
   async function loadUserStats(userId: string): Promise<{ invValue: number; totalQuantity: number }> {
     try {
-      const txns = await OrderService.getByUserRelated(userId, 300);
-      const flat: { productId: string; quantity: number; direction: 'in' | 'out'; unitPrice: number }[] = [];
-      for (const txn of txns) {
-        if (txn.status === TransactionStatus.CANCELLED) continue;
-        if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
-        const isOut = txn.fromUser?.userId === userId;
-        const isIn = txn.toUser?.userId === userId;
-        const direction: 'in' | 'out' | null = isOut ? 'out' : isIn ? 'in' : null;
-        if (!direction) continue;
-        if (txn.transactionType === TransactionType.SWAP) {
-          for (const item of txn.items ?? []) {
-            flat.push({ productId: item.productId, quantity: item.quantity, direction, unitPrice: item.unitPrice ?? 0 });
-          }
-          const swapDir: 'in' | 'out' = direction === 'out' ? 'in' : 'out';
-          for (const item of (txn as any).swapItems ?? []) {
-            flat.push({ productId: item.productId, quantity: item.quantity, direction: swapDir, unitPrice: item.unitPrice ?? 0 });
-          }
-          continue;
-        }
-        for (const item of txn.items ?? []) {
-          let itemDir = direction;
-          if (txn.transactionType === TransactionType.CONVERSION) {
-            itemDir = item.productId === (txn as any).conversionSource?.productId ? 'out' : 'in';
-          }
-          flat.push({ productId: item.productId, quantity: item.quantity, direction: itemDir, unitPrice: item.unitPrice ?? 0 });
-        }
-      }
-      // Single running total — matches hierarchy page (Temp SKU and actual products share the same pool)
+      const invList = await InventoryService.getByUser(userId, 200);
       let totalQuantity = 0;
       let invValue = 0;
-      for (const row of flat) {
-        const sign = row.direction === 'in' ? 1 : -1;
-        totalQuantity += sign * row.quantity;
-        invValue += sign * row.quantity * row.unitPrice;
+      for (const inv of invList) {
+        totalQuantity += inv.quantityOnHand ?? 0;
+        invValue += inv.marketValue ?? 0;
       }
       return { invValue: Math.max(0, invValue), totalQuantity: Math.max(0, totalQuantity) };
     } catch {

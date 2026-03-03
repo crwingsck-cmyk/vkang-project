@@ -42,6 +42,16 @@ export const InventoryReconcileService = {
 
     const changes: ReconcileChange[] = [];
 
+    // Also load all existing Firestore inventory for this user,
+    // so products not in any transaction (e.g. added via Opening Stock directly)
+    // are also set to 0 when transactions no longer account for them.
+    const existingInvList = await InventoryService.getByUser(userId, 300);
+    for (const inv of existingInvList) {
+      if (!(inv.productId in netQty)) {
+        netQty[inv.productId] = 0;
+      }
+    }
+
     for (const [sku, qty] of Object.entries(netQty)) {
       const inv = await InventoryService.getByUserAndProduct(userId, sku);
       const oldQty = inv?.quantityOnHand ?? 0;

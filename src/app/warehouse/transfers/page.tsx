@@ -464,7 +464,7 @@ export default function TransfersPage() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-200">Date</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-200">From</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-200">To</th>
-                  <th className="px-6 py-3 text-right text-sm font-medium text-gray-200">Items</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-200">Items</th>
                   <th className="px-6 py-3 text-right text-sm font-medium text-gray-200">Value</th>
                   <th className="px-6 py-3 text-center text-sm font-medium text-gray-200">Status</th>
                   {role === UserRole.ADMIN && (
@@ -480,7 +480,15 @@ export default function TransfersPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">{t.fromUser?.userName || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-300">{t.toUser?.userName || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-300 text-right">{t.items.length}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      <div className="space-y-0.5">
+                        {t.items.map((item, i) => (
+                          <div key={i} className="whitespace-nowrap">
+                            <span className="text-gray-100">{item.productName}</span> <span className="text-gray-400">×{item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-300 text-right">
                       RM {t.totals.grandTotal.toFixed(2)}
                     </td>

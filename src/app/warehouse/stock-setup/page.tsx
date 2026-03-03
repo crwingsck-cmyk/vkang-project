@@ -5,9 +5,50 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { InventoryService } from '@/services/database/inventory';
 import { UserService } from '@/services/database/users';
 import { ProductService } from '@/services/database/products';
+import { OrderService } from '@/services/database/orders';
 import { useToast } from '@/context/ToastContext';
-import { UserRole, InventoryStatus } from '@/types/models';
+import { UserRole, InventoryStatus, TransactionType, TransactionStatus, ShippingStatus, Transaction } from '@/types/models';
 import Link from 'next/link';
+
+/**
+ * Compute the current ledger total for a user based on transactions,
+ * excluding any OPENING-STOCK transactions (since we'll replace them).
+ */
+async function computeLedgerTotal(userId: string): Promise<number> {
+  const txns = (await OrderService.getByUserRelated(userId, 500)) as Array<Transaction & { id: string }>;
+  let total = 0;
+  for (const txn of txns) {
+    if ((txn.id ?? '').startsWith('OPENING-STOCK-')) continue;
+    if (txn.status === TransactionStatus.CANCELLED) continue;
+    if (txn.transactionType === TransactionType.LOAN && txn.status === TransactionStatus.COMPLETED) continue;
+    const isOut = txn.fromUser?.userId === userId;
+    const isIn = txn.toUser?.userId === userId;
+    // Mirror hierarchy page logic: isOut takes priority over isIn
+    const direction: 'in' | 'out' | null = isOut ? 'out' : isIn ? 'in' : null;
+    if (!direction) continue;
+
+    if (txn.transactionType === TransactionType.SWAP) {
+      const swapDir: 'in' | 'out' = direction === 'out' ? 'in' : 'out';
+      for (const item of txn.items ?? []) {
+        total += direction === 'in' ? (item.quantity ?? 0) : -(item.quantity ?? 0);
+      }
+      for (const item of (txn as any).swapItems ?? []) {
+        total += swapDir === 'in' ? (item.quantity ?? 0) : -(item.quantity ?? 0);
+      }
+      continue;
+    }
+
+    for (const item of txn.items ?? []) {
+      let itemDir = direction;
+      if (txn.transactionType === TransactionType.CONVERSION) {
+        const sourceProductId = (txn as any).conversionSource?.productId;
+        itemDir = item.productId === sourceProductId ? 'out' : 'in';
+      }
+      total += itemDir === 'in' ? (item.quantity ?? 0) : -(item.quantity ?? 0);
+    }
+  }
+  return Math.max(0, total);
+}
 
 // Fixed locations — edit these if the users or locations change
 const LOC1_DISPLAY_NAME = 'Tan Sun Sun';
@@ -87,7 +128,7 @@ export default function StockSetupPage() {
     setRows((prev) => prev.map((r) => (r.productId === productId ? { ...r, [field]: value } : r)));
   }
 
-  async function saveUserInv(userId: string, qtyField: 'qty1' | 'qty2', costField: 'cost1' | 'cost2') {
+  async function saveUserInv(userId: string, userName: string, qtyField: 'qty1' | 'qty2', costField: 'cost1' | 'cost2') {
     const now = Date.now();
     const toSave = rows.filter((r) => r[qtyField] !== '' && Number(r[qtyField]) >= 0);
     for (const r of toSave) {
@@ -113,6 +154,44 @@ export default function StockSetupPage() {
         movements: [{ date: now, type: 'adjustment', quantity: qty, reference: 'OPENING STOCK' }],
       });
     }
+
+    // Create/update OPENING-STOCK transaction for only the DELTA
+    // (new desired total minus current ledger total from other transactions)
+    const newTotal = toSave.reduce((s, r) => s + Math.max(0, Number(r[qtyField]) || 0), 0);
+    const ledgerTotal = await computeLedgerTotal(userId);
+    const delta = newTotal - ledgerTotal;
+    const transId = `OPENING-STOCK-${userId}`;
+    if (delta > 0) {
+      await OrderService.create(
+        {
+          transactionType: TransactionType.ADJUSTMENT,
+          status: TransactionStatus.COMPLETED,
+          description: 'Opening Stock',
+          toUser: { userId, userName },
+          items: [{ productId: 'OPENING-STOCK', productName: 'Opening Stock', quantity: delta, unitPrice: 0, total: 0 }],
+          totals: { subtotal: 0, grandTotal: 0 },
+          shippingDetails: { status: ShippingStatus.DELIVERED },
+        },
+        { customId: transId, createdAt: now }
+      );
+    } else if (delta < 0) {
+      await OrderService.create(
+        {
+          transactionType: TransactionType.ADJUSTMENT,
+          status: TransactionStatus.COMPLETED,
+          description: 'Opening Stock',
+          fromUser: { userId, userName },
+          items: [{ productId: 'OPENING-STOCK', productName: 'Opening Stock', quantity: -delta, unitPrice: 0, total: 0 }],
+          totals: { subtotal: 0, grandTotal: 0 },
+          shippingDetails: { status: ShippingStatus.DELIVERED },
+        },
+        { customId: transId, createdAt: now }
+      );
+    } else {
+      // delta = 0: delete any existing OPENING-STOCK transaction
+      try { await OrderService.delete(transId); } catch { /* not found, ignore */ }
+    }
+
     return toSave.length;
   }
 
@@ -120,8 +199,8 @@ export default function StockSetupPage() {
     setSaving(true);
     try {
       let saved = 0;
-      if (userId1) saved += await saveUserInv(userId1, 'qty1', 'cost1');
-      if (userId2) saved += await saveUserInv(userId2, 'qty2', 'cost2');
+      if (userId1) saved += await saveUserInv(userId1, LOC1_DISPLAY_NAME, 'qty1', 'cost1');
+      if (userId2) saved += await saveUserInv(userId2, LOC2_DISPLAY_NAME, 'qty2', 'cost2');
       toastSuccess(`已儲存 ${saved} 筆庫存`);
     } catch (err) {
       console.error(err);
