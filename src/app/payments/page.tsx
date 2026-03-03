@@ -66,6 +66,7 @@ export default function PaymentsPage() {
   const [editPayMethod, setEditPayMethod] = useState('');
   const [editPayRef, setEditPayRef] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editAmount, setEditAmount] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -226,15 +227,23 @@ export default function PaymentsPage() {
     setEditPayMethod(pr.paymentMethod ?? 'bank');
     setEditPayRef(pr.paymentReference ?? '');
     setEditNotes(pr.notes ?? '');
+    setEditAmount(pr.totalAmount.toFixed(2));
     setEditError('');
     setShowEditModal(true);
   };
 
   const handleEditSave = async () => {
     if (!editPR) return;
+    const newAmount = parseFloat(editAmount);
+    if (!newAmount || newAmount <= 0) { setEditError('請填寫有效金額'); return; }
     setEditSaving(true);
     setEditError('');
     try {
+      // 如果金額有變動，先處理 AR 反轉與重新核銷
+      if (Math.abs(newAmount - editPR.totalAmount) > 0.001) {
+        await PaymentReceiptService.updateAmount(editPR.id!, newAmount);
+      }
+      // 更新付款細節（方式、流水號、備注）
       await PaymentReceiptService.updateDetails(editPR.id!, {
         paymentMethod: editPayMethod,
         paymentReference: editPayRef || undefined,
@@ -657,6 +666,17 @@ export default function PaymentsPage() {
               <button onClick={() => setShowEditModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs text-white mb-1">收款金額 *</label>
+                <input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  value={editAmount}
+                  onChange={(e) => { setEditAmount(e.target.value); setEditError(''); }}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent"
+                />
+              </div>
               <div>
                 <label className="block text-xs text-white mb-1">付款方式</label>
                 <select

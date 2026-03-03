@@ -88,6 +88,59 @@ export const PaymentReceiptService = {
     });
   },
 
+  /**
+   * 修改已審核收款單金額：反轉舊 AR → 重新分配新金額 → 重新核銷 AR
+   */
+  async updateAmount(id: string, newAmount: number): Promise<void> {
+    const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
+    if (!pr) throw new Error('收款單不存在');
+    if (pr.status !== PaymentReceiptStatus.APPROVED) throw new Error('只有已審核的收款單可修改金額');
+
+    // 1. 反轉所有舊 AR 核銷
+    for (const item of pr.items) {
+      await ReceivableService.reversePayment(item.receivableId, item.appliedAmount);
+    }
+
+    // 2. 重新取得各應收款可用餘額（反轉後）
+    const receivables = await Promise.all(
+      pr.items.map((item) => ReceivableService.getById(item.receivableId))
+    );
+    const maxAmount = receivables.reduce((sum, r) => sum + (r?.remainingAmount ?? 0), 0);
+
+    if (newAmount > maxAmount + 0.001) {
+      // 還原舊狀態
+      for (const item of pr.items) {
+        await ReceivableService.applyPayment(item.receivableId, item.appliedAmount);
+      }
+      throw new Error(`修改金額超過可核銷上限（${maxAmount.toFixed(2)}），已還原`);
+    }
+
+    // 3. 按比例重新分配新金額
+    const newItems = [...pr.items];
+    let remaining = newAmount;
+    for (let i = 0; i < newItems.length; i++) {
+      const available = receivables[i]?.remainingAmount ?? 0;
+      const apply = Math.round(Math.min(available, remaining) * 100) / 100;
+      newItems[i] = { ...newItems[i], appliedAmount: apply };
+      remaining -= apply;
+      if (remaining <= 0.001) break;
+    }
+
+    // 4. 重新核銷 AR
+    for (const item of newItems) {
+      if (item.appliedAmount > 0) {
+        await ReceivableService.applyPayment(item.receivableId, item.appliedAmount);
+      }
+    }
+
+    // 5. 更新 PR
+    await FirestoreService.update<PaymentReceipt>(COLLECTION, id, {
+      totalAmount: newAmount,
+      items: newItems,
+      updatedAt: Date.now(),
+    });
+  },
+
   /** 取得所有現有 PR 單號（用於生成下一個不衝突的單號）*/
   async getAllReceiptNos(): Promise<string[]> {
     const all = await FirestoreService.query<PaymentReceipt>(COLLECTION, [
