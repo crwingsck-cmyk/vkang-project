@@ -296,7 +296,7 @@ export default function ProductConversionPage() {
               {/* 归属确认提示 */}
               {selectedOwnerId && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/20 border border-blue-700/40 rounded-lg text-xs text-blue-300">
-                  ✓ This conversion will affect <strong>{selectedOwnerName}</strong>'s inventory
+                  ✓ This conversion will affect <strong>{selectedOwnerName}</strong>&apos;s inventory
                 </div>
               )}
             </div>

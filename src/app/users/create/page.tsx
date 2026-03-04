@@ -203,7 +203,7 @@ function CreateUserForm() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">Select this user's upstream. Leave empty for top-level.</p>
+            <p className="text-xs text-gray-500 mt-1">Select this user&apos;s upstream. Leave empty for top-level.</p>
           </div>
 
           {(form.role === UserRole.STOCKIST || form.role === UserRole.CUSTOMER) && (
