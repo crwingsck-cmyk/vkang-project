@@ -45,7 +45,6 @@ export default function ExpensesPage() {
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [addType, setAddType] = useState<ExpenseType>(ExpenseType.WEIGHING_SCALE);
-  const [addOwnerId, setAddOwnerId] = useState('');
   const [addAmount, setAddAmount] = useState('');
   const [addPaidTo, setAddPaidTo] = useState('');
   const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -67,7 +66,6 @@ export default function ExpensesPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editExpense, setEditExpense] = useState<(Expense & { id: string }) | null>(null);
   const [editType, setEditType] = useState<ExpenseType>(ExpenseType.WEIGHING_SCALE);
-  const [editOwnerId, setEditOwnerId] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [editPaidTo, setEditPaidTo] = useState('');
   const [editDate, setEditDate] = useState('');
@@ -106,7 +104,6 @@ export default function ExpensesPage() {
   const openAddModal = async () => {
     setShowAddModal(true);
     setAddType(ExpenseType.WEIGHING_SCALE);
-    setAddOwnerId('');
     setAddAmount('');
     setAddPaidTo('');
     setAddDate(new Date().toISOString().slice(0, 10));
@@ -114,7 +111,6 @@ export default function ExpensesPage() {
     setAddPayRef('');
     setAddDesc('');
     setAddError('');
-    // 確保有最新用戶清單供歸屬經銷商選項
     const custs = await UserService.getAll();
     setCustomers(custs);
   };
@@ -141,7 +137,7 @@ export default function ExpensesPage() {
         paymentReference: addPayRef || undefined,
         description: addDesc || undefined,
         isRecoverable,
-        ownerId: addOwnerId || undefined,
+        ownerId: undefined,
         createdBy: user?.id,
       });
       setShowAddModal(false);
@@ -156,7 +152,6 @@ export default function ExpensesPage() {
   const openEditModal = (exp: Expense & { id: string }) => {
     setEditExpense(exp);
     setEditType(exp.type);
-    setEditOwnerId(exp.ownerId ?? '');
     setEditAmount(exp.amount.toString());
     setEditPaidTo(exp.paidTo);
     setEditDate(exp.paymentDate ? new Date(exp.paymentDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
@@ -185,7 +180,7 @@ export default function ExpensesPage() {
         paymentReference: editPayRef || undefined,
         description: editDesc || undefined,
         isRecoverable: editType !== ExpenseType.SALARY,
-        ownerId: editOwnerId || undefined,
+        ownerId: undefined,
       });
       setShowEditModal(false);
       setEditExpense(null);
@@ -364,6 +359,7 @@ export default function ExpensesPage() {
                             {expCharges.map((c) => (
                               <span key={c.id} className="flex items-center gap-1.5 text-xs text-gray-500">
                                 → {c.customerName} RM {c.amount.toFixed(2)}
+                                <span className="text-gray-400 font-mono">({c.expenseNo})</span>
                                 {c.paidAmount <= 0 ? (
                                   <button
                                     type="button"
@@ -431,19 +427,6 @@ export default function ExpensesPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Add Expense</h2>
               </div>
               <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner (optional, for profit report)</label>
-                  <select
-                    value={addOwnerId}
-                    onChange={(e) => setAddOwnerId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
-                  >
-                    <option value="">— Not specified —</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.displayName}</option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expense Type *</label>
                   <select
@@ -601,19 +584,6 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-500 mt-0.5">{editExpense.expenseNo}</p>
               </div>
               <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner (optional)</label>
-                  <select
-                    value={editOwnerId}
-                    onChange={(e) => setEditOwnerId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
-                  >
-                    <option value="">— Not specified —</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.displayName}</option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expense Type *</label>
                   <select
