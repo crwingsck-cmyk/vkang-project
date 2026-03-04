@@ -526,11 +526,112 @@ export interface PaymentReceipt {
   customerName: string;
   items: PaymentReceiptItem[];
   totalAmount: number;
+  paymentDate?: number;          // 收款日期（timestamp）
   paymentMethod?: string;
   paymentReference?: string;
   notes?: string;
   approvedBy?: string;
   approvedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+/** 費用類型：買體重稱、郵寄、員工薪水 */
+export enum ExpenseType {
+  WEIGHING_SCALE = 'WEIGHING_SCALE',
+  SHIPPING = 'SHIPPING',
+  SALARY = 'SALARY',
+}
+
+/** 費用分攤狀態 */
+export enum ExpenseChargeStatus {
+  OUTSTANDING = 'OUTSTANDING',
+  PARTIAL_PAID = 'PARTIAL_PAID',
+  PAID = 'PAID',
+}
+
+/** 費用收款單狀態 */
+export enum ExpenseChargeReceiptStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  CANCELLED = 'CANCELLED',
+}
+
+/** 費用記錄：公司支出 */
+export interface Expense {
+  id?: string;
+  expenseNo: string;            // EX-YYYYMMDD-NNN
+  type: ExpenseType;
+  amount: number;
+  paidTo: string;
+  paymentDate: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  description?: string;
+  isRecoverable: boolean;       // 體重稱、郵寄=true；薪水=false
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+/** 費用分攤：分攤給經銷商/顧客 */
+export interface ExpenseCharge {
+  id?: string;
+  expenseId: string;
+  expenseNo: string;
+  expenseType: ExpenseType;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: ExpenseChargeStatus;
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+/** 費用收款單項目 */
+export interface ExpenseChargeReceiptItem {
+  chargeId: string;
+  expenseNo: string;
+  appliedAmount: number;
+}
+
+/** 費用收款單 */
+export interface ExpenseChargeReceipt {
+  id?: string;
+  receiptNo: string;            // ECR-YYYYMMDD-NNN
+  customerId: string;
+  customerName: string;
+  items: ExpenseChargeReceiptItem[];
+  totalAmount: number;
+  paymentDate?: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  notes?: string;
+  status: ExpenseChargeReceiptStatus;
+  approvedBy?: string;
+  approvedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+/** 訂金：顧客/經銷商預付，可於發貨後扣抵應收款 */
+export interface Deposit {
+  id?: string;
+  depositNo: string;            // DP-YYYYMMDD-NNN
+  customerId: string;
+  customerName: string;
+  amount: number;               // 收取金額
+  balance: number;              // 剩餘可扣抵金額
+  paymentDate: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  notes?: string;
   createdAt?: number;
   updatedAt?: number;
   createdBy?: string;

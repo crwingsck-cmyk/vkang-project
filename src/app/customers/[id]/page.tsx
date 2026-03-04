@@ -8,11 +8,16 @@ import { UserService } from '@/services/database/users';
 import { DeliveryNoteService } from '@/services/database/deliveryNotes';
 import { ReceivableService } from '@/services/database/receivables';
 import { PaymentReceiptService } from '@/services/database/paymentReceipts';
+import { DepositService } from '@/services/database/deposits';
+import { ExpenseChargeService } from '@/services/database/expenseCharges';
 import {
   User, UserRole,
   DeliveryNote, DeliveryNoteStatus,
   Receivable, ReceivableStatus,
   PaymentReceipt, PaymentReceiptStatus,
+  Deposit,
+  ExpenseCharge,
+  ExpenseType,
 } from '@/types/models';
 
 const dnStatusLabel: Record<DeliveryNoteStatus, string> = {
@@ -52,6 +57,12 @@ const prStatusColor: Record<PaymentReceiptStatus, string> = {
   [PaymentReceiptStatus.CANCELLED]: 'bg-red-100 text-red-500',
 };
 
+const expenseTypeLabel: Record<ExpenseType, string> = {
+  [ExpenseType.WEIGHING_SCALE]: '體重稱',
+  [ExpenseType.SHIPPING]: '郵寄',
+  [ExpenseType.SALARY]: '薪水',
+};
+
 function fmtDate(ts?: number) {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString('en-GB');
@@ -65,6 +76,8 @@ export default function CustomerFinancialPage() {
   const [dns, setDns] = useState<DeliveryNote[]>([]);
   const [ars, setArs] = useState<Receivable[]>([]);
   const [prs, setPrs] = useState<PaymentReceipt[]>([]);
+  const [deposits, setDeposits] = useState<(Deposit & { id: string })[]>([]);
+  const [expenseCharges, setExpenseCharges] = useState<(ExpenseCharge & { id: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDN, setEditDN] = useState<DeliveryNote | null>(null);
   const [editAmount, setEditAmount] = useState('');
@@ -76,16 +89,20 @@ export default function CustomerFinancialPage() {
     if (!customerId) return;
     setLoading(true);
     try {
-      const [u, dnList, arList, prList] = await Promise.all([
+      const [u, dnList, arList, prList, depList, chargeList] = await Promise.all([
         UserService.getById(customerId),
         DeliveryNoteService.getByToUser(customerId),
         ReceivableService.getByCustomer(customerId),
         PaymentReceiptService.getByCustomer(customerId),
+        DepositService.getByCustomer(customerId),
+        ExpenseChargeService.getByCustomer(customerId),
       ]);
       setCustomer(u ?? null);
       setDns(dnList);
       setArs(arList);
       setPrs(prList);
+      setDeposits(depList);
+      setExpenseCharges(chargeList);
     } finally {
       setLoading(false);
     }
@@ -172,7 +189,7 @@ export default function CustomerFinancialPage() {
             <h1 className="text-xl font-bold text-gray-900 tracking-tight name-lowercase">
               {customer?.displayName ?? '—'} — 財務表
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">發貨單 · 應收款 · 收款記錄</p>
+            <p className="text-sm text-gray-500 mt-0.5">發貨單 · 應收款 · 收款記錄 · 訂金 · 費用分攤</p>
           </div>
           <Link
             href={`/hierarchy/${customerId}`}
@@ -196,7 +213,7 @@ export default function CustomerFinancialPage() {
         ) : (
           <>
             {/* Summary stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div className="rounded-2xl bg-gray-50 border border-gray-200 p-5 text-center shadow-sm">
                 <p className="text-2xl font-bold tabular-nums text-gray-900 leading-none">
                   RM {totalBilled.toFixed(2)}
@@ -214,6 +231,18 @@ export default function CustomerFinancialPage() {
                   RM {totalOutstanding.toFixed(2)}
                 </p>
                 <p className="text-xs text-red-500 mt-2 font-medium uppercase tracking-wide">未收餘額</p>
+              </div>
+              <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5 text-center shadow-sm">
+                <p className="text-2xl font-bold tabular-nums text-blue-700 leading-none">
+                  RM {deposits.reduce((s, d) => s + d.balance, 0).toFixed(2)}
+                </p>
+                <p className="text-xs text-blue-500 mt-2 font-medium uppercase tracking-wide">訂金餘額</p>
+              </div>
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 text-center shadow-sm">
+                <p className="text-2xl font-bold tabular-nums text-amber-700 leading-none">
+                  RM {expenseCharges.reduce((s, c) => s + c.remainingAmount, 0).toFixed(2)}
+                </p>
+                <p className="text-xs text-amber-500 mt-2 font-medium uppercase tracking-wide">費用未收</p>
               </div>
             </div>
 
@@ -390,7 +419,7 @@ export default function CustomerFinancialPage() {
                     {prs.map((pr) => (
                       <tr key={pr.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{pr.receiptNo}</td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(pr.createdAt)}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(pr.paymentDate ?? pr.createdAt)}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{pr.paymentMethod ?? '—'}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-bold text-green-700">
                           RM {pr.totalAmount.toFixed(2)}
@@ -409,6 +438,88 @@ export default function CustomerFinancialPage() {
                           >
                             {deletingPR === pr.id ? '刪除中...' : '刪除'}
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Section>
+
+            {/* Deposits */}
+            <Section title="訂金 (Deposit)" count={deposits.length}>
+              {deposits.length === 0 ? (
+                <EmptyRow text="暫無訂金記錄" />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">Deposit No.</th>
+                      <th className="px-4 py-3 text-left">日期</th>
+                      <th className="px-4 py-3 text-right">收取金額</th>
+                      <th className="px-4 py-3 text-right">可扣抵餘額</th>
+                      <th className="px-4 py-3 text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {deposits.map((d) => (
+                      <tr key={d.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{d.depositNo}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{fmtDate(d.paymentDate)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-gray-900">
+                          RM {d.amount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-blue-700">
+                          RM {d.balance.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Link
+                            href="/deposits"
+                            className="text-xs font-medium text-accent-text hover:underline"
+                          >
+                            管理訂金 →
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Section>
+
+            {/* Expense Charges */}
+            <Section title="費用分攤" count={expenseCharges.length}>
+              {expenseCharges.length === 0 ? (
+                <EmptyRow text="暫無費用分攤" />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">費用單號</th>
+                      <th className="px-4 py-3 text-left">類型</th>
+                      <th className="px-4 py-3 text-right">分攤金額</th>
+                      <th className="px-4 py-3 text-right">未收餘額</th>
+                      <th className="px-4 py-3 text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {expenseCharges.map((c) => (
+                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{c.expenseNo}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{expenseTypeLabel[c.expenseType]}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-gray-900">
+                          RM {c.amount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-amber-600">
+                          RM {c.remainingAmount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Link
+                            href="/expense-receipts"
+                            className="text-xs font-medium text-accent-text hover:underline"
+                          >
+                            費用收款 →
+                          </Link>
                         </td>
                       </tr>
                     ))}
