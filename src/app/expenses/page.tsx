@@ -362,8 +362,28 @@ export default function ExpensesPage() {
                           <span>
                             Allocated {allocated.toFixed(2)} / {e.amount.toFixed(2)}
                             {expCharges.map((c) => (
-                              <span key={c.id} className="block text-xs text-gray-500">
+                              <span key={c.id} className="flex items-center gap-1.5 text-xs text-gray-500">
                                 → {c.customerName} RM {c.amount.toFixed(2)}
+                                {c.paidAmount <= 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!confirm(`Remove allocation to ${c.customerName}?`)) return;
+                                      try {
+                                        await ExpenseChargeService.delete(c.id!);
+                                        await load();
+                                      } catch (err) {
+                                        alert(err instanceof Error ? err.message : 'Remove failed');
+                                      }
+                                    }}
+                                    className="text-red-500 hover:text-red-700 hover:underline"
+                                    title="Remove allocation"
+                                  >
+                                    Remove
+                                  </button>
+                                ) : (
+                                  <span className="text-amber-600" title="Cannot remove - payment received">(paid)</span>
+                                )}
                               </span>
                             ))}
                           </span>

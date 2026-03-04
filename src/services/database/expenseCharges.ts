@@ -56,6 +56,10 @@ export const ExpenseChargeService = {
     });
   },
 
+  async delete(id: string): Promise<void> {
+    await FirestoreService.delete(COLLECTION, id);
+  },
+
   /** 核銷費用分攤（收款時呼叫）*/
   async applyPayment(id: string, amount: number): Promise<void> {
     const c = await FirestoreService.get<ExpenseCharge>(COLLECTION, id);
