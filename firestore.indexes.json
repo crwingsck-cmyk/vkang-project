@@ -30,6 +30,7 @@
     {"collectionGroup":"paymentReceipts","queryScope":"COLLECTION","fields":[{"fieldPath":"createdBy","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
     {"collectionGroup":"deposits","queryScope":"COLLECTION","fields":[{"fieldPath":"customerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
     {"collectionGroup":"expenses","queryScope":"COLLECTION","fields":[{"fieldPath":"type","order":"ASCENDING"},{"fieldPath":"paymentDate","order":"DESCENDING"}]},
+    {"collectionGroup":"expenses","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerId","order":"ASCENDING"},{"fieldPath":"paymentDate","order":"DESCENDING"}]},
     {"collectionGroup":"expenseCharges","queryScope":"COLLECTION","fields":[{"fieldPath":"customerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
     {"collectionGroup":"expenseCharges","queryScope":"COLLECTION","fields":[{"fieldPath":"expenseId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
     {"collectionGroup":"expenseChargeReceipts","queryScope":"COLLECTION","fields":[{"fieldPath":"customerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]}

@@ -26,10 +26,12 @@ const paymentBadge: Record<PaymentStatus, string> = {
 
 function AddRecordModal({
   userId,
+  users,
   onClose,
   onDone,
 }: {
   userId: string;
+  users: { id: string; displayName: string }[];
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -41,6 +43,7 @@ function AddRecordModal({
     amount: '',
     description: '',
     paymentStatus: PaymentStatus.PAID,
+    relatedUserId: userId,
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -54,6 +57,7 @@ function AddRecordModal({
       setError('Enter a valid amount.');
       return;
     }
+    const relUser = users.find((u) => u.id === form.relatedUserId);
     setSaving(true);
     try {
       await FinancialService.create({
@@ -65,7 +69,7 @@ function AddRecordModal({
         paymentStatus: form.paymentStatus as PaymentStatus,
         reconciled: false,
         createdBy: userId,
-        relatedUser: { userId, userName: '' },
+        relatedUser: { userId: form.relatedUserId, userName: relUser?.displayName ?? '' },
       });
       onDone();
     } catch (err: any) {
@@ -148,6 +152,20 @@ function AddRecordModal({
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">歸屬人（盈利表用）</label>
+            <select
+              name="relatedUserId"
+              value={form.relatedUserId}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-xs focus:outline-none focus:border-blue-500"
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.displayName}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-gray-300 mb-1.5">Description</label>
             <input
               type="text"
@@ -199,13 +217,21 @@ function AddRecordModal({
 export default function FinancialsPage() {
   const { user, role } = useAuth();
   const [records, setRecords] = useState<Financial[]>([]);
+  const [users, setUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<FinancialType | ''>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpense: 0, net: 0 });
 
   useEffect(() => {
-    if (user?.id) loadRecords();
+    if (user?.id) {
+      loadRecords();
+      import('@/services/database/users').then(({ UserService }) =>
+        UserService.getAll().then((list) =>
+          setUsers(list.map((u) => ({ id: u.id!, displayName: u.displayName })))
+        )
+      );
+    }
   }, [user?.id, filterType]);
 
   async function loadRecords() {
@@ -237,6 +263,7 @@ export default function FinancialsPage() {
       {showAddModal && user && (
         <AddRecordModal
           userId={user.id!}
+          users={users.length > 0 ? users : [{ id: user.id!, displayName: user.displayName }]}
           onClose={() => setShowAddModal(false)}
           onDone={() => { setShowAddModal(false); loadRecords(); }}
         />

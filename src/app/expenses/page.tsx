@@ -45,6 +45,7 @@ export default function ExpensesPage() {
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [addType, setAddType] = useState<ExpenseType>(ExpenseType.WEIGHING_SCALE);
+  const [addOwnerId, setAddOwnerId] = useState('');
   const [addAmount, setAddAmount] = useState('');
   const [addPaidTo, setAddPaidTo] = useState('');
   const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -87,6 +88,7 @@ export default function ExpensesPage() {
   const openAddModal = () => {
     setShowAddModal(true);
     setAddType(ExpenseType.WEIGHING_SCALE);
+    setAddOwnerId('');
     setAddAmount('');
     setAddPaidTo('');
     setAddDate(new Date().toISOString().slice(0, 10));
@@ -118,6 +120,7 @@ export default function ExpensesPage() {
         paymentReference: addPayRef || undefined,
         description: addDesc || undefined,
         isRecoverable,
+        ownerId: addOwnerId || undefined,
         createdBy: user?.id,
       });
       setShowAddModal(false);
@@ -309,6 +312,19 @@ export default function ExpensesPage() {
                 <h2 className="text-lg font-semibold text-gray-900">新增費用</h2>
               </div>
               <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">歸屬經銷商（選填，用於盈利表）</label>
+                  <select
+                    value={addOwnerId}
+                    onChange={(e) => setAddOwnerId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  >
+                    <option value="">— 不指定 —</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.displayName}</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">費用類型 *</label>
                   <select

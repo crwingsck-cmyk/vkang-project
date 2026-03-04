@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: 'Deposits',   href: '/deposits',   roles: ['ADMIN'] },
   { label: 'Expenses',   href: '/expenses',   roles: ['ADMIN'] },
   { label: 'Expense Receipts', href: '/expense-receipts', roles: ['ADMIN'] },
+  { label: 'Profit', href: '/profit', roles: ['ADMIN'] },
   { label: 'Multi-tier',  href: '/hierarchy',  roles: ['ADMIN'] },
   { label: 'Warehouse',  href: '/warehouse',  roles: ['ADMIN', 'STOCKIST'] },
   { label: 'Opening Stock', href: '/warehouse/stock-setup', roles: ['ADMIN'] },

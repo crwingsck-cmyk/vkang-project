@@ -32,6 +32,14 @@ export const ReceivableService = {
     ]);
   },
 
+  /** 查某經銷商發出的應收款（fromUserId = 賣方）*/
+  async getByFromUser(fromUserId: string): Promise<(Receivable & { id: string })[]> {
+    return FirestoreService.query<Receivable>(COLLECTION, [
+      where('fromUserId', '==', fromUserId),
+      orderBy('createdAt', 'desc'),
+    ]);
+  },
+
   /** 查客戶未收 / 部分收的應收款（用於建立收款單時的選單）*/
   async getOutstandingByCustomer(customerId: string): Promise<Receivable[]> {
     const all = await FirestoreService.query<Receivable>(COLLECTION, [

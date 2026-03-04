@@ -571,6 +571,7 @@ export interface Expense {
   paymentReference?: string;
   description?: string;
   isRecoverable: boolean;       // 體重稱、郵寄=true；薪水=false
+  ownerId?: string;             // 歸屬人（經銷商 ID，用於盈利表）
   createdAt?: number;
   updatedAt?: number;
   createdBy?: string;
