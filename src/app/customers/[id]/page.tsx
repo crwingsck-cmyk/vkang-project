@@ -69,6 +69,8 @@ export default function CustomerFinancialPage() {
   const [editDN, setEditDN] = useState<DeliveryNote | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [savingDN, setSavingDN] = useState(false);
+  const [deletingPR, setDeletingPR] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   const load = useCallback(async () => {
     if (!customerId) return;
@@ -145,6 +147,21 @@ export default function CustomerFinancialPage() {
   const totalPaid = ars.reduce((s, r) => s + r.paidAmount, 0);
   const totalOutstanding = ars.reduce((s, r) => s + r.remainingAmount, 0);
 
+  const handleDeletePR = async (pr: PaymentReceipt) => {
+    if (!pr.id) return;
+    if (!confirm(`確定刪除收款單 ${pr.receiptNo}？此操作不可復原。`)) return;
+    setActionError('');
+    setDeletingPR(pr.id);
+    try {
+      await PaymentReceiptService.delete(pr.id);
+      await load();
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : '刪除失敗');
+    } finally {
+      setDeletingPR(null);
+    }
+  };
+
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.STOCKIST]}>
       <div className="space-y-6">
@@ -164,6 +181,12 @@ export default function CustomerFinancialPage() {
             ← 庫存台帳
           </Link>
         </div>
+
+        {actionError && (
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        )}
 
         {loading ? (
           <div className="py-16 text-center">
@@ -360,6 +383,7 @@ export default function CustomerFinancialPage() {
                       <th className="px-4 py-3 text-left">付款方式</th>
                       <th className="px-4 py-3 text-right">收款金額</th>
                       <th className="px-4 py-3 text-center">狀態</th>
+                      <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -375,6 +399,16 @@ export default function CustomerFinancialPage() {
                           <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${prStatusColor[pr.status]}`}>
                             {prStatusLabel[pr.status]}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePR(pr)}
+                            disabled={deletingPR === pr.id}
+                            className="px-3 py-1 text-xs font-semibold bg-red-100 hover:bg-red-200 text-red-700 rounded-lg whitespace-nowrap disabled:opacity-50"
+                          >
+                            {deletingPR === pr.id ? '刪除中...' : '刪除'}
+                          </button>
                         </td>
                       </tr>
                     ))}

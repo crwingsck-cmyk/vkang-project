@@ -71,10 +71,13 @@ export const PaymentReceiptService = {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
     if (!pr) throw new Error('收款單不存在');
 
-    // 若已審核，先反轉每筆 AR 核銷
+    // 若已審核，先反轉每筆 AR 核銷（若應收款已不存在則略過，避免刪除失敗）
     if (pr.status === PaymentReceiptStatus.APPROVED) {
       for (const item of pr.items) {
-        await ReceivableService.reversePayment(item.receivableId, item.appliedAmount);
+        const ar = await ReceivableService.getById(item.receivableId);
+        if (ar) {
+          await ReceivableService.reversePayment(item.receivableId, item.appliedAmount);
+        }
       }
     }
 
