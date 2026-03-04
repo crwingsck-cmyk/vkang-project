@@ -47,22 +47,22 @@ export default function CreateProductPage() {
     setError('');
 
     if (!form.sku || !form.name || !form.category) {
-      setError('請填寫所有必填欄位（SKU、名稱、分類）。');
+      setError('Please fill all required fields (SKU, name, category).');
       return;
     }
     if (!form.isTemporary && (!form.unitPrice || !form.costPrice)) {
-      setError('請填寫所有必填欄位（SKU、名稱、分類、售價、成本）。');
+      setError('Please fill all required fields (SKU, name, category, price, cost).');
       return;
     }
 
     const skuClean = form.sku.toUpperCase().trim();
     if (/[\/\\#%?]/.test(skuClean)) {
-      setError('SKU 不可包含特殊字元（/  \\  #  %  ?）。');
+      setError('SKU cannot contain special characters (/ \\ # % ?).');
       return;
     }
 
     if (parseFloat(form.unitPrice) < 0 || parseFloat(form.costPrice) < 0) {
-      setError('價格不可為負數。');
+      setError('Price cannot be negative.');
       return;
     }
 
@@ -70,7 +70,7 @@ export default function CreateProductPage() {
     try {
       const token = await getCurrentToken(true);
       if (!token) {
-        setError('登入已過期，請重新登入');
+        setError('Session expired. Please log in again.');
         setSaving(false);
         return;
       }
@@ -106,15 +106,15 @@ export default function CreateProductPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || `儲存失敗 (${res.status})`);
+        setError(data.error || `Save failed (${res.status})`);
         setSaving(false);
         return;
       }
       router.push(`/products/${encodeURIComponent(skuClean)}`);
     } catch (err: unknown) {
       console.error('Create product error:', err);
-      const msg = err instanceof Error ? err.message : '未知錯誤';
-      setError(`儲存失敗：${msg}`);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Save failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -247,10 +247,10 @@ export default function CreateProductPage() {
             />
             <div>
               <label htmlFor="isTemporary" className="block text-sm font-medium text-purple-300 cursor-pointer">
-                临时过渡品（Temporary Placement SKU）
+                Temporary Placement SKU
               </label>
               <p className="text-xs text-gray-400 mt-0.5">
-                仅用于未定产品铺货中转，不参与销售结算。勾选后售价与成本自动设为 0。
+                For undetermined products only. Not for sales. Price/cost auto-set to 0 when checked.
                 <br />
                 <span className="text-purple-400">For temporary inventory tracking of undetermined products only. Not for actual sales.</span>
               </p>
@@ -294,29 +294,29 @@ export default function CreateProductPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              價格備註（選填）
+              Price Note (optional)
             </label>
             <input
               type="text"
               name="priceNote"
               value={form.priceNote}
               onChange={handleChange}
-              placeholder="例如：每次進貨成本不同、售價依訂單為準"
+              placeholder="e.g. Cost varies per order, price per order"
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
-            <p className="text-xs text-gray-500 mt-0.5">當售價或成本每次不同時可填寫，列表會顯示 ※ 提示</p>
+            <p className="text-xs text-gray-500 mt-0.5">When price/cost varies per order. List shows ※ hint.</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              一盒幾包
+              Packs per box
             </label>
             <input
               type="text"
               name="packsPerBox"
               value={form.packsPerBox}
               onChange={handleChange}
-              placeholder="例如：5 或 一盒5包"
+              placeholder="e.g. 5"
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>

@@ -188,14 +188,14 @@ export default function StockLedgerPage() {
     try {
       const changes = await InventoryReconcileService.reconcileFromTransactions(userId);
       if (changes.length === 0) {
-        setReconcileMsg('✅ 庫存已是最新，無需調整');
+        setReconcileMsg('✅ Inventory is up to date, no changes needed');
       } else {
         const detail = changes.map((c) => `${c.productId}: ${c.oldQty} → ${c.newQty}`).join('、');
-        setReconcileMsg(`✅ 已修復 ${changes.length} 個 SKU：${detail}`);
+        setReconcileMsg(`✅ Fixed ${changes.length} SKU(s): ${detail}`);
         load();
       }
     } catch (err) {
-      setReconcileMsg(`❌ 錯誤：${err instanceof Error ? err.message : String(err)}`);
+      setReconcileMsg(`❌ Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setReconciling(false);
     }
@@ -227,7 +227,7 @@ export default function StockLedgerPage() {
       }) as (Transaction & { id: string })[];
 
       if (missing.length === 0) {
-        setBackfillMsg('✅ 所有發貨記錄已有對應 DN，無需補建');
+        setBackfillMsg('✅ All shipments have DNs, no backfill needed');
         return;
       }
 
@@ -254,9 +254,9 @@ export default function StockLedgerPage() {
         });
       }
 
-      setBackfillMsg(`✅ 已補建 ${missing.length} 張 DN`);
+      setBackfillMsg(`✅ Backfilled ${missing.length} DN(s)`);
     } catch (err) {
-      setBackfillMsg(`❌ 錯誤：${err instanceof Error ? err.message : String(err)}`);
+      setBackfillMsg(`❌ Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBackfilling(false);
     }
@@ -295,7 +295,7 @@ export default function StockLedgerPage() {
       setDeleteTransactionId(null);
       load();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : '刪除失敗');
+      setAddError(err instanceof Error ? err.message : 'Delete failed');
       setDeleteTransactionId(null);
     } finally {
       setDeleting(false);
@@ -311,9 +311,9 @@ export default function StockLedgerPage() {
               ← Multi-tier distribution structure
             </Link>
             <h1 className="text-xl font-bold text-txt-primary tracking-tight">
-              {user?.displayName ?? ''} 庫存表
+              {user?.displayName ?? ''} Stock Ledger
             </h1>
-            <p className="text-sm text-txt-subtle mt-0.5">經銷商訂貨、下線/自用發貨、庫存累計</p>
+            <p className="text-sm text-txt-subtle mt-0.5">Stockist orders, downline/self-use shipments, running inventory</p>
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
             <button
@@ -322,7 +322,7 @@ export default function StockLedgerPage() {
               disabled={backfilling}
               className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
             >
-              {backfilling ? '補建中...' : '補建 DN'}
+              {backfilling ? 'Backfilling...' : 'Backfill DN'}
             </button>
             <button
               type="button"
@@ -330,26 +330,26 @@ export default function StockLedgerPage() {
               disabled={reconciling}
               className="px-3 py-1.5 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg"
             >
-              {reconciling ? '計算中...' : '重新計算庫存'}
+              {reconciling ? 'Calculating...' : 'Reconcile Inventory'}
             </button>
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
               className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg"
             >
-              + 新增異動
+              + Add Movement
             </button>
             <Link
               href={`/customers/${userId}`}
               className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-medium rounded-lg"
             >
-              財務表
+              Financials
             </Link>
             <Link
               href={`/users/${userId}`}
               className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-xs font-medium rounded-lg"
             >
-              編輯使用者
+              Edit User
             </Link>
           </div>
         </div>
@@ -401,8 +401,8 @@ export default function StockLedgerPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="w-full max-w-sm bg-white dark:bg-surface-1 border-2 border-red-400 rounded-2xl shadow-2xl p-6 text-center">
               <div className="text-4xl mb-3">🗑️</div>
-              <h3 className="text-lg font-bold text-red-600 mb-2">確認刪除</h3>
-              <p className="text-sm text-txt-primary mb-4">此操作將永久刪除該筆異動記錄，並自動恢復相關庫存。此動作無法復原。</p>
+              <h3 className="text-lg font-bold text-red-600 mb-2">Confirm Delete</h3>
+              <p className="text-sm text-txt-primary mb-4">This will permanently delete this movement and restore related inventory. This cannot be undone.</p>
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -410,7 +410,7 @@ export default function StockLedgerPage() {
                   disabled={deleting}
                   className="flex-1 px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary font-medium rounded-lg text-base"
                 >
-                  取消
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -418,7 +418,7 @@ export default function StockLedgerPage() {
                   disabled={deleting}
                   className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-semibold rounded-lg text-base"
                 >
-                  {deleting ? '刪除中...' : '確認刪除'}
+                  {deleting ? 'Deleting...' : 'Confirm Delete'}
                 </button>
               </div>
             </div>
@@ -429,7 +429,7 @@ export default function StockLedgerPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入庫存表...</p>
+            <p className="text-txt-subtle text-sm">Loading stock ledger...</p>
           </div>
         ) : (
           <div className="glass-panel overflow-x-auto">
@@ -441,38 +441,38 @@ export default function StockLedgerPage() {
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-border bg-gray-900 text-white [&>th]:text-white">
-                  <th className={`${thCls} text-left`}>上游</th>
-                  <th className={`${thCls} text-left`}>經銷商</th>
-                  <th className={`${thCls} text-left`}>下線/自用</th>
-                  <th className={`${thCls} text-left`}>商品</th>
+                  <th className={`${thCls} text-left`}>Upstream</th>
+                  <th className={`${thCls} text-left`}>Stockist</th>
+                  <th className={`${thCls} text-left`}>Downline/Self</th>
+                  <th className={`${thCls} text-left`}>Product</th>
                   {isCustomer ? (
                     <>
-                      <th className={`${thCls} text-left`}>發貨日期</th>
-                      <th className={`${thCls} text-right`}>發貨數量</th>
-                      <th className={`${thCls} text-left`}>發貨號碼</th>
-                      <th className={`${thCls} text-right`}>經銷商價</th>
+                      <th className={`${thCls} text-left`}>Ship Date</th>
+                      <th className={`${thCls} text-right`}>Ship Qty</th>
+                      <th className={`${thCls} text-left`}>Ship No.</th>
+                      <th className={`${thCls} text-right`}>Price</th>
                     </>
                   ) : (
                     <>
-                      <th className={`${thCls} text-left`}>訂貨日</th>
-                      <th className={`${thCls} text-right`}>訂貨數</th>
-                      <th className={`${thCls} text-left`}>訂貨號碼</th>
-                      <th className={`${thCls} text-right`}>經銷商價</th>
-                      <th className={`${thCls} text-left`}>發貨日</th>
-                      <th className={`${thCls} text-right`}>發貨數</th>
-                      <th className={`${thCls} text-left`}>發貨號碼</th>
-                      <th className={`${thCls} text-right`}>發貨價銷</th>
+                      <th className={`${thCls} text-left`}>Order Date</th>
+                      <th className={`${thCls} text-right`}>Order Qty</th>
+                      <th className={`${thCls} text-left`}>Order No.</th>
+                      <th className={`${thCls} text-right`}>Price</th>
+                      <th className={`${thCls} text-left`}>Ship Date</th>
+                      <th className={`${thCls} text-right`}>Ship Qty</th>
+                      <th className={`${thCls} text-left`}>Ship No.</th>
+                      <th className={`${thCls} text-right`}>Ship Price</th>
                     </>
                   )}
-                  <th className={`${thCls} text-right`}>庫存</th>
-                  <th className={`${thCls} text-center w-20`}>操作</th>
+                  <th className={`${thCls} text-right`}>Stock</th>
+                  <th className={`${thCls} text-center w-20`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted">
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={colSpan} className="px-4 py-12 text-center text-txt-subtle text-base">
-                      尚無庫存異動紀錄
+                      No stock movements yet
                     </td>
                   </tr>
                 ) : (
@@ -584,20 +584,20 @@ export default function StockLedgerPage() {
           <div className="glass-panel overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-surface-base flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-txt-primary">現有庫存</h3>
+                <h3 className="text-lg font-semibold text-txt-primary">Current Inventory</h3>
               </div>
               <span className="text-xs text-txt-subtle">
-                總計：{firestoreInv.reduce((s, r) => s + r.quantity, 0)} 盒
+                Total: {firestoreInv.reduce((s, r) => s + r.quantity, 0)} units
               </span>
             </div>
             {firestoreInv.length === 0 ? (
-              <div className="px-4 py-8 text-center text-txt-subtle text-sm">尚無庫存紀錄</div>
+              <div className="px-4 py-8 text-center text-txt-subtle text-sm">No inventory records yet</div>
             ) : (
               <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border bg-surface-base">
-                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
-                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">現有數量</th>
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">Product</th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Qty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-muted">
@@ -619,7 +619,7 @@ export default function StockLedgerPage() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-surface-2/40">
-                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">Total</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-base tabular-nums">
                         {firestoreInv.reduce((s, r) => s + r.quantity, 0)}
@@ -653,23 +653,23 @@ export default function StockLedgerPage() {
           return (
             <div className="glass-panel overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-surface-base">
-                <h3 className="text-lg font-semibold text-txt-primary">自用彙總</h3>
+                <h3 className="text-lg font-semibold text-txt-primary">Self-Use Summary</h3>
                 <p className="text-sm text-txt-subtle mt-0.5">
-                  {hasOpeningStock ? '自用出庫扣除 Opening Stock 後的淨消耗數量' : '自用出庫的產品及累計數量'}
+                  {hasOpeningStock ? 'Self-use out minus Opening Stock = net consumption' : 'Self-use out products and quantities'}
                 </p>
               </div>
               <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border bg-surface-base">
-                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">Product</th>
                     {hasOpeningStock && (
-                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">自用出庫</th>
+                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Self-Use Out</th>
                     )}
                     {hasOpeningStock && (
                       <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Opening Stock</th>
                     )}
                     <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">
-                      {hasOpeningStock ? '淨自用' : '自用數量'}
+                      {hasOpeningStock ? 'Net Self-Use' : 'Self-Use Qty'}
                     </th>
                   </tr>
                 </thead>
@@ -696,7 +696,7 @@ export default function StockLedgerPage() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-surface-2/40">
-                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">Total</td>
                     {hasOpeningStock && <td className="px-4 py-3" />}
                     {hasOpeningStock && <td className="px-4 py-3" />}
                     <td className="px-4 py-3 text-right">
@@ -725,14 +725,14 @@ export default function StockLedgerPage() {
           return (
             <div className="glass-panel overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-surface-base">
-                <h3 className="text-lg font-semibold text-txt-primary">產品彙總</h3>
-                <p className="text-sm text-txt-subtle mt-0.5">收到的產品及累計數量</p>
+                <h3 className="text-lg font-semibold text-txt-primary">Product Summary</h3>
+                <p className="text-sm text-txt-subtle mt-0.5">Received products and quantities</p>
               </div>
               <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border bg-surface-base">
-                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">產品</th>
-                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">數量</th>
+                    <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">Product</th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Qty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-muted">
@@ -750,7 +750,7 @@ export default function StockLedgerPage() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-surface-2/40">
-                    <td className="px-4 py-3 text-base font-bold text-txt-primary">總計</td>
+                    <td className="px-4 py-3 text-base font-bold text-txt-primary">Total</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold text-base tabular-nums">
                         {receivedList.reduce((s, r) => s + r.quantity, 0)}
@@ -770,12 +770,12 @@ export default function StockLedgerPage() {
 
 function getTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    sale: '銷售',
-    purchase: '進貨',
-    transfer: '調撥',
-    loan: '借貨',
-    return: '歸還',
-    adjustment: '調整',
+    sale: 'Sale',
+    purchase: 'Purchase',
+    transfer: 'Transfer',
+    loan: 'Loan',
+    return: 'Return',
+    adjustment: 'Adjustment',
   };
   return labels[type?.toLowerCase()] ?? type ?? '';
 }
@@ -839,7 +839,7 @@ function AddMovementModal({
 
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
         setDownlines([
-          { id: userId, displayName: '自用' },
+          { id: userId, displayName: 'Self-use' },
           ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
         ]);
 
@@ -852,7 +852,7 @@ function AddMovementModal({
           }
         }
         if (upstreamList.length === 0) {
-          upstreamList = [{ id: 'TW', displayName: '台灣' }];
+          upstreamList = [{ id: 'TW', displayName: 'Taiwan' }];
         }
         setUpstreams(upstreamList);
 
@@ -867,7 +867,7 @@ function AddMovementModal({
           upstreamId: upstreamList[0]?.id ?? '',
           upstreamName: upstreamList[0]?.displayName ?? '',
           downlineId: userId,
-          downlineName: '自用',
+          downlineName: 'Self-use',
           orderRefId: newPONumber,
         }));
       } finally {
@@ -900,17 +900,17 @@ function AddMovementModal({
     const productName = form.productName;
     const quantity = form.direction === 'in' ? form.orderQty : form.shipQty;
     if (!productId || quantity <= 0) {
-      onError('請選擇產品並輸入數量');
+      onError('Please select product and enter quantity');
       return;
     }
 
     if (form.direction === 'out' && !form.downlineId) {
-      onError('請選擇下線或自用');
+      onError('Please select downline or self-use');
       return;
     }
 
     if (form.direction === 'in' && !form.upstreamId) {
-      onError('請選擇進貨來源（上游）');
+      onError('Please select upstream source');
       return;
     }
 
@@ -920,7 +920,7 @@ function AddMovementModal({
         .filter(r => r.productId === productId)
         .reduce((sum, r) => sum + (r.direction === 'in' ? r.quantity : -r.quantity), 0));
       if (have < quantity) {
-        setAlertMsg(`⚠️ 庫存不足\n\n${productName} 需要 ${quantity} 個，但目前庫存只有 ${have} 個。\n\n請先補貨後再操作。`);
+        setAlertMsg(`⚠️ Insufficient stock\n\n${productName} needs ${quantity}, but only ${have} in stock.\n\nPlease restock first.`);
         return;
       }
     }
@@ -930,7 +930,7 @@ function AddMovementModal({
       const upstreamInv = await InventoryService.getByUserAndProduct(form.upstreamId, productId);
       const upstreamHave = upstreamInv?.quantityOnHand ?? 0;
       if (upstreamHave < quantity) {
-        setAlertMsg(`⚠️ 上游貨源不足\n\n${form.upstreamName} 的 ${productName} 只有 ${upstreamHave} 個，無法提供 ${quantity} 個。\n\n請聯絡上游補貨後再操作。`);
+        setAlertMsg(`⚠️ Upstream insufficient\n\n${form.upstreamName} has only ${upstreamHave} of ${productName}, cannot provide ${quantity}.\n\nContact upstream to restock.`);
         return;
       }
     }
@@ -956,7 +956,7 @@ function AddMovementModal({
           {
             transactionType: TransactionType.ADJUSTMENT,
             status: TransactionStatus.COMPLETED,
-            description: '經銷商訂貨',
+            description: 'Stockist order',
             fromUser,
             toUser,
             items,
@@ -973,7 +973,7 @@ function AddMovementModal({
         const refId = form.refId.trim() || `SHIP-${dateMs}`;
         const fromUser = { userId, userName };
         const toUser = form.downlineId === userId
-          ? { userId, userName: `${userName} (自用)` }
+          ? { userId, userName: `${userName} (Self-use)` }
           : { userId: form.downlineId, userName: form.downlineName };
 
         if (form.downlineId === userId) {
@@ -983,7 +983,7 @@ function AddMovementModal({
               {
                 transactionType: TransactionType.ADJUSTMENT,
                 status: TransactionStatus.COMPLETED,
-                description: '自用',
+                description: 'Self-use',
                 fromUser,
                 toUser,
                 items,
@@ -1005,7 +1005,7 @@ function AddMovementModal({
             fromUserId: userId,
             fromUserName: userName,
             toUserId: userId,
-            toUserName: `${userName} (自用)`,
+            toUserName: `${userName} (Self-use)`,
             items,
             totals: { grandTotal: items[0].total },
             warehouseApprovedBy: 'admin',
@@ -1029,7 +1029,7 @@ function AddMovementModal({
               {
                 transactionType: TransactionType.TRANSFER,
                 status: TransactionStatus.COMPLETED,
-                description: '發貨給下線',
+                description: 'Ship to downline',
                 fromUser,
                 toUser,
                 items,
@@ -1073,7 +1073,7 @@ function AddMovementModal({
       }
       onDone();
     } catch (err) {
-      onError(err instanceof Error ? err.message : '新增失敗');
+      onError(err instanceof Error ? err.message : 'Add failed');
     } finally {
       setSaving(false);
     }
@@ -1086,7 +1086,7 @@ function AddMovementModal({
           <div className="w-full max-w-sm bg-white dark:bg-surface-1 border-2 border-red-400 rounded-2xl shadow-2xl p-6 text-center">
             <div className="text-4xl mb-3">🚫</div>
             <h3 className="text-lg font-bold text-red-600 mb-3">
-              {alertMsg.includes('上游') ? '上游貨源不足' : '庫存不足'}
+              {alertMsg.includes('Upstream') ? 'Upstream insufficient' : 'Insufficient stock'}
             </h3>
             <p className="text-sm text-txt-primary whitespace-pre-line leading-relaxed mb-5">
               {alertMsg.replace(/^⚠️ [^\n]+\n\n/, '')}
@@ -1096,7 +1096,7 @@ function AddMovementModal({
               onClick={() => setAlertMsg('')}
               className="w-full px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-base"
             >
-              確認
+              Confirm
             </button>
           </div>
         </div>
@@ -1105,18 +1105,18 @@ function AddMovementModal({
         className="w-full max-w-lg bg-surface-1 border border-border rounded-xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-txt-primary mb-4">新增庫存異動</h2>
+        <h2 className="text-lg font-bold text-txt-primary mb-4">Add Stock Movement</h2>
         {error && (
           <div className="mb-4 px-4 py-2 bg-error/10 border border-error/30 text-error text-sm rounded-lg">
             {error}
           </div>
         )}
         {loading ? (
-          <p className="text-txt-subtle text-base">載入中...</p>
+          <p className="text-txt-subtle text-base">Loading...</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-txt-subtle mb-1">進/出</label>
+              <label className="block text-sm font-medium text-txt-subtle mb-1">In/Out</label>
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1126,7 +1126,7 @@ function AddMovementModal({
                     onChange={() => setForm((f) => ({ ...f, direction: 'in' }))}
                     className="text-accent"
                   />
-                  <span className="text-base text-txt-primary">入（經銷商訂貨）</span>
+                  <span className="text-base text-txt-primary">In (Stockist order)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1136,7 +1136,7 @@ function AddMovementModal({
                     onChange={() => setForm((f) => ({ ...f, direction: 'out' }))}
                     className="text-accent"
                   />
-                  <span className="text-base text-txt-primary">出（下線/自用發貨）</span>
+                  <span className="text-base text-txt-primary">Out (Downline/self-use shipment)</span>
                 </label>
               </div>
             </div>
@@ -1144,27 +1144,27 @@ function AddMovementModal({
             {form.direction === 'in' ? (
               <>
                 <div>
-                  <p className="text-sm font-medium text-txt-subtle mb-1">入貨人（經銷商）</p>
+                  <p className="text-sm font-medium text-txt-subtle mb-1">Receiver (Stockist)</p>
                   <p className="px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base">
                     {userName}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">進貨來源（上游）</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Source (Upstream)</label>
                   <select
                     value={form.upstreamId}
                     onChange={(e) => handleUpstreamChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {upstreams.map((u) => (
                       <option key={u.id} value={u.id}>{u.displayName}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-txt-subtle mt-1">僅顯示系統中該經銷商的直屬上線</p>
+                  <p className="text-xs text-txt-subtle mt-1">Only shows direct upstream in system</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨日</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Order Date</label>
                   <input
                     type="date"
                     value={form.orderDate}
@@ -1173,7 +1173,7 @@ function AddMovementModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">訂單號碼（PO）</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Order No. (PO)</label>
                   <input
                     type="text"
                     value={form.orderRefId}
@@ -1181,16 +1181,16 @@ function AddMovementModal({
                     placeholder="PO-YYYYMMDD-001"
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base font-mono"
                   />
-                  <p className="text-xs text-txt-subtle mt-1">系統自動生成，可手動修改</p>
+                  <p className="text-xs text-txt-subtle mt-1">Auto-generated, can edit</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">產品</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Product</label>
                   <select
                     value={form.productId}
                     onChange={(e) => handleProductChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {products.map((p) => (
                       <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
                     ))}
@@ -1198,7 +1198,7 @@ function AddMovementModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨數</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Order Qty</label>
                     <input
                       type="number"
                       min="1"
@@ -1208,7 +1208,7 @@ function AddMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (RM)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Price (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -1223,7 +1223,7 @@ function AddMovementModal({
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">下線/自用 (必選)</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Downline/Self-use (required)</label>
                   <select
                     value={form.downlineId}
                     onChange={(e) => handleDownlineChange(e.target.value)}
@@ -1233,10 +1233,10 @@ function AddMovementModal({
                       <option key={d.id} value={d.id}>{d.displayName}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-txt-subtle mt-1">僅能選擇系統中該經銷商的下線或自用</p>
+                  <p className="text-xs text-txt-subtle mt-1">Only downlines or self-use in system</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨日期</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Date</label>
                   <input
                     type="date"
                     value={form.shipDate}
@@ -1245,13 +1245,13 @@ function AddMovementModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨產品</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Product</label>
                   <select
                     value={form.productId}
                     onChange={(e) => handleProductChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {products.map((p) => (
                       <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
                     ))}
@@ -1259,7 +1259,7 @@ function AddMovementModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨數</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Qty</label>
                     <input
                       type="number"
                       min="1"
@@ -1269,7 +1269,7 @@ function AddMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (RM)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Price (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -1281,7 +1281,7 @@ function AddMovementModal({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨號碼</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship No.</label>
                   <input
                     type="text"
                     value={form.refId}
@@ -1299,14 +1299,14 @@ function AddMovementModal({
                 disabled={saving}
                 className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-base font-medium rounded-lg"
               >
-                {saving ? '儲存中...' : '儲存'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-base rounded-lg"
               >
-                取消
+                Cancel
               </button>
             </div>
           </form>
@@ -1374,7 +1374,7 @@ function EditMovementModal({
           UserService.getById(userId),
         ]);
         if (!txn) {
-          onError('找不到該筆交易');
+          onError('Transaction not found');
           return;
         }
         const t = txn as Transaction & { id: string };
@@ -1382,12 +1382,12 @@ function EditMovementModal({
         const isOut = t.fromUser?.userId === userId;
         const item = t.items?.[0];
         if (!item) {
-          onError('該筆交易無產品資料');
+          onError('Transaction has no product data');
           return;
         }
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
         setDownlines([
-          { id: userId, displayName: '自用' },
+          { id: userId, displayName: 'Self-use' },
           ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
         ]);
 
@@ -1400,7 +1400,7 @@ function EditMovementModal({
           }
         }
         if (upstreamListEdit.length === 0) {
-          upstreamListEdit = [{ id: 'TW', displayName: '台灣' }];
+          upstreamListEdit = [{ id: 'TW', displayName: 'Taiwan' }];
         }
         setUpstreams(upstreamListEdit);
         const dateStr = t.createdAt
@@ -1429,7 +1429,7 @@ function EditMovementModal({
           orderQty: item.quantity,
           orderPrice: item.unitPrice ?? 0,
           downlineId: isOut ? (t.toUser?.userId ?? userId) : userId,
-          downlineName: isOut ? (t.toUser?.userName ?? '自用') : '自用',
+          downlineName: isOut ? (t.toUser?.userName ?? 'Self-use') : 'Self-use',
           shipDate: dateStr,
           productId: item.productId ?? '',
           productName: item.productName ?? '',
@@ -1438,7 +1438,7 @@ function EditMovementModal({
           shipPrice: item.unitPrice ?? 0,
         });
       } catch (e) {
-        onError(e instanceof Error ? e.message : '載入失敗');
+        onError(e instanceof Error ? e.message : 'Load failed');
       } finally {
         setLoading(false);
       }
@@ -1469,12 +1469,12 @@ function EditMovementModal({
     const productName = form.productName;
     const quantity = form.direction === 'in' ? form.orderQty : form.shipQty;
     if (!productId || quantity <= 0) {
-      onError('請選擇產品並輸入數量');
+      onError('Please select product and enter quantity');
       return;
     }
 
     if (form.direction === 'in' && !form.upstreamId) {
-      onError('請選擇進貨來源（上游）');
+      onError('Please select upstream source');
       return;
     }
 
@@ -1520,7 +1520,7 @@ function EditMovementModal({
         if (have < quantity) {
           // Revert was already applied — undo it to restore previous state
           await InventorySyncService.onAdjustment(null, userId, oldItems, `REVERT-UNDO-${transactionId}`);
-          setAlertMsg(`⚠️ 庫存不足\n\n${productName} 需要 ${quantity} 個，但目前庫存只有 ${have} 個。\n\n請先補貨後再操作。`);
+          setAlertMsg(`⚠️ Insufficient stock\n\n${productName} needs ${quantity}, but only ${have} in stock.\n\nPlease restock first.`);
           setSaving(false);
           return;
         }
@@ -1530,7 +1530,7 @@ function EditMovementModal({
         const upstreamHave = upstreamInv?.quantityOnHand ?? 0;
         if (upstreamHave < quantity) {
           await InventorySyncService.onAdjustment(userId, oldFrom && oldFrom !== 'TW' && oldFrom !== 'system' ? oldFrom : null, oldItems, `REVERT-UNDO-${transactionId}`);
-          setAlertMsg(`⚠️ 上游貨源不足\n\n${form.upstreamName} 的 ${productName} 只有 ${upstreamHave} 個，無法提供 ${quantity} 個。\n\n請聯絡上游補貨後再操作。`);
+          setAlertMsg(`⚠️ Upstream insufficient\n\n${form.upstreamName} has only ${upstreamHave} of ${productName}, cannot provide ${quantity}.\n\nContact upstream to restock.`);
           setSaving(false);
           return;
         }
@@ -1546,7 +1546,7 @@ function EditMovementModal({
         : { userId, userName };
       const toUser = form.direction === 'in'
         ? { userId, userName }
-        : (form.downlineId === userId ? { userId, userName: `${userName} (自用)` } : { userId: form.downlineId, userName: form.downlineName });
+        : (form.downlineId === userId ? { userId, userName: `${userName} (Self-use)` } : { userId: form.downlineId, userName: form.downlineName });
 
       await OrderService.updateTransaction(transactionId, {
         items,
@@ -1570,7 +1570,7 @@ function EditMovementModal({
 
       onDone();
     } catch (err) {
-      onError(err instanceof Error ? err.message : '修改失敗');
+      onError(err instanceof Error ? err.message : 'Update failed');
     } finally {
       setSaving(false);
     }
@@ -1583,7 +1583,7 @@ function EditMovementModal({
           <div className="w-full max-w-sm bg-white dark:bg-surface-1 border-2 border-red-400 rounded-2xl shadow-2xl p-6 text-center">
             <div className="text-4xl mb-3">🚫</div>
             <h3 className="text-lg font-bold text-red-600 mb-3">
-              {alertMsg.includes('上游') ? '上游貨源不足' : '庫存不足'}
+              {alertMsg.includes('Upstream') ? 'Upstream insufficient' : 'Insufficient stock'}
             </h3>
             <p className="text-sm text-txt-primary whitespace-pre-line leading-relaxed mb-5">
               {alertMsg.replace(/^⚠️ [^\n]+\n\n/, '')}
@@ -1593,7 +1593,7 @@ function EditMovementModal({
               onClick={() => setAlertMsg('')}
               className="w-full px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-base"
             >
-              確認
+              Confirm
             </button>
           </div>
         </div>
@@ -1602,40 +1602,40 @@ function EditMovementModal({
         className="w-full max-w-lg bg-surface-1 border border-border rounded-xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-txt-primary mb-4">修改庫存異動</h2>
+        <h2 className="text-lg font-bold text-txt-primary mb-4">Edit Stock Movement</h2>
         {error && (
           <div className="mb-4 px-4 py-2 bg-error/10 border border-error/30 text-error text-sm rounded-lg">
             {error}
           </div>
         )}
         {loading ? (
-          <p className="text-txt-subtle text-base">載入中...</p>
+          <p className="text-txt-subtle text-base">Loading...</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {form.direction === 'in' ? (
               <>
                 <div>
-                  <p className="text-sm font-medium text-txt-subtle mb-1">入貨人（經銷商）</p>
+                  <p className="text-sm font-medium text-txt-subtle mb-1">Receiver (Stockist)</p>
                   <p className="px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base">
                     {userName}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">進貨來源（上游）</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Source (Upstream)</label>
                   <select
                     value={form.upstreamId}
                     onChange={(e) => handleUpstreamChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {upstreams.map((u) => (
                       <option key={u.id} value={u.id}>{u.displayName}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-txt-subtle mt-1">僅顯示系統中該經銷商的直屬上線</p>
+                  <p className="text-xs text-txt-subtle mt-1">Only shows direct upstream in system</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨日</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Order Date</label>
                   <input
                     type="date"
                     value={form.orderDate}
@@ -1644,7 +1644,7 @@ function EditMovementModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">訂單號碼（PO）</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Order No. (PO)</label>
                   <input
                     type="text"
                     value={form.refId}
@@ -1654,13 +1654,13 @@ function EditMovementModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">產品</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Product</label>
                   <select
                     value={form.productId}
                     onChange={(e) => handleProductChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {products.map((p) => (
                       <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
                     ))}
@@ -1668,7 +1668,7 @@ function EditMovementModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商訂貨數</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Order Qty</label>
                     <input
                       type="number"
                       min="1"
@@ -1678,7 +1678,7 @@ function EditMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">經銷商價 (RM)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Price (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -1693,7 +1693,7 @@ function EditMovementModal({
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">下線/自用 (必選)</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Downline/Self-use (required)</label>
                   <select
                     value={form.downlineId}
                     onChange={(e) => handleDownlineChange(e.target.value)}
@@ -1705,7 +1705,7 @@ function EditMovementModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨日期</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Date</label>
                   <input
                     type="date"
                     value={form.shipDate}
@@ -1714,13 +1714,13 @@ function EditMovementModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨產品</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Product</label>
                   <select
                     value={form.productId}
                     onChange={(e) => handleProductChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-lg text-txt-primary text-base"
                   >
-                    <option value="">請選擇</option>
+                    <option value="">Please select</option>
                     {products.map((p) => (
                       <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
                     ))}
@@ -1728,7 +1728,7 @@ function EditMovementModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨數</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Qty</label>
                     <input
                       type="number"
                       min="1"
@@ -1738,7 +1738,7 @@ function EditMovementModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-txt-subtle mb-1">發貨價銷 (RM)</label>
+                    <label className="block text-sm font-medium text-txt-subtle mb-1">Ship Price (RM)</label>
                     <input
                       type="number"
                       min="0"
@@ -1750,7 +1750,7 @@ function EditMovementModal({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-txt-subtle mb-1">發貨號碼</label>
+                  <label className="block text-sm font-medium text-txt-subtle mb-1">Ship No.</label>
                   <input
                     type="text"
                     value={form.refId}
@@ -1767,14 +1767,14 @@ function EditMovementModal({
                 disabled={saving}
                 className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-base font-medium rounded-lg"
               >
-                {saving ? '儲存中...' : '儲存'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-base rounded-lg"
               >
-                取消
+                Cancel
               </button>
             </div>
           </form>

@@ -46,16 +46,16 @@ export default function ProfitPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-txt-primary tracking-tight">
-              {user?.displayName ?? '—'} — 收入支出表
+              {user?.displayName ?? '—'} — Income & Expense
             </h1>
-            <p className="text-base text-txt-subtle mt-0.5">盈利 = 收入 − 支出</p>
+            <p className="text-base text-txt-subtle mt-0.5">Profit = Income − Expense</p>
           </div>
           <div className="flex gap-2">
             <Link
               href={`/customers/${userId}`}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
             >
-              財務表
+              Financials
             </Link>
           </div>
         </div>
@@ -63,13 +63,13 @@ export default function ProfitPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : breakdown ? (
           <>
             {/* 盈利總覽 */}
             <div className="rounded-2xl border-2 border-accent bg-accent/5 p-8 text-center">
-              <p className="text-sm font-medium text-txt-subtle uppercase tracking-wide">盈利</p>
+              <p className="text-sm font-medium text-txt-subtle uppercase tracking-wide">Profit</p>
               <p className={`text-5xl font-bold tabular-nums mt-1 ${
                 breakdown.profit >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
@@ -81,41 +81,41 @@ export default function ProfitPage() {
               {/* 收入 */}
               <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
-                  <h2 className="text-lg font-semibold text-green-800">收入</h2>
+                  <h2 className="text-lg font-semibold text-green-800">Income</h2>
                   <p className="text-2xl font-bold text-green-700 tabular-nums mt-1">
                     RM {breakdown.totalIncome.toFixed(2)}
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
-                  <Row label="收經銷商及顧客的錢" value={breakdown.incomeFromReceivables} />
-                  <Row label="顧客的體重秤及郵寄的錢" value={breakdown.incomeFromExpenseRecovery} />
-                  <Row label="自用產品（自己付自己錢）" value={breakdown.incomeFromSelfUse} />
+                  <Row label="From stockists & customers" value={breakdown.incomeFromReceivables} />
+                  <Row label="From weighing scale & shipping" value={breakdown.incomeFromExpenseRecovery} />
+                  <Row label="Self-use products" value={breakdown.incomeFromSelfUse} />
                 </div>
               </div>
 
               {/* 支出 */}
               <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-200 bg-red-50">
-                  <h2 className="text-lg font-semibold text-red-800">支出</h2>
+                  <h2 className="text-lg font-semibold text-red-800">Expense</h2>
                   <p className="text-2xl font-bold text-red-700 tabular-nums mt-1">
                     RM {breakdown.totalExpense.toFixed(2)}
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
-                  <Row label="給台灣的產品貨" value={breakdown.expenseTaiwanProducts} />
-                  <Row label="向台灣買體重秤" value={breakdown.expenseWeighingScale} />
-                  <Row label="付郵寄產品費用" value={breakdown.expenseShipping} />
-                  <Row label="員工的費用" value={breakdown.expenseSalary} />
+                  <Row label="Products to Taiwan" value={breakdown.expenseTaiwanProducts} />
+                  <Row label="Weighing scale from Taiwan" value={breakdown.expenseWeighingScale} />
+                  <Row label="Shipping costs" value={breakdown.expenseShipping} />
+                  <Row label="Staff expenses" value={breakdown.expenseSalary} />
                 </div>
               </div>
             </div>
 
             <p className="text-sm text-txt-subtle">
-              ※ 支出中的體重秤、郵寄、員工費用需在「費用管理」建立時選擇歸屬人；給台灣的產品貨需在「財務」建立時填寫相關用戶。
+              ※ Weighing scale, shipping and staff expenses require selecting an owner when creating in Expense Management; products to Taiwan require filling in related user when creating in Financials.
             </p>
           </>
         ) : (
-          <div className="py-16 text-center text-txt-subtle">無法載入資料</div>
+          <div className="py-16 text-center text-txt-subtle">Failed to load data</div>
         )}
       </div>
     </ProtectedRoute>

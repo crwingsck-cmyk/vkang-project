@@ -148,9 +148,9 @@ export const OrderService = {
     updates: Partial<Pick<Transaction, 'poNumber' | 'items' | 'status' | 'paymentDetails'>>
   ) {
     const po = await this.getById(id);
-    if (!po) throw new Error('訂單不存在');
+    if (!po) throw new Error('Order not found');
     if (po.status !== TransactionStatus.PENDING) {
-      throw new Error('僅待處理訂單可編輯');
+      throw new Error('Only pending orders can be edited');
     }
     const data: Partial<Transaction> = { ...updates };
     if (updates.items) {

@@ -59,7 +59,7 @@ export const ExpenseChargeService = {
   /** 核銷費用分攤（收款時呼叫）*/
   async applyPayment(id: string, amount: number): Promise<void> {
     const c = await FirestoreService.get<ExpenseCharge>(COLLECTION, id);
-    if (!c) throw new Error('費用分攤不存在');
+    if (!c) throw new Error('Expense charge not found');
 
     const newPaid = c.paidAmount + amount;
     const newRemaining = Math.max(0, c.amount - newPaid);
@@ -81,7 +81,7 @@ export const ExpenseChargeService = {
   /** 反轉核銷（刪除已審核收款單時呼叫）*/
   async reversePayment(id: string, amount: number): Promise<void> {
     const c = await FirestoreService.get<ExpenseCharge>(COLLECTION, id);
-    if (!c) throw new Error('費用分攤不存在');
+    if (!c) throw new Error('Expense charge not found');
 
     const newPaid = Math.max(0, c.paidAmount - amount);
     const newRemaining = c.amount - newPaid;

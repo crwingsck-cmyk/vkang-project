@@ -152,7 +152,7 @@ function AddRecordModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5">歸屬人（盈利表用）</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">Owner (for profit report)</label>
             <select
               name="relatedUserId"
               value={form.relatedUserId}

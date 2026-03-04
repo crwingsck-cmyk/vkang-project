@@ -199,21 +199,21 @@ export default function SettingsPage() {
 
             {/* 清空所有資料 - 危險操作 */}
             <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-2">危險操作</p>
-              <p className="text-xs text-txt-subtle mb-3">
-                清空庫存、進貨單、訂單、財務紀錄、台灣訂單池。使用者帳號與產品目錄會保留（產品可手動管理）。
-              </p>
+            <p className="text-[10px] font-semibold text-txt-subtle uppercase tracking-widest mb-2">Danger Zone</p>
+            <p className="text-xs text-txt-subtle mb-3">
+              Clear inventory, orders, financial records, Taiwan order pool. User accounts and product catalog retained.
+            </p>
               {clearResult && (
-                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('錯誤') ? 'msg-error' : 'bg-success/10 border border-success/20 text-success'}`}>
+                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${clearResult.startsWith('Error') ? 'msg-error' : 'bg-success/10 border border-success/20 text-success'}`}>
                   {clearResult}
                 </div>
               )}
               <button
                 type="button"
                 onClick={async () => {
-                  const msg = '確定要清空所有資料嗎？此操作無法復原。將刪除：庫存、進貨單、訂單、財務紀錄、台灣訂單池。產品目錄會保留。';
+                  const msg = 'Clear all data? This cannot be undone. Will delete: inventory, orders, financial records, Taiwan order pool. Product catalog retained.';
                   if (!confirm(msg)) return;
-                  const confirmAgain = '請再次確認：此操作將永久刪除所有業務資料。';
+                  const confirmAgain = 'Please confirm again: This will permanently delete all business data.';
                   if (!confirm(confirmAgain)) return;
                   setClearing(true);
                   setError('');
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                   try {
                     const token = await getCurrentToken(true);
                     if (!token) {
-                      setClearResult('錯誤：請重新登入後再試');
+                      setClearResult('Error: Please log in again');
                       setClearing(false);
                       return;
                     }
@@ -232,15 +232,15 @@ export default function SettingsPage() {
                     });
                     const data = await res.json();
                     if (!res.ok) {
-                      setClearResult(`錯誤：${data.error || '清空失敗'}`);
+                      setClearResult(`Error: ${data.error || 'Clear failed'}`);
                     } else {
                       const summary = Object.entries(data.cleared || {})
                         .map(([k, v]) => `${k}: ${v}`)
                         .join(', ');
-                      setClearResult(`已清空：${summary}`);
+                      setClearResult(`Cleared: ${summary}`);
                     }
                   } catch (e) {
-                    setClearResult(e instanceof Error ? e.message : '清空失敗');
+                      setClearResult(e instanceof Error ? e.message : 'Clear failed');
                   } finally {
                     setClearing(false);
                   }
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                 disabled={clearing}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
               >
-                {clearing ? '清空中...' : '清空所有資料'}
+                {clearing ? 'Clearing...' : 'Clear All Data'}
               </button>
             </div>
           </div>

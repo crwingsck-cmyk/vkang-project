@@ -45,7 +45,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!productId) {
       setLoading(false);
-      setError('無效的產品網址');
+      setError('Invalid product URL');
       return;
     }
     loadProduct();
@@ -106,7 +106,7 @@ export default function ProductDetailPage() {
     try {
       const token = await getCurrentToken(true);
       if (!token) {
-        setError('登入已過期，請重新登入');
+        setError('Session expired. Please log in again.');
         setSaving(false);
         return;
       }
@@ -138,7 +138,7 @@ export default function ProductDetailPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || '更新失敗');
+        setError(data.error || 'Update failed');
         setSaving(false);
         return;
       }
@@ -153,7 +153,7 @@ export default function ProductDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`確定要刪除「${product?.name}」嗎？此操作無法復原。`)) return;
+    if (!confirm(`Delete "${product?.name}"? This cannot be undone.`)) return;
     setDeleting(true);
     try {
       const docId = product?.id ?? productId;
@@ -181,19 +181,19 @@ export default function ProductDetailPage() {
         ) : error && !product ? (
           <div className="space-y-4">
             <div className="msg-error px-4 py-3 rounded-lg">{error}</div>
-            <p className="text-gray-400 text-sm">此產品可能已被刪除或不存在。您可以返回產品列表或建立新產品。</p>
+            <p className="text-gray-400 text-sm">This product may have been deleted or does not exist. Return to product list or create a new product.</p>
             <div className="flex gap-3">
               <Link
                 href="/products"
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm font-medium"
               >
-                返回產品列表
+                Back to Products
               </Link>
               <Link
                 href="/products/create"
                 className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium"
               >
-                建立新產品
+                Create Product
               </Link>
             </div>
           </div>
@@ -210,14 +210,14 @@ export default function ProductDetailPage() {
                     onClick={() => { setIsEditing(true); setSuccessMsg(''); setError(''); }}
                     className="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-lg text-sm"
                   >
-                    修改
+                    Edit
                   </button>
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm"
                   >
-                    {deleting ? '刪除中...' : '刪除'}
+                    {deleting ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               )}
@@ -288,7 +288,7 @@ export default function ProductDetailPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Unit Price (RM)（預設值）</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Unit Price (RM) (default)</label>
                     <input
                       type="number"
                       name="unitPrice"
@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Cost Price (RM)（預設值）</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Cost Price (RM) (default)</label>
                     <input
                       type="number"
                       name="costPrice"
@@ -314,13 +314,13 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">價格備註（選填）</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Price Note (optional)</label>
                   <input
                     type="text"
                     name="priceNote"
                     value={form.priceNote}
                     onChange={handleChange}
-                    placeholder="例如：每次進貨成本不同、售價依訂單為準"
+                    placeholder="e.g. Cost varies per order, price per order"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -351,13 +351,13 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">一盒幾包</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Packs per box</label>
                   <input
                     type="text"
                     name="packsPerBox"
                     value={form.packsPerBox}
                     onChange={handleChange}
-                    placeholder="例如：5 或 一盒5包"
+                    placeholder="e.g. 5"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -403,21 +403,21 @@ export default function ProductDetailPage() {
                   </div>
                   {product.packsPerBox != null && (
                     <div>
-                      <p className="text-gray-400">一盒幾包</p>
-                      <p className="text-gray-100 font-medium">{product.packsPerBox} 包</p>
+                      <p className="text-gray-400">Packs per box</p>
+                      <p className="text-gray-100 font-medium">{product.packsPerBox} packs</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-gray-400">Unit Price（預設）</p>
+                      <p className="text-gray-400">Unit Price (default)</p>
                     <p className="text-gray-100 font-medium">RM {product.unitPrice.toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400">Cost Price（預設）</p>
+                      <p className="text-gray-400">Cost Price (default)</p>
                     <p className="text-gray-100 font-medium">RM {product.costPrice.toFixed(2)}</p>
                   </div>
                   {product.priceNote && (
                     <div className="col-span-2">
-                      <p className="text-gray-400">價格備註</p>
+                      <p className="text-gray-400">Price Note</p>
                       <p className="text-gray-100 font-medium">{product.priceNote}</p>
                     </div>
                   )}

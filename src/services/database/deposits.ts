@@ -54,9 +54,9 @@ export const DepositService = {
 
   async delete(id: string): Promise<void> {
     const d = await FirestoreService.get<Deposit>(COLLECTION, id);
-    if (!d) throw new Error('訂金記錄不存在');
+    if (!d) throw new Error('Deposit record not found');
     if (d.balance < d.amount - 0.001) {
-      throw new Error('此訂金已部分扣抵，無法刪除。請先反轉扣抵紀錄。');
+      throw new Error('This deposit has been partially applied. Please reverse apply records first.');
     }
     await FirestoreService.delete(COLLECTION, id);
   },
@@ -71,9 +71,9 @@ export const DepositService = {
     amount: number
   ): Promise<void> {
     const deposit = await FirestoreService.get<Deposit>(COLLECTION, depositId);
-    if (!deposit) throw new Error('訂金不存在');
+    if (!deposit) throw new Error('Deposit not found');
     if (deposit.balance < amount - 0.001) {
-      throw new Error(`訂金餘額不足（剩餘 ${deposit.balance.toFixed(2)}）`);
+      throw new Error(`Insufficient deposit balance (remaining ${deposit.balance.toFixed(2)})`);
     }
 
     await ReceivableService.applyPayment(receivableId, amount);

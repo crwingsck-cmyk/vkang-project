@@ -47,9 +47,9 @@ export const ExpenseChargeReceiptService = {
 
   async approve(id: string, approvedBy: string): Promise<void> {
     const r = await FirestoreService.get<ExpenseChargeReceipt>(COLLECTION, id);
-    if (!r) throw new Error('費用收款單不存在');
+    if (!r) throw new Error('Expense receipt not found');
     if (r.status !== ExpenseChargeReceiptStatus.SUBMITTED) {
-      throw new Error('只有待審核狀態的收款單可進行審核');
+      throw new Error('Only pending receipts can be approved');
     }
 
     for (const item of r.items) {
@@ -73,7 +73,7 @@ export const ExpenseChargeReceiptService = {
 
   async delete(id: string): Promise<void> {
     const r = await FirestoreService.get<ExpenseChargeReceipt>(COLLECTION, id);
-    if (!r) throw new Error('費用收款單不存在');
+    if (!r) throw new Error('Expense receipt not found');
 
     if (r.status === ExpenseChargeReceiptStatus.APPROVED) {
       for (const item of r.items) {

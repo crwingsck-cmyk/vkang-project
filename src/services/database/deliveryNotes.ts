@@ -54,9 +54,9 @@ export const DeliveryNoteService = {
    */
   async warehouseApprove(id: string, approvedByUserId: string): Promise<void> {
     const dn = await FirestoreService.get<DeliveryNote>(COLLECTION, id);
-    if (!dn) throw new Error('發貨單不存在');
+    if (!dn) throw new Error('Delivery note not found');
     if (dn.status !== DeliveryNoteStatus.PENDING) {
-      throw new Error('只有待審核狀態的發貨單可進行倉庫審核');
+      throw new Error('Only pending delivery notes can be warehouse-approved');
     }
 
     // 扣賣方庫存、加買方庫存（複用現有 InventorySyncService）

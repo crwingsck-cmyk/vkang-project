@@ -44,7 +44,7 @@ export const PaymentReceiptService = {
    */
   async approve(id: string, approvedBy: string): Promise<void> {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
-    if (!pr) throw new Error('收款單不存在');
+    if (!pr) throw new Error('Payment receipt not found');
     if (pr.status !== PaymentReceiptStatus.SUBMITTED) {
       throw new Error('只有待審核狀態的收款單可進行審核');
     }
@@ -69,7 +69,7 @@ export const PaymentReceiptService = {
 
   async delete(id: string): Promise<void> {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
-    if (!pr) throw new Error('收款單不存在');
+    if (!pr) throw new Error('Payment receipt not found');
 
     // 若已審核，先反轉每筆 AR 核銷（若應收款已不存在則略過，避免刪除失敗）
     if (pr.status === PaymentReceiptStatus.APPROVED) {
@@ -96,8 +96,8 @@ export const PaymentReceiptService = {
    */
   async updateAmount(id: string, newAmount: number): Promise<void> {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
-    if (!pr) throw new Error('收款單不存在');
-    if (pr.status !== PaymentReceiptStatus.APPROVED) throw new Error('只有已審核的收款單可修改金額');
+    if (!pr) throw new Error('Payment receipt not found');
+    if (pr.status !== PaymentReceiptStatus.APPROVED) throw new Error('Only approved receipts can have amount modified');
 
     // 1. 反轉所有舊 AR 核銷
     for (const item of pr.items) {
@@ -115,7 +115,7 @@ export const PaymentReceiptService = {
       for (const item of pr.items) {
         await ReceivableService.applyPayment(item.receivableId, item.appliedAmount);
       }
-      throw new Error(`修改金額超過可核銷上限（${maxAmount.toFixed(2)}），已還原`);
+      throw new Error(`Modified amount exceeds max allocatable (${maxAmount.toFixed(2)}), reverted`);
     }
 
     // 3. 按比例重新分配新金額

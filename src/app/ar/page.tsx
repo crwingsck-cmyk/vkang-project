@@ -99,13 +99,13 @@ export default function ARPage() {
             <p className="text-3xl font-bold tabular-nums text-yellow-600 leading-none">
               {amountPartial.toFixed(2)}
             </p>
-            <p className="text-xs text-yellow-500 mt-2 font-medium uppercase tracking-wide">Partial Paid (餘額)</p>
+            <p className="text-xs text-yellow-500 mt-2 font-medium uppercase tracking-wide">Partial Paid (Balance)</p>
           </div>
           <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center shadow-sm">
             <p className="text-3xl font-bold tabular-nums text-green-600 leading-none">
               {amountPaid.toFixed(2)}
             </p>
-            <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">Fully Paid (已收)</p>
+            <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">Fully Paid (Received)</p>
           </div>
         </div>
 
@@ -116,7 +116,7 @@ export default function ARPage() {
             onChange={(e) => setFilterCustomer(e.target.value)}
             className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500"
           >
-            <option value="ALL">所有人</option>
+            <option value="ALL">All</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.displayName}</option>
             ))}

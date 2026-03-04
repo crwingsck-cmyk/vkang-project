@@ -71,7 +71,7 @@ export default function UserDetailPage() {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(`載入失敗：${msg}`);
+      setError(`Load failed: ${msg}`);
       console.error('Load user error:', err);
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export default function UserDetailPage() {
     setError('');
     setSuccessMsg('');
     if (!form.email.trim()) {
-      setError('Email 為必填');
+      setError('Email is required');
       return;
     }
     setSaving(true);
@@ -100,7 +100,7 @@ export default function UserDetailPage() {
       if (newEmail && newEmail !== (user?.email || '').toLowerCase()) {
         const token = await getCurrentToken(true);
         if (!token) {
-          setError('請重新登入後再試');
+          setError('Please log in again');
           setSaving(false);
           return;
         }
@@ -111,7 +111,7 @@ export default function UserDetailPage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Email 更新失敗');
+          setError(data.error || 'Email update failed');
           setSaving(false);
           return;
         }
@@ -126,12 +126,12 @@ export default function UserDetailPage() {
         isActive: form.isActive,
         parentUserId: form.parentUserId.trim() || (deleteField() as any),
       });
-      setSuccessMsg('使用者已更新。');
+      setSuccessMsg('User updated.');
       setIsEditing(false);
       await loadUser();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(`更新失敗：${msg}`);
+      setError(`Update failed: ${msg}`);
       console.error('User update error:', err);
     } finally {
       setSaving(false);
@@ -153,15 +153,15 @@ export default function UserDetailPage() {
   }
 
   async function handleDelete() {
-    const msg = `確定要永久刪除使用者「${user?.displayName}」嗎？\n\n將一併刪除：\n• 此帳號（Firebase Auth）\n• 庫存、進貨單、訂單等所有相關資料\n\n此操作無法復原。`;
+    const msg = `Permanently delete user "${user?.displayName}"?\n\nThis will also delete:\n• Firebase Auth account\n• All related data (inventory, orders, etc.)\n\nThis action cannot be undone.`;
     if (!confirm(msg)) return;
-    if (!confirm('請再次確認：此操作將永久刪除該使用者及其所有資料。')) return;
+    if (!confirm('Please confirm again: This will permanently delete the user and all their data.')) return;
     setDeleting(true);
     setError('');
     try {
       const token = await getCurrentToken(true);
       if (!token) {
-        setError('請重新登入後再試');
+        setError('Please log in again');
         setDeleting(false);
         return;
       }
@@ -172,14 +172,14 @@ export default function UserDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || '刪除失敗');
+        setError(data.error || 'Delete failed');
         setDeleting(false);
         return;
       }
-      setSuccessMsg('使用者已刪除。');
+      setSuccessMsg('User deleted.');
       setTimeout(() => router.push('/users'), 1500);
     } catch {
-      setError('刪除失敗');
+      setError('Delete failed');
     } finally {
       setDeleting(false);
     }
@@ -219,13 +219,13 @@ export default function UserDetailPage() {
                     href={`/users/create?parent=${userId}`}
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm"
                   >
-                    + 新增下線
+                    + Add Downline
                   </Link>
                   <button
                     onClick={() => { setIsEditing(true); setSuccessMsg(''); setError(''); }}
                     className="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-lg text-sm"
                   >
-                    修改
+                    Edit
                   </button>
                   {user.isActive && (
                     <button
@@ -242,7 +242,7 @@ export default function UserDetailPage() {
                       disabled={deleting}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm"
                     >
-                      {deleting ? '刪除中...' : '刪除'}
+                      {deleting ? 'Deleting...' : 'Delete'}
                     </button>
                   )}
                 </div>
@@ -270,7 +270,7 @@ export default function UserDetailPage() {
                     placeholder="user@example.com"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">修改後，該使用者需使用新 Email 登入</p>
+                  <p className="text-xs text-gray-500 mt-1">User must log in with new email after change</p>
                 </div>
 
                 <div>
@@ -323,14 +323,14 @@ export default function UserDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">上線（Multi-tier）</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Upstream (Multi-tier)</label>
                   <select
                     name="parentUserId"
                     value={form.parentUserId}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
                   >
-                    <option value="">無（頂層 / 總經銷商）</option>
+                    <option value="">None (top-level / master distributor)</option>
                     {allUsers.filter((u) => u.id !== userId).map((u) => (
                       <option key={u.id} value={u.id}>
                         <span className="name-lowercase">{u.displayName}</span> - {u.role}
@@ -389,16 +389,16 @@ export default function UserDetailPage() {
                       href={`/stockists/${user.id}`}
                       className="inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
                     >
-                      查看經銷商營運（訂單、庫存、進貨）→
+                      View stockist operations (orders, inventory, purchases) →
                     </Link>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {user.parentUserId && (
                     <div>
-                      <p className="text-gray-400">上線</p>
-                      <Link href={`/users/${user.parentUserId}`} className="text-blue-400 hover:underline font-medium">
-                        查看上線 →
+                    <p className="text-gray-400">Upstream</p>
+                    <Link href={`/users/${user.parentUserId}`} className="text-blue-400 hover:underline font-medium">
+                      View upstream →
                       </Link>
                     </div>
                   )}

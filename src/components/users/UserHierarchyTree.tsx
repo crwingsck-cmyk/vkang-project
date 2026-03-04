@@ -62,10 +62,10 @@ function TreeNodeComponent({ node, level }: { node: TreeNode; level: number }) {
         </Link>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Link href={`/users/create?parent=${node.user.id || ''}`} className="px-2 py-1 text-[10px] text-success hover:underline">
-            + 下線
+            + Downline
           </Link>
           <Link href={`/users/${node.user.id || node.user.email}`} className="px-2 py-1 text-[10px] text-accent-text hover:underline">
-            編輯
+            Edit
           </Link>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function UserHierarchyTree() {
     return (
       <div className="py-16 text-center">
         <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-        <p className="text-txt-subtle text-sm">載入組織架構...</p>
+        <p className="text-txt-subtle text-sm">Loading hierarchy...</p>
       </div>
     );
   }
@@ -115,7 +115,7 @@ export default function UserHierarchyTree() {
   if (roots.length === 0) {
     return (
       <div className="py-16 text-center">
-        <p className="text-txt-subtle text-sm">尚無使用者，或請設定 parentUserId 建立上下線關係</p>
+        <p className="text-txt-subtle text-sm">No users yet, or set parentUserId to build hierarchy</p>
       </div>
     );
   }
@@ -124,7 +124,7 @@ export default function UserHierarchyTree() {
     <div className="glass-panel overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-surface-base">
         <p className="text-xs text-txt-subtle">
-          Multi-tier distribution structure：總經銷商 → 下線 → 下線的下線，點擊 ▼/▶ 展開/收合
+          Master distributor → downlines → sub-downlines. Click ▼/▶ to expand/collapse
         </p>
       </div>
       <div className="divide-y divide-border-muted px-4 py-2">

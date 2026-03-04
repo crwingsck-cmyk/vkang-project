@@ -77,7 +77,7 @@ export const ReceivableService = {
    */
   async reversePayment(id: string, amount: number): Promise<void> {
     const r = await FirestoreService.get<Receivable>(COLLECTION, id);
-    if (!r) throw new Error(`應收款 ${id} 不存在`);
+    if (!r) throw new Error(`Receivable ${id} not found`);
 
     const newPaid = Math.max(0, r.paidAmount - amount);
     const newRemaining = r.totalAmount - newPaid;
@@ -104,7 +104,7 @@ export const ReceivableService = {
    */
   async applyPayment(id: string, amount: number): Promise<void> {
     const r = await FirestoreService.get<Receivable>(COLLECTION, id);
-    if (!r) throw new Error(`應收款 ${id} 不存在`);
+    if (!r) throw new Error(`Receivable ${id} not found`);
 
     const newPaid = r.paidAmount + amount;
     const newRemaining = r.totalAmount - newPaid;

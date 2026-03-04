@@ -202,10 +202,10 @@ export default function StockSetupPage() {
       let saved = 0;
       if (userId1) saved += await saveUserInv(userId1, LOC1_DISPLAY_NAME, 'qty1', 'cost1');
       if (userId2) saved += await saveUserInv(userId2, LOC2_DISPLAY_NAME, 'qty2', 'cost2');
-      toastSuccess(`已儲存 ${saved} 筆庫存`);
+      toastSuccess(`Saved ${saved} inventory records`);
     } catch (err) {
       console.error(err);
-      toastError('儲存失敗，請再試一次');
+      toastError('Save failed. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -228,39 +228,39 @@ export default function StockSetupPage() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-xl font-bold text-txt-primary tracking-tight">Opening Stock</h1>
-            <p className="text-sm text-txt-subtle mt-0.5">手動設定各地點的現有庫存數量</p>
+            <p className="text-sm text-txt-subtle mt-0.5">Manually set existing stock quantities per location</p>
           </div>
           <button
             onClick={handleSave}
             disabled={saving || loading}
             className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {saving ? '儲存中...' : '儲存庫存'}
+            {saving ? 'Saving...' : 'Save Inventory'}
           </button>
         </div>
 
         {/* Fixed location info cards */}
         <div className="grid grid-cols-2 gap-4">
           <div className="p-5 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-1.5">
-            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wide">地點 1</p>
+            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Location 1</p>
             <p className="text-xl font-bold text-gray-900">{LOC1_LOCATION}</p>
             <p className="text-base text-gray-900">{LOC1_DISPLAY_NAME}</p>
             {filled1 > 0 && (
-              <p className="text-sm text-gray-900 font-medium pt-1">{filled1} 項已填寫</p>
+              <p className="text-sm text-gray-900 font-medium pt-1">{filled1} items filled</p>
             )}
             {!userId1 && !loading && (
-              <p className="text-sm text-red-500">⚠ 找不到此用戶</p>
+              <p className="text-sm text-red-500">⚠ User not found</p>
             )}
           </div>
           <div className="p-5 rounded-xl border border-cyan-200 bg-cyan-50/70 space-y-1.5">
-            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wide">地點 2</p>
+            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Location 2</p>
             <p className="text-xl font-bold text-gray-900">{LOC2_LOCATION}</p>
             <p className="text-base text-gray-900">{LOC2_DISPLAY_NAME}</p>
             {filled2 > 0 && (
-              <p className="text-sm text-gray-900 font-medium pt-1">{filled2} 項已填寫</p>
+              <p className="text-sm text-gray-900 font-medium pt-1">{filled2} items filled</p>
             )}
             {!userId2 && !loading && (
-              <p className="text-sm text-red-500">⚠ 找不到此用戶</p>
+              <p className="text-sm text-red-500">⚠ User not found</p>
             )}
           </div>
         </div>
@@ -269,14 +269,14 @@ export default function StockSetupPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : (
           <div className="glass-panel overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-base">
-                  <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase" rowSpan={2}>產品</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase" rowSpan={2}>Product</th>
                   <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase" rowSpan={2}>SKU</th>
                   <th className="px-4 py-2 text-center text-sm font-semibold uppercase border-l border-border text-indigo-500" colSpan={2}>
                     {LOC1_LOCATION}
@@ -288,10 +288,10 @@ export default function StockSetupPage() {
                   </th>
                 </tr>
                 <tr className="border-b border-border bg-surface-base">
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase border-l border-border w-28">數量</th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase w-28">成本(RM)</th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase border-l border-border w-28">數量</th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase w-28">成本(RM)</th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase border-l border-border w-28">Qty</th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase w-28">Cost (RM)</th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase border-l border-border w-28">Qty</th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-txt-subtle uppercase w-28">Cost (RM)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted">

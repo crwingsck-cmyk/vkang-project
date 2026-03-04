@@ -31,9 +31,9 @@ export default function ProfitIndexPage() {
     return (
       <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
         <div className="space-y-6 py-12 text-center">
-          <h1 className="text-3xl font-bold text-txt-primary tracking-tight">盈利表</h1>
-          <p className="text-txt-subtle">找不到 TAN SUN SUN，請先在用戶管理中建立該用戶。</p>
-          <Link href="/users" className="text-accent-text hover:underline">前往用戶管理 →</Link>
+          <h1 className="text-3xl font-bold text-txt-primary tracking-tight">Profit Report</h1>
+          <p className="text-txt-subtle">TAN SUN SUN not found. Please create this user in User Management first.</p>
+          <Link href="/users" className="text-accent-text hover:underline">Go to User Management →</Link>
         </div>
       </ProtectedRoute>
     );
@@ -42,8 +42,8 @@ export default function ProfitIndexPage() {
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="space-y-6 py-12 text-center">
-        <h1 className="text-3xl font-bold text-txt-primary tracking-tight">盈利表</h1>
-        <p className="text-txt-subtle">正在載入 TAN SUN SUN 的收入支出表...</p>
+        <h1 className="text-3xl font-bold text-txt-primary tracking-tight">Profit Report</h1>
+        <p className="text-txt-subtle">Loading TAN SUN SUN income & expense report...</p>
       </div>
     </ProtectedRoute>
   );

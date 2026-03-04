@@ -10,10 +10,10 @@ import { SalesOrder, SalesOrderStatus, UserRole, TransactionItem, User, Product 
 import { generateDocumentNumber } from '@/lib/documentNumber';
 
 const statusLabel: Record<SalesOrderStatus, string> = {
-  [SalesOrderStatus.DRAFT]: '草稿',
-  [SalesOrderStatus.SUBMITTED]: '待審核',
-  [SalesOrderStatus.APPROVED]: '已審核',
-  [SalesOrderStatus.CANCELLED]: '已取消',
+  [SalesOrderStatus.DRAFT]: 'Draft',
+  [SalesOrderStatus.SUBMITTED]: 'Pending',
+  [SalesOrderStatus.APPROVED]: 'Approved',
+  [SalesOrderStatus.CANCELLED]: 'Cancelled',
 };
 
 const statusColors: Record<SalesOrderStatus, string> = {
@@ -90,7 +90,7 @@ export default function SalesPage() {
     const used = customer.creditUsed ?? 0;
     if (limit > 0 && used + total > limit) {
       setCreditWarning(
-        `此客戶信用額度 ${currency} ${limit.toFixed(0)}，已用 ${currency} ${used.toFixed(0)}，本單 ${currency} ${total.toFixed(0)}，超限 ${currency} ${(used + total - limit).toFixed(0)}。`
+        `Customer credit limit ${currency} ${limit.toFixed(0)}, used ${currency} ${used.toFixed(0)}, this order ${currency} ${total.toFixed(0)}, over by ${currency} ${(used + total - limit).toFixed(0)}.`
       );
     } else {
       setCreditWarning('');
@@ -128,9 +128,9 @@ export default function SalesPage() {
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
-    if (!selCustomer) { setModalError('請選擇客戶'); return; }
-    if (items.some((i) => !i.productId)) { setModalError('請選擇每一行的商品'); return; }
-    if (items.some((i) => i.quantity <= 0)) { setModalError('數量必須大於 0'); return; }
+    if (!selCustomer) { setModalError('Please select a customer'); return; }
+    if (items.some((i) => !i.productId)) { setModalError('Please select product for each row'); return; }
+    if (items.some((i) => i.quantity <= 0)) { setModalError('Quantity must be greater than 0'); return; }
     setSaving(true);
     setModalError('');
     try {
@@ -154,7 +154,7 @@ export default function SalesPage() {
       setShowModal(false);
       await load();
     } catch (e: any) {
-      setModalError(e.message ?? '儲存失敗');
+      setModalError(e.message ?? 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -171,7 +171,7 @@ export default function SalesPage() {
   };
 
   const handleCancel = async (so: SalesOrder) => {
-    if (!confirm(`確定取消訂單 ${so.orderNo}？`)) return;
+    if (!confirm(`Cancel order ${so.orderNo}?`)) return;
     await SalesOrderService.cancel(so.id!);
     await load();
   };
@@ -189,23 +189,23 @@ export default function SalesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-txt-primary tracking-tight">銷售訂單</h1>
-            <p className="text-sm text-txt-subtle mt-0.5">管理客戶銷售訂單，審核後方可建立發貨單</p>
+            <h1 className="text-xl font-bold text-txt-primary tracking-tight">Sales Orders</h1>
+            <p className="text-sm text-txt-subtle mt-0.5">Manage customer sales orders. Approve to create delivery notes.</p>
           </div>
           <button
             onClick={openModal}
             className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
           >
-            + 新增訂單
+            + Add Order
           </button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: '全部', value: counts.all, color: 'text-txt-primary' },
-            { label: '待審核', value: counts.submitted, color: 'text-yellow-400' },
-            { label: '已審核', value: counts.approved, color: 'text-green-400' },
+            { label: 'All', value: counts.all, color: 'text-txt-primary' },
+            { label: 'Pending', value: counts.submitted, color: 'text-yellow-400' },
+            { label: 'Approved', value: counts.approved, color: 'text-green-400' },
           ].map((s) => (
             <div key={s.label} className="glass-card p-4 text-center">
               <p className="text-2xl font-bold tabular-nums" style={{ color: 'inherit' }}>
@@ -228,7 +228,7 @@ export default function SalesPage() {
                   : 'text-txt-subtle hover:text-txt-primary hover:bg-surface-2 border border-transparent'
               }`}
             >
-              {s === 'ALL' ? '全部' : statusLabel[s]}
+              {s === 'ALL' ? 'All' : statusLabel[s]}
             </button>
           ))}
         </div>
@@ -237,24 +237,24 @@ export default function SalesPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : visible.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-txt-subtle text-sm">沒有符合條件的訂單</p>
+            <p className="text-txt-subtle text-sm">No matching orders</p>
           </div>
         ) : (
           <div className="glass-card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-txt-subtle text-xs uppercase tracking-wide">
-                  <th className="px-4 py-3 text-left">訂單號</th>
-                  <th className="px-4 py-3 text-left">日期</th>
-                  <th className="px-4 py-3 text-left">客戶</th>
-                  <th className="px-4 py-3 text-right">品項</th>
-                  <th className="px-4 py-3 text-right">總額</th>
-                  <th className="px-4 py-3 text-center">狀態</th>
-                  <th className="px-4 py-3 text-right">操作</th>
+                  <th className="px-4 py-3 text-left">Order No.</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Customer</th>
+                  <th className="px-4 py-3 text-right">Items</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -281,7 +281,7 @@ export default function SalesPage() {
                             onClick={() => handleSubmit(so)}
                             className="text-xs px-2 py-1 rounded bg-yellow-800/40 text-yellow-300 hover:bg-yellow-700/50"
                           >
-                            提交
+                            Submit
                           </button>
                         )}
                         {so.status === SalesOrderStatus.SUBMITTED && role === UserRole.ADMIN && (
@@ -289,7 +289,7 @@ export default function SalesPage() {
                             onClick={() => handleApprove(so)}
                             className="text-xs px-2 py-1 rounded bg-green-800/40 text-green-300 hover:bg-green-700/50"
                           >
-                            審核
+                            Approve
                           </button>
                         )}
                         {(so.status === SalesOrderStatus.DRAFT || so.status === SalesOrderStatus.SUBMITTED) && (
@@ -297,7 +297,7 @@ export default function SalesPage() {
                             onClick={() => handleCancel(so)}
                             className="text-xs px-2 py-1 rounded bg-red-900/40 text-red-300 hover:bg-red-800/50"
                           >
-                            取消
+                            Cancel
                           </button>
                         )}
                       </div>
@@ -316,7 +316,7 @@ export default function SalesPage() {
           <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-              <h2 className="text-base font-semibold text-txt-primary">新增銷售訂單</h2>
+              <h2 className="text-base font-semibold text-txt-primary">Add Sales Order</h2>
               <button onClick={() => setShowModal(false)} className="text-txt-subtle hover:text-txt-primary text-lg leading-none">✕</button>
             </div>
 
@@ -324,20 +324,20 @@ export default function SalesPage() {
               {/* Credit warning */}
               {creditWarning && (
                 <div className="rounded-lg bg-red-900/40 border border-red-600/50 px-4 py-3 text-sm text-red-300">
-                  ⚠️ 信用額度超限：{creditWarning}
-                  <p className="mt-1 text-xs text-red-400">此訂單需管理員特批後才可審核。</p>
+                  ⚠️ Credit limit exceeded: {creditWarning}
+                  <p className="mt-1 text-xs text-red-400">This order requires admin approval.</p>
                 </div>
               )}
 
               {/* Customer */}
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">客戶 *</label>
+                <label className="block text-xs text-txt-subtle mb-1">Customer *</label>
                 <select
                   value={selCustomer?.id ?? ''}
                   onChange={(e) => handleCustomerChange(e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-txt-primary focus:outline-none focus:border-accent"
                 >
-                  <option value="">— 選擇客戶 —</option>
+                  <option value="">— Select customer —</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>{c.displayName}</option>
                   ))}
@@ -346,7 +346,7 @@ export default function SalesPage() {
 
               {/* Currency */}
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">幣別</label>
+                <label className="block text-xs text-txt-subtle mb-1">Currency</label>
                 <div className="flex gap-3">
                   {(['RM'] as const).map((cur) => (
                     <label key={cur} className="flex items-center gap-1.5 text-sm text-txt-secondary cursor-pointer">
@@ -367,8 +367,8 @@ export default function SalesPage() {
               {/* Items */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-txt-subtle">品項 *</label>
-                  <button onClick={addItem} className="text-xs text-accent-text hover:underline">+ 新增一行</button>
+                  <label className="text-xs text-txt-subtle">Items *</label>
+                  <button onClick={addItem} className="text-xs text-accent-text hover:underline">+ Add row</button>
                 </div>
                 <div className="space-y-2">
                   {items.map((item, idx) => (
@@ -379,7 +379,7 @@ export default function SalesPage() {
                           onChange={(e) => updateItem(idx, 'productId', e.target.value)}
                           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent"
                         >
-                          <option value="">— 選商品 —</option>
+                          <option value="">— Select product —</option>
                           {products.map((p) => (
                             <option key={p.id} value={p.id ?? p.sku}>{p.name}</option>
                           ))}
@@ -391,7 +391,7 @@ export default function SalesPage() {
                           min={1}
                           value={item.quantity}
                           onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
-                          placeholder="數量"
+                          placeholder="Qty"
                           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent"
                         />
                       </div>
@@ -402,7 +402,7 @@ export default function SalesPage() {
                           step="0.01"
                           value={item.unitPrice}
                           onChange={(e) => updateItem(idx, 'unitPrice', Number(e.target.value))}
-                          placeholder="單價"
+                          placeholder="Unit price"
                           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-txt-primary focus:outline-none focus:border-accent"
                         />
                       </div>
@@ -418,13 +418,13 @@ export default function SalesPage() {
                   ))}
                 </div>
                 <div className="mt-2 text-right text-sm font-semibold text-txt-primary tabular-nums">
-                  總計：{currency} {grandTotal.toFixed(2)}
+                  Total: {currency} {grandTotal.toFixed(2)}
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-txt-subtle mb-1">備注（選填）</label>
+                <label className="block text-xs text-txt-subtle mb-1">Notes (optional)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -444,14 +444,14 @@ export default function SalesPage() {
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-sm text-txt-secondary hover:text-txt-primary transition-colors"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
                 className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
               >
-                {saving ? '儲存中...' : '儲存草稿'}
+                {saving ? 'Saving...' : 'Save Draft'}
               </button>
             </div>
           </div>

@@ -71,7 +71,7 @@ export default function UsersPage() {
                 : 'text-txt-subtle hover:text-txt-primary'
             }`}
           >
-            列表
+            List
           </button>
           <button
             type="button"
@@ -165,7 +165,7 @@ export default function UsersPage() {
                         href={`/users/${user.id || user.email}`}
                         className="inline-flex px-2.5 py-1 text-[10px] font-semibold bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded-md transition-colors uppercase tracking-wider"
                       >
-                        修改
+                        Edit
                       </Link>
                     </td>
                   </tr>

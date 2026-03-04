@@ -13,7 +13,7 @@ export default function HierarchyPage() {
       <div className="space-y-5">
         <div>
           <h1 className="text-xl font-bold text-txt-primary tracking-tight">Multi-tier distribution structure</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">總經銷商 → 下線 → 下線的下線，點擊名字進入詳情</p>
+          <p className="text-sm text-txt-subtle mt-0.5">Master distributor → downlines → sub-downlines. Click name for details.</p>
         </div>
         <UserHierarchyTree />
       </div>

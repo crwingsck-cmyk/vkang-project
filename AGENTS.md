@@ -58,4 +58,4 @@ src/
 
 1. 資料存取集中在 `services/database/`
 2. 使用 `ProtectedRoute` 與 `useAuth()` 檢查權限
-3. 與使用者溝通使用繁體中文
+3. Use English for user-facing interface

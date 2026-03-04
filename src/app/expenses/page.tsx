@@ -18,15 +18,15 @@ import { generateDocumentNumber } from '@/lib/documentNumber';
 import Link from 'next/link';
 
 const EXPENSE_TYPE_LABEL: Record<ExpenseType, string> = {
-  [ExpenseType.WEIGHING_SCALE]: '買體重稱',
-  [ExpenseType.SHIPPING]: '郵寄產品',
-  [ExpenseType.SALARY]: '員工薪水',
+  [ExpenseType.WEIGHING_SCALE]: 'Weighing Scale',
+  [ExpenseType.SHIPPING]: 'Shipping',
+  [ExpenseType.SALARY]: 'Salary',
 };
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '現金' },
-  { value: 'bank', label: '銀行轉帳' },
-  { value: 'credit', label: '支票' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank', label: 'Bank Transfer' },
+  { value: 'credit', label: 'Cheque' },
 ];
 
 function fmtDate(ts?: number) {
@@ -62,6 +62,24 @@ export default function ExpensesPage() {
   const [allocAmount, setAllocAmount] = useState('');
   const [allocSaving, setAllocSaving] = useState(false);
   const [allocError, setAllocError] = useState('');
+
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editExpense, setEditExpense] = useState<(Expense & { id: string }) | null>(null);
+  const [editType, setEditType] = useState<ExpenseType>(ExpenseType.WEIGHING_SCALE);
+  const [editOwnerId, setEditOwnerId] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editPaidTo, setEditPaidTo] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editPayMethod, setEditPayMethod] = useState('bank');
+  const [editPayRef, setEditPayRef] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<(Expense & { id: string }) | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,8 +121,8 @@ export default function ExpensesPage() {
 
   const handleAdd = async () => {
     const amount = parseFloat(addAmount);
-    if (!addPaidTo.trim()) { setAddError('請填寫付款對象'); return; }
-    if (!amount || amount <= 0) { setAddError('請填寫有效金額'); return; }
+    if (!addPaidTo.trim()) { setAddError('Please enter payee'); return; }
+    if (!amount || amount <= 0) { setAddError('Please enter a valid amount'); return; }
 
     setAddSaving(true);
     setAddError('');
@@ -129,9 +147,73 @@ export default function ExpensesPage() {
       setShowAddModal(false);
       await load();
     } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : '儲存失敗');
+      setAddError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setAddSaving(false);
+    }
+  };
+
+  const openEditModal = (exp: Expense & { id: string }) => {
+    setEditExpense(exp);
+    setEditType(exp.type);
+    setEditOwnerId(exp.ownerId ?? '');
+    setEditAmount(exp.amount.toString());
+    setEditPaidTo(exp.paidTo);
+    setEditDate(exp.paymentDate ? new Date(exp.paymentDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setEditPayMethod(exp.paymentMethod ?? 'bank');
+    setEditPayRef(exp.paymentReference ?? '');
+    setEditDesc(exp.description ?? '');
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editExpense) return;
+    const amount = parseFloat(editAmount);
+    if (!editPaidTo.trim()) { setEditError('Please enter payee'); return; }
+    if (!amount || amount <= 0) { setEditError('Please enter a valid amount'); return; }
+
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await ExpenseService.update(editExpense.id!, {
+        type: editType,
+        amount,
+        paidTo: editPaidTo.trim(),
+        paymentDate: new Date(editDate + 'T12:00:00').getTime(),
+        paymentMethod: editPayMethod,
+        paymentReference: editPayRef || undefined,
+        description: editDesc || undefined,
+        isRecoverable: editType !== ExpenseType.SALARY,
+        ownerId: editOwnerId || undefined,
+      });
+      setShowEditModal(false);
+      setEditExpense(null);
+      await load();
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : 'Update failed');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSaving(true);
+    try {
+      const expCharges = charges.filter((c) => c.expenseId === deleteTarget.id);
+      if (expCharges.length > 0) {
+        setDeleteTarget(null);
+        alert('This expense has allocation records. Please remove allocations first.');
+        return;
+      }
+      await ExpenseService.delete(deleteTarget.id!);
+      setDeleteTarget(null);
+      await load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeleteSaving(false);
     }
   };
 
@@ -147,13 +229,13 @@ export default function ExpensesPage() {
   const handleAlloc = async () => {
     if (!allocExpense) return;
     const amount = parseFloat(allocAmount);
-    if (!allocCustomerId) { setAllocError('請選擇客戶'); return; }
-    if (!amount || amount <= 0) { setAllocError('請填寫有效金額'); return; }
+    if (!allocCustomerId) { setAllocError('Please select customer'); return; }
+    if (!amount || amount <= 0) { setAllocError('Please enter a valid amount'); return; }
 
     const existingCharges = charges.filter((c) => c.expenseId === allocExpense.id);
     const alreadyAllocated = existingCharges.reduce((s, c) => s + c.amount, 0);
     if (amount > allocExpense.amount - alreadyAllocated + 0.001) {
-      setAllocError(`超過可分攤金額（剩餘 ${(allocExpense.amount - alreadyAllocated).toFixed(2)}）`);
+      setAllocError(`Exceeds allocatable amount (remaining ${(allocExpense.amount - alreadyAllocated).toFixed(2)})`);
       return;
     }
 
@@ -177,7 +259,7 @@ export default function ExpensesPage() {
       setAllocExpense(null);
       await load();
     } catch (e: unknown) {
-      setAllocError(e instanceof Error ? e.message : '分攤失敗');
+      setAllocError(e instanceof Error ? e.message : 'Allocation failed');
     } finally {
       setAllocSaving(false);
     }
@@ -192,21 +274,21 @@ export default function ExpensesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-txt-primary tracking-tight">費用管理</h1>
-            <p className="text-base text-txt-subtle mt-0.5">體重稱、郵寄、員工薪水 — 可回收費用可分攤給經銷商/顧客</p>
+            <h1 className="text-3xl font-bold text-txt-primary tracking-tight">Expense Management</h1>
+            <p className="text-base text-txt-subtle mt-0.5">Weighing scale, shipping, salary — recoverable expenses can be allocated to stockists/customers</p>
           </div>
           <div className="flex gap-2">
             <Link
               href="/expense-receipts"
               className="px-4 py-2.5 border border-accent text-accent-text rounded-lg text-base font-medium hover:bg-accent/10 transition-colors"
             >
-              費用收款
+              Expense Receipts
             </Link>
             <button
               onClick={openAddModal}
               className="px-5 py-2.5 bg-accent text-white rounded-lg text-base font-medium hover:bg-accent-hover transition-colors"
             >
-              + 新增費用
+              + Add Expense
             </button>
           </div>
         </div>
@@ -223,7 +305,7 @@ export default function ExpensesPage() {
                   : 'text-txt-subtle hover:text-txt-primary hover:bg-surface-2 border border-transparent'
               }`}
             >
-              {t === 'ALL' ? '全部' : EXPENSE_TYPE_LABEL[t]}
+              {t === 'ALL' ? 'All' : EXPENSE_TYPE_LABEL[t]}
             </button>
           ))}
         </div>
@@ -232,16 +314,16 @@ export default function ExpensesPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : visible.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-txt-subtle text-sm">尚無費用記錄</p>
+            <p className="text-txt-subtle text-sm">No expense records yet</p>
             <button
               onClick={openAddModal}
               className="mt-4 px-4 py-2 text-sm font-medium text-accent-text hover:underline"
             >
-              + 新增第一筆費用
+              + Add first expense
             </button>
           </div>
         ) : (
@@ -249,13 +331,13 @@ export default function ExpensesPage() {
             <table className="w-full text-base">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wide border-b border-gray-200">
-                  <th className="px-4 py-3 text-left">費用單號</th>
-                  <th className="px-4 py-3 text-left">類型</th>
-                  <th className="px-4 py-3 text-left">日期</th>
-                  <th className="px-4 py-3 text-left">付款對象</th>
-                  <th className="px-4 py-3 text-right">金額</th>
-                  <th className="px-4 py-3 text-left">分攤</th>
-                  <th className="px-4 py-3 text-right">操作</th>
+                  <th className="px-4 py-3 text-left">Expense ID</th>
+                  <th className="px-4 py-3 text-left">Type</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Payee</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-left">Allocation</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -278,7 +360,7 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {expCharges.length > 0 ? (
                           <span>
-                            已分攤 {allocated.toFixed(2)} / {e.amount.toFixed(2)}
+                            Allocated {allocated.toFixed(2)} / {e.amount.toFixed(2)}
                             {expCharges.map((c) => (
                               <span key={c.id} className="block text-xs text-gray-500">
                                 → {c.customerName} RM {c.amount.toFixed(2)}
@@ -290,14 +372,28 @@ export default function ExpensesPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {e.isRecoverable && (
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => openAllocModal(e)}
-                            className="text-xs px-2 py-1 rounded bg-accent text-white hover:bg-accent-hover"
+                            onClick={() => openEditModal(e)}
+                            className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
                           >
-                            分攤
+                            Edit
                           </button>
-                        )}
+                          <button
+                            onClick={() => setDeleteTarget(e)}
+                            className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                          >
+                            Delete
+                          </button>
+                          {e.isRecoverable && (
+                            <button
+                              onClick={() => openAllocModal(e)}
+                              className="text-xs px-2 py-1 rounded bg-accent text-white hover:bg-accent-hover"
+                            >
+                              Allocate
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -312,24 +408,24 @@ export default function ExpensesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl my-8 flex flex-col max-h-[calc(100vh-4rem)]">
               <div className="px-6 py-4 border-b border-gray-200 shrink-0">
-                <h2 className="text-lg font-semibold text-gray-900">新增費用</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Add Expense</h2>
               </div>
               <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">歸屬經銷商（選填，用於盈利表）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner (optional, for profit report)</label>
                   <select
                     value={addOwnerId}
                     onChange={(e) => setAddOwnerId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
                   >
-                    <option value="">— 不指定 —</option>
+                    <option value="">— Not specified —</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>{c.displayName}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">費用類型 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expense Type *</label>
                   <select
                     value={addType}
                     onChange={(e) => setAddType(e.target.value as ExpenseType)}
@@ -341,17 +437,17 @@ export default function ExpensesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">付款對象 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payee *</label>
                   <input
                     type="text"
                     value={addPaidTo}
                     onChange={(e) => setAddPaidTo(e.target.value)}
-                    placeholder="廠商、快遞、員工姓名等"
+                    placeholder="Vendor, courier, employee name, etc."
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">付款日期 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
                   <input
                     type="date"
                     value={addDate}
@@ -360,7 +456,7 @@ export default function ExpensesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">金額 (RM) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount (RM) *</label>
                   <input
                     type="number"
                     min="0.01"
@@ -372,7 +468,7 @@ export default function ExpensesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">付款方式</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <select
                     value={addPayMethod}
                     onChange={(e) => setAddPayMethod(e.target.value)}
@@ -384,7 +480,7 @@ export default function ExpensesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Remarks (optional)</label>
                   <textarea
                     value={addDesc}
                     onChange={(e) => setAddDesc(e.target.value)}
@@ -400,7 +496,7 @@ export default function ExpensesPage() {
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
-                  取消
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -408,7 +504,7 @@ export default function ExpensesPage() {
                   disabled={addSaving}
                   className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg"
                 >
-                  {addSaving ? '儲存中...' : '儲存'}
+                  {addSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
@@ -420,29 +516,29 @@ export default function ExpensesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">分攤費用</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Allocate Expense</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   {allocExpense.expenseNo} · {EXPENSE_TYPE_LABEL[allocExpense.type]} · RM {allocExpense.amount.toFixed(2)}
                 </p>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">分攤給 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Allocate to *</label>
                   <select
                     value={allocCustomerId}
                     onChange={(e) => setAllocCustomerId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
                   >
-                    <option value="">— 選擇經銷商/顧客 —</option>
+                    <option value="">— Select stockist/customer —</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.displayName}（{c.role === UserRole.STOCKIST ? '經銷商' : '顧客'}）
+                        {c.displayName} ({c.role === UserRole.STOCKIST ? 'Stockist' : 'Customer'})
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">分攤金額 (RM) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Allocation Amount (RM) *</label>
                   <input
                     type="number"
                     min="0.01"
@@ -461,7 +557,7 @@ export default function ExpensesPage() {
                   onClick={() => { setShowAllocModal(false); setAllocExpense(null); }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
-                  取消
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -469,7 +565,144 @@ export default function ExpensesPage() {
                   disabled={allocSaving}
                   className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg"
                 >
-                  {allocSaving ? '分攤中...' : '確認分攤'}
+                  {allocSaving ? 'Allocating...' : 'Confirm Allocation'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && editExpense && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl my-8 flex flex-col max-h-[calc(100vh-4rem)]">
+              <div className="px-6 py-4 border-b border-gray-200 shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900">Edit Expense</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{editExpense.expenseNo}</p>
+              </div>
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner (optional)</label>
+                  <select
+                    value={editOwnerId}
+                    onChange={(e) => setEditOwnerId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  >
+                    <option value="">— Not specified —</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expense Type *</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as ExpenseType)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  >
+                    {Object.entries(EXPENSE_TYPE_LABEL).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payee *</label>
+                  <input
+                    type="text"
+                    value={editPaidTo}
+                    onChange={(e) => setEditPaidTo(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount (RM) *</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <select
+                    value={editPayMethod}
+                    onChange={(e) => setEditPayMethod(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  >
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Remarks (optional)</label>
+                  <textarea
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    rows={2}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
+                  />
+                </div>
+                {editError && <p className="text-sm text-red-600">{editError}</p>}
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditExpense(null); }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  disabled={editSaving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg"
+                >
+                  {editSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation */}
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-sm shadow-2xl p-6">
+              <h2 className="text-lg font-semibold text-gray-900">Confirm Delete</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete expense &quot;{deleteTarget.expenseNo}&quot;? This cannot be undone.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleteSaving}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteSaving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
+                >
+                  {deleteSaving ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>

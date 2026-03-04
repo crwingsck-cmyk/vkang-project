@@ -26,8 +26,8 @@ export default function ProductsPage() {
       setProducts(data);
     } catch (error) {
       console.error('Error loading products:', error);
-      const msg = error instanceof Error ? error.message : '載入失敗';
-      setLoadError(msg.includes('index') ? '請執行 firebase deploy --only firestore:indexes 部署索引' : msg);
+      const msg = error instanceof Error ? error.message : 'Load failed';
+      setLoadError(msg.includes('index') ? 'Run firebase deploy --only firestore:indexes to deploy indexes' : msg);
     } finally {
       setLoading(false);
     }
@@ -41,13 +41,13 @@ export default function ProductsPage() {
   const categoryCount = new Set(products.map((p) => p.category)).size;
 
   async function handleDelete(sku: string, name: string) {
-    if (!confirm(`確定要刪除「${name}」(SKU: ${sku}) 嗎？此操作無法復原。`)) return;
+    if (!confirm(`Delete "${name}" (SKU: ${sku})? This cannot be undone.`)) return;
     try {
       await ProductService.delete(sku);
       await loadProducts();
     } catch (error) {
       console.error('Delete product error:', error);
-      alert('刪除失敗，請稍後再試');
+      alert('Delete failed. Please try again.');
     }
   }
 
@@ -59,7 +59,7 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-txt-primary">Products</h1>
-            <p className="text-xs text-txt-subtle mt-0.5">Manage your product catalog. 售價／成本為預設值，實際以訂單及進貨單為準。</p>
+            <p className="text-xs text-txt-subtle mt-0.5">Manage your product catalog. Price/cost are defaults; actual values from orders.</p>
           </div>
           {role === UserRole.ADMIN && (
             <Link
@@ -103,7 +103,7 @@ export default function ProductsPage() {
             <div className="py-16 text-center">
               <p className="text-red-400 text-sm mb-2">{loadError}</p>
               <button onClick={loadProducts} className="text-xs text-accent-text hover:underline">
-                重新載入
+                Reload
               </button>
             </div>
           ) : filteredProducts.length === 0 ? (
@@ -122,12 +122,12 @@ export default function ProductsPage() {
                   <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-32">SKU</th>
                   <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest">Name</th>
                   <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-40">Category</th>
-                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-32">預設售價</th>
-                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-32">預設成本</th>
-                  <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[140px]">價格備註</th>
+                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-32">Default Price</th>
+                  <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-32">Default Cost</th>
+                  <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase tracking-widest min-w-[140px]">Price Note</th>
                   <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-24">Status</th>
                   {role === UserRole.ADMIN && (
-                    <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-20">操作</th>
+                    <th className="px-5 py-2.5 text-center text-[10px] font-semibold text-txt-subtle uppercase tracking-widest w-20">Actions</th>
                   )}
                 </tr>
               </thead>
@@ -165,16 +165,16 @@ export default function ProductsPage() {
                           <Link
                             href={`/products/${encodeURIComponent(product.id || product.sku)}`}
                             className="px-2 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded transition-colors"
-                            title="修改"
+                            title="Edit"
                           >
-                            修改
+                            Edit
                           </Link>
                           <button
                             onClick={() => handleDelete(product.id || product.sku, product.name)}
                             className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                            title="刪除"
+                            title="Delete"
                           >
-                            刪除
+                            Delete
                           </button>
                         </div>
                       </td>

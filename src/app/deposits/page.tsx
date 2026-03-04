@@ -11,9 +11,9 @@ import { generateDocumentNumber } from '@/lib/documentNumber';
 import Link from 'next/link';
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '現金' },
-  { value: 'bank', label: '銀行轉帳' },
-  { value: 'credit', label: '支票' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank', label: 'Bank Transfer' },
+  { value: 'credit', label: 'Cheque' },
 ];
 
 function fmtDate(ts?: number) {
@@ -84,8 +84,8 @@ export default function DepositsPage() {
 
   const handleAdd = async () => {
     const amount = parseFloat(addAmount);
-    if (!addCustomerId) { setAddError('請選擇客戶'); return; }
-    if (!amount || amount <= 0) { setAddError('請填寫有效金額'); return; }
+    if (!addCustomerId) { setAddError('Please select customer'); return; }
+    if (!amount || amount <= 0) { setAddError('Please enter a valid amount'); return; }
 
     setAddSaving(true);
     setAddError('');
@@ -109,7 +109,7 @@ export default function DepositsPage() {
       setShowAddModal(false);
       await load();
     } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : '儲存失敗');
+      setAddError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setAddSaving(false);
     }
@@ -129,16 +129,16 @@ export default function DepositsPage() {
   const handleApply = async () => {
     if (!applyDeposit) return;
     const amount = parseFloat(applyAmount);
-    if (!applyArId) { setApplyError('請選擇應收款'); return; }
-    if (!amount || amount <= 0) { setApplyError('請填寫有效金額'); return; }
+    if (!applyArId) { setApplyError('Please select receivable'); return; }
+    if (!amount || amount <= 0) { setApplyError('Please enter a valid amount'); return; }
     if (amount > applyDeposit.balance) {
-      setApplyError(`訂金餘額不足（剩餘 ${applyDeposit.balance.toFixed(2)}）`);
+      setApplyError(`Insufficient deposit balance (remaining ${applyDeposit.balance.toFixed(2)})`);
       return;
     }
 
     const ar = applyReceivables.find((r) => r.id === applyArId);
     if (ar && amount > ar.remainingAmount) {
-      setApplyError(`超過應收款未收餘額（${ar.remainingAmount.toFixed(2)}）`);
+      setApplyError(`Exceeds receivable remaining amount (${ar.remainingAmount.toFixed(2)})`);
       return;
     }
 
@@ -150,20 +150,20 @@ export default function DepositsPage() {
       setApplyDeposit(null);
       await load();
     } catch (e: unknown) {
-      setApplyError(e instanceof Error ? e.message : '扣抵失敗');
+      setApplyError(e instanceof Error ? e.message : 'Apply failed');
     } finally {
       setApplySaving(false);
     }
   };
 
   const handleDelete = async (d: Deposit & { id: string }) => {
-    if (!confirm(`確定刪除訂金 ${d.depositNo}？此操作不可復原。`)) return;
+    if (!confirm(`Delete deposit ${d.depositNo}? This cannot be undone.`)) return;
     setActionError('');
     try {
       await DepositService.delete(d.id!);
       await load();
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : '刪除失敗');
+      setActionError(e instanceof Error ? e.message : 'Delete failed');
     }
   };
 
@@ -173,14 +173,14 @@ export default function DepositsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-txt-primary tracking-tight">訂金 (Deposit)</h1>
-            <p className="text-base text-txt-subtle mt-0.5">向顧客/經銷商收取預付款，可於發貨後扣抵應收款</p>
+            <h1 className="text-3xl font-bold text-txt-primary tracking-tight">Deposits</h1>
+            <p className="text-base text-txt-subtle mt-0.5">Collect prepayments from customers/stockists, apply to receivables after delivery</p>
           </div>
           <button
             onClick={openAddModal}
             className="px-5 py-2.5 bg-accent text-white rounded-lg text-base font-medium hover:bg-accent-hover transition-colors"
           >
-            + 新增訂金
+            + Add Deposit
           </button>
         </div>
 
@@ -194,15 +194,15 @@ export default function DepositsPage() {
         <div className="grid grid-cols-3 gap-4">
           <div className="glass-card p-6 text-center">
             <p className="text-4xl font-bold tabular-nums text-txt-primary">{deposits.length}</p>
-            <p className="text-base text-txt-subtle mt-2">筆數</p>
+            <p className="text-base text-txt-subtle mt-2">Count</p>
           </div>
           <div className="glass-card p-6 text-center">
             <p className="text-4xl font-bold tabular-nums text-green-600">{totalReceived.toFixed(2)}</p>
-            <p className="text-base text-txt-subtle mt-2">總收取</p>
+            <p className="text-base text-txt-subtle mt-2">Total Received</p>
           </div>
           <div className="glass-card p-6 text-center">
             <p className="text-4xl font-bold tabular-nums text-accent-text">{totalBalance.toFixed(2)}</p>
-            <p className="text-base text-txt-subtle mt-2">可扣抵餘額</p>
+            <p className="text-base text-txt-subtle mt-2">Applyable Balance</p>
           </div>
         </div>
 
@@ -213,7 +213,7 @@ export default function DepositsPage() {
             onChange={(e) => setFilterCustomer(e.target.value)}
             className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
           >
-            <option value="ALL">全部客戶</option>
+            <option value="ALL">All Customers</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.displayName}</option>
             ))}
@@ -224,16 +224,16 @@ export default function DepositsPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : visible.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-txt-subtle text-sm">尚無訂金記錄</p>
+            <p className="text-txt-subtle text-sm">No deposit records yet</p>
             <button
               onClick={openAddModal}
               className="mt-4 px-4 py-2 text-sm font-medium text-accent-text hover:underline"
             >
-              + 新增第一筆訂金
+              + Add first deposit
             </button>
           </div>
         ) : (
@@ -241,13 +241,13 @@ export default function DepositsPage() {
             <table className="w-full text-base">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wide border-b border-gray-200">
-                  <th className="px-4 py-3 text-left">訂金單號</th>
-                  <th className="px-4 py-3 text-left">日期</th>
-                  <th className="px-4 py-3 text-left">客戶</th>
-                  <th className="px-4 py-3 text-right">收取金額</th>
-                  <th className="px-4 py-3 text-right">可扣抵餘額</th>
-                  <th className="px-4 py-3 text-left">付款方式</th>
-                  <th className="px-4 py-3 text-right">操作</th>
+                  <th className="px-4 py-3 text-left">Deposit No</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Customer</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-right">Balance</th>
+                  <th className="px-4 py-3 text-left">Payment Method</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -278,14 +278,14 @@ export default function DepositsPage() {
                             onClick={() => openApplyModal(d)}
                             className="text-xs px-2 py-1 rounded bg-accent text-white hover:bg-accent-hover"
                           >
-                            扣抵 AR
+                            Apply to AR
                           </button>
                         )}
                         <button
                           onClick={() => handleDelete(d)}
                           className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
                         >
-                          刪除
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -301,26 +301,26 @@ export default function DepositsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">新增訂金</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Add Deposit</h2>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">客戶 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
                   <select
                     value={addCustomerId}
                     onChange={(e) => setAddCustomerId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
                   >
-                    <option value="">— 選擇客戶 —</option>
+                    <option value="">— Select customer —</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.displayName}（{c.role === UserRole.STOCKIST ? '經銷商' : '顧客'}）
+                        {c.displayName} ({c.role === UserRole.STOCKIST ? 'Stockist' : 'Customer'})
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">收款日期 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
                   <input
                     type="date"
                     value={addDate}
@@ -329,7 +329,7 @@ export default function DepositsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">金額 (RM) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount (RM) *</label>
                   <input
                     type="number"
                     min="0.01"
@@ -341,7 +341,7 @@ export default function DepositsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">付款方式</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <select
                     value={addPayMethod}
                     onChange={(e) => setAddPayMethod(e.target.value)}
@@ -353,7 +353,7 @@ export default function DepositsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">銀行流水號（選填）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Reference (optional)</label>
                   <input
                     type="text"
                     value={addPayRef}
@@ -363,7 +363,7 @@ export default function DepositsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">備注（選填）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
                   <textarea
                     value={addNotes}
                     onChange={(e) => setAddNotes(e.target.value)}
@@ -381,7 +381,7 @@ export default function DepositsPage() {
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
-                  取消
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -389,7 +389,7 @@ export default function DepositsPage() {
                   disabled={addSaving}
                   className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg"
                 >
-                  {addSaving ? '儲存中...' : '儲存'}
+                  {addSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
@@ -401,14 +401,14 @@ export default function DepositsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">訂金扣抵應收款</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Apply Deposit to Receivable</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {applyDeposit.depositNo} · 餘額 RM {applyDeposit.balance.toFixed(2)}
+                  {applyDeposit.depositNo} · Balance RM {applyDeposit.balance.toFixed(2)}
                 </p>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">選擇應收款 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Receivable *</label>
                   <select
                     value={applyArId}
                     onChange={(e) => {
@@ -418,19 +418,19 @@ export default function DepositsPage() {
                     }}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-accent"
                   >
-                    <option value="">— 選擇發貨單 —</option>
+                    <option value="">— Select delivery note —</option>
                     {applyReceivables.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.deliveryNoteNo} · 未收 RM {r.remainingAmount.toFixed(2)}
+                        {r.deliveryNoteNo} · Outstanding RM {r.remainingAmount.toFixed(2)}
                       </option>
                     ))}
                   </select>
                   {applyReceivables.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">此客戶目前沒有未收的應收款</p>
+                    <p className="text-xs text-amber-600 mt-1">This customer has no outstanding receivables</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">扣抵金額 (RM) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Apply Amount (RM) *</label>
                   <input
                     type="number"
                     min="0.01"
@@ -451,7 +451,7 @@ export default function DepositsPage() {
                   onClick={() => { setShowApplyModal(false); setApplyDeposit(null); }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
-                  取消
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -459,7 +459,7 @@ export default function DepositsPage() {
                   disabled={applySaving || applyReceivables.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg"
                 >
-                  {applySaving ? '扣抵中...' : '確認扣抵'}
+                  {applySaving ? 'Applying...' : 'Confirm Apply'}
                 </button>
               </div>
             </div>

@@ -82,20 +82,20 @@ export default function StockistDetailPage() {
       <div className="space-y-5">
         <div className="flex items-center gap-4">
           <Link href="/stockists" className="text-txt-subtle hover:text-txt-primary text-sm">
-            ← 返回經銷商總覽
+            ← Back to Stockists
           </Link>
         </div>
 
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : !stockist ? (
           <div className="glass-card p-12 text-center">
-            <p className="text-txt-subtle text-sm">找不到此經銷商</p>
+            <p className="text-txt-subtle text-sm">Stockist not found</p>
             <Link href="/stockists" className="mt-2 inline-block text-xs text-accent-text hover:underline">
-              返回經銷商總覽
+              Back to Stockists
             </Link>
           </div>
         ) : (
@@ -116,19 +116,19 @@ export default function StockistDetailPage() {
                   href={`/users/${stockist.id}`}
                   className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-border text-txt-secondary text-xs font-medium rounded-lg"
                 >
-                  編輯使用者
+                  Edit User
                 </Link>
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">庫存價值</p>
+                  <p className="text-xs text-gray-300">Inventory Value</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
                     RM {totalValue.toFixed(0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-chip-dark p-4">
-                  <p className="text-xs text-gray-300">庫存總數</p>
+                  <p className="text-xs text-gray-300">Total Stock</p>
                   <p className="text-xl font-bold text-white tabular-nums mt-1">
                     {totalQty}
                   </p>
@@ -138,14 +138,14 @@ export default function StockistDetailPage() {
 
             <div className="glass-panel overflow-hidden">
               {rows.length === 0 ? (
-                <div className="p-12 text-center text-txt-subtle text-sm">尚無庫存</div>
+                <div className="p-12 text-center text-txt-subtle text-sm">No inventory yet</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-surface-base">
-                      <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">產品</th>
-                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">數量</th>
-                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">價值</th>
+                      <th className="px-5 py-2.5 text-left text-[10px] font-semibold text-txt-subtle uppercase">Product</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">Qty</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-semibold text-txt-subtle uppercase">Value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-muted">

@@ -188,7 +188,7 @@ function CreateUserForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              上線（Multi-tier）
+              Upstream (Multi-tier)
             </label>
             <select
               name="parentUserId"
@@ -196,14 +196,14 @@ function CreateUserForm() {
               onChange={handleChange}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500"
             >
-              <option value="">無（頂層 / 總經銷商）</option>
+              <option value="">None (top-level / master distributor)</option>
               {allUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   <span className="name-lowercase">{u.displayName}</span> - {u.role}
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">選擇此用戶的上線，不選則為頂層</p>
+            <p className="text-xs text-gray-500 mt-1">Select this user's upstream. Leave empty for top-level.</p>
           </div>
 
           {(form.role === UserRole.STOCKIST || form.role === UserRole.CUSTOMER) && (

@@ -223,7 +223,7 @@ export default function WarehouseConfigPage() {
                             onClick={() => startEdit(s)}
                             className="px-3 py-1 text-xs bg-blue-400 hover:bg-blue-500 text-white border border-blue-500 rounded"
                           >
-                            修改
+                            Edit
                           </button>
                         </td>
                       </>

@@ -35,13 +35,13 @@ function DistributorCard({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">庫存價值</p>
+          <p className="text-xs text-gray-300">Inventory Value</p>
           <p className="text-lg font-bold text-white tabular-nums">
             RM {stats.invValue.toFixed(0)}
           </p>
         </div>
         <div className="rounded-lg bg-chip-dark py-2">
-          <p className="text-xs text-gray-300">庫存總數</p>
+          <p className="text-xs text-gray-300">Total Stock</p>
           <p className="text-lg font-bold text-white tabular-nums">
             {stats.totalQuantity}
           </p>
@@ -110,27 +110,27 @@ export default function StockistsPage() {
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
       <div className="space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-txt-primary tracking-tight">經銷商總覽</h1>
-          <p className="text-sm text-txt-subtle mt-0.5">查看總經銷商與每位經銷商的庫存與營運狀況</p>
+          <h1 className="text-xl font-bold text-txt-primary tracking-tight">Stockist Overview</h1>
+          <p className="text-sm text-txt-subtle mt-0.5">View master distributors and stockists inventory & operations</p>
         </div>
 
         {loading ? (
           <div className="py-16 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent mb-3" />
-            <p className="text-txt-subtle text-sm">載入中...</p>
+            <p className="text-txt-subtle text-sm">Loading...</p>
           </div>
         ) : admins.length === 0 && stockists.length === 0 ? (
           <div className="glass-card p-12 text-center">
-            <p className="text-txt-subtle text-sm">尚無總經銷商或經銷商</p>
+            <p className="text-txt-subtle text-sm">No master distributors or stockists yet</p>
             <Link href="/users" className="mt-2 inline-block text-xs text-accent-text hover:underline">
-              至使用者管理建立 →
+              Create in User Management →
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {admins.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">總經銷商</h2>
+                <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">Master Distributors</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {admins.map((a, idx) => {
                     const st = stats[a.id!] ?? { invValue: 0, totalQuantity: 0 };
@@ -144,7 +144,7 @@ export default function StockistsPage() {
                         user={a}
                         stats={st}
                         cardClass={adminCardColors[idx % 2]}
-                        badge="總經銷商"
+                        badge="Master Distributor"
                       />
                     );
                   })}
@@ -154,7 +154,7 @@ export default function StockistsPage() {
 
             {stockists.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">經銷商</h2>
+                <h2 className="text-sm font-semibold text-txt-subtle uppercase tracking-widest mb-3">Stockists</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {stockists.map((s, idx) => {
                     const st = stats[s.id!] ?? { invValue: 0, totalQuantity: 0 };

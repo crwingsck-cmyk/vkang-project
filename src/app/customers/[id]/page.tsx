@@ -21,10 +21,10 @@ import {
 } from '@/types/models';
 
 const dnStatusLabel: Record<DeliveryNoteStatus, string> = {
-  [DeliveryNoteStatus.PENDING]: '待倉庫審核',
-  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: '已出庫',
-  [DeliveryNoteStatus.DELIVERED]: '已送達',
-  [DeliveryNoteStatus.CANCELLED]: '已取消',
+  [DeliveryNoteStatus.PENDING]: 'Pending warehouse',
+  [DeliveryNoteStatus.WAREHOUSE_APPROVED]: 'Shipped',
+  [DeliveryNoteStatus.DELIVERED]: 'Delivered',
+  [DeliveryNoteStatus.CANCELLED]: 'Cancelled',
 };
 const dnStatusColor: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.PENDING]: 'bg-yellow-100 text-yellow-700',
@@ -58,9 +58,9 @@ const prStatusColor: Record<PaymentReceiptStatus, string> = {
 };
 
 const expenseTypeLabel: Record<ExpenseType, string> = {
-  [ExpenseType.WEIGHING_SCALE]: '體重稱',
-  [ExpenseType.SHIPPING]: '郵寄',
-  [ExpenseType.SALARY]: '薪水',
+  [ExpenseType.WEIGHING_SCALE]: 'Weighing Scale',
+  [ExpenseType.SHIPPING]: 'Shipping',
+  [ExpenseType.SALARY]: 'Salary',
 };
 
 function fmtDate(ts?: number) {
@@ -166,14 +166,14 @@ export default function CustomerFinancialPage() {
 
   const handleDeletePR = async (pr: PaymentReceipt) => {
     if (!pr.id) return;
-    if (!confirm(`確定刪除收款單 ${pr.receiptNo}？此操作不可復原。`)) return;
+    if (!confirm(`Confirm delete receipt ${pr.receiptNo}? This action cannot be undone.`)) return;
     setActionError('');
     setDeletingPR(pr.id);
     try {
       await PaymentReceiptService.delete(pr.id);
       await load();
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : '刪除失敗');
+      setActionError(e instanceof Error ? e.message : 'Delete failed');
     } finally {
       setDeletingPR(null);
     }
@@ -187,15 +187,15 @@ export default function CustomerFinancialPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight name-lowercase">
-              {customer?.displayName ?? '—'} — 財務表
+              {customer?.displayName ?? '—'} — Financials
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">發貨單 · 應收款 · 收款記錄 · 訂金 · 費用分攤</p>
+            <p className="text-sm text-gray-500 mt-0.5">Delivery notes, receivables, payments, deposits, expense charges</p>
           </div>
           <Link
             href={`/hierarchy/${customerId}`}
             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           >
-            ← 庫存台帳
+            ← Inventory
           </Link>
         </div>
 
@@ -218,31 +218,31 @@ export default function CustomerFinancialPage() {
                 <p className="text-2xl font-bold tabular-nums text-gray-900 leading-none">
                   RM {totalBilled.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wide">總發貨金額</p>
+                <p className="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wide">Total delivery amount</p>
               </div>
               <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center shadow-sm">
                 <p className="text-2xl font-bold tabular-nums text-green-700 leading-none">
                   RM {totalPaid.toFixed(2)}
                 </p>
-                <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">已收款</p>
+                <p className="text-xs text-green-500 mt-2 font-medium uppercase tracking-wide">Received</p>
               </div>
               <div className="rounded-2xl bg-red-50 border border-red-200 p-5 text-center shadow-sm">
                 <p className="text-2xl font-bold tabular-nums text-red-600 leading-none">
                   RM {totalOutstanding.toFixed(2)}
                 </p>
-                <p className="text-xs text-red-500 mt-2 font-medium uppercase tracking-wide">未收餘額</p>
+                <p className="text-xs text-red-500 mt-2 font-medium uppercase tracking-wide">Outstanding</p>
               </div>
               <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5 text-center shadow-sm">
                 <p className="text-2xl font-bold tabular-nums text-blue-700 leading-none">
                   RM {deposits.reduce((s, d) => s + d.balance, 0).toFixed(2)}
                 </p>
-                <p className="text-xs text-blue-500 mt-2 font-medium uppercase tracking-wide">訂金餘額</p>
+                <p className="text-xs text-blue-500 mt-2 font-medium uppercase tracking-wide">Deposit balance</p>
               </div>
               <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 text-center shadow-sm">
                 <p className="text-2xl font-bold tabular-nums text-amber-700 leading-none">
                   RM {expenseCharges.reduce((s, c) => s + c.remainingAmount, 0).toFixed(2)}
                 </p>
-                <p className="text-xs text-amber-500 mt-2 font-medium uppercase tracking-wide">費用未收</p>
+                <p className="text-xs text-amber-500 mt-2 font-medium uppercase tracking-wide">Expense outstanding</p>
               </div>
             </div>
 
@@ -262,12 +262,12 @@ export default function CustomerFinancialPage() {
               if (list.length === 0) return null;
               const totalQty = list.reduce((s, r) => s + r.quantity, 0);
               return (
-                <Section title="產品彙總" count={list.length}>
+                <Section title="Product summary" count={list.length}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
-                        <th className="px-4 py-3 text-left">產品</th>
-                        <th className="px-4 py-3 text-right">數量</th>
+                        <th className="px-4 py-3 text-left">Product</th>
+                        <th className="px-4 py-3 text-right">Qty</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -287,7 +287,7 @@ export default function CustomerFinancialPage() {
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
-                        <td className="px-4 py-3 text-gray-700">總計</td>
+                        <td className="px-4 py-3 text-gray-700">Total</td>
                         <td className="px-4 py-3 text-right">
                           <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold tabular-nums">
                             {totalQty}
@@ -301,19 +301,19 @@ export default function CustomerFinancialPage() {
             })()}
 
             {/* Delivery Notes */}
-            <Section title="發貨單 (DN)" count={dns.length}>
+            <Section title="Delivery Notes (DN)" count={dns.length}>
               {dns.length === 0 ? (
-                <EmptyRow text="暫無發貨記錄" />
+                <EmptyRow text="No delivery records" />
               ) : (
                 <table className="w-full text-base">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-sm uppercase tracking-wide">
                       <th className="px-4 py-3 text-left">DN No.</th>
                       <th className="px-4 py-3 text-left">Sales Order</th>
-                      <th className="px-4 py-3 text-left">來源</th>
-                      <th className="px-4 py-3 text-left">日期</th>
-                      <th className="px-4 py-3 text-right">金額</th>
-                      <th className="px-4 py-3 text-center">狀態</th>
+                      <th className="px-4 py-3 text-left">Source</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-right">Amount</th>
+                      <th className="px-4 py-3 text-center">Status</th>
                       <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
@@ -338,7 +338,7 @@ export default function CustomerFinancialPage() {
                             onClick={() => { setEditDN(dn); setEditAmount(dn.totals.grandTotal.toFixed(2)); }}
                             className="px-3 py-1 text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-lg whitespace-nowrap"
                           >
-                            修改金額
+                            Edit amount
                           </button>
                         </td>
                       </tr>
@@ -349,19 +349,19 @@ export default function CustomerFinancialPage() {
             </Section>
 
             {/* Accounts Receivable */}
-            <Section title="應收款 (AR)" count={ars.length}>
+            <Section title="Receivables (AR)" count={ars.length}>
               {ars.length === 0 ? (
-                <EmptyRow text="暫無應收款記錄" />
+                <EmptyRow text="No receivables" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
                       <th className="px-4 py-3 text-left">DN No.</th>
-                      <th className="px-4 py-3 text-left">日期</th>
-                      <th className="px-4 py-3 text-right">應收金額</th>
-                      <th className="px-4 py-3 text-right">已收</th>
-                      <th className="px-4 py-3 text-right">餘額</th>
-                      <th className="px-4 py-3 text-center">狀態</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-right">Receivable amount</th>
+                      <th className="px-4 py-3 text-right">Received</th>
+                      <th className="px-4 py-3 text-right">Balance</th>
+                      <th className="px-4 py-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -388,7 +388,7 @@ export default function CustomerFinancialPage() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold text-sm">
-                      <td className="px-4 py-3 text-gray-700" colSpan={2}>合計</td>
+                      <td className="px-4 py-3 text-gray-700" colSpan={2}>Total</td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900">RM {totalBilled.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-green-700">RM {totalPaid.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-red-600">RM {totalOutstanding.toFixed(2)}</td>
@@ -400,18 +400,18 @@ export default function CustomerFinancialPage() {
             </Section>
 
             {/* Payment Receipts */}
-            <Section title="收款記錄 (PR)" count={prs.length}>
+            <Section title="Payment Receipts (PR)" count={prs.length}>
               {prs.length === 0 ? (
-                <EmptyRow text="暫無收款記錄" />
+                <EmptyRow text="No payment receipts" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
                       <th className="px-4 py-3 text-left">Receipt No.</th>
-                      <th className="px-4 py-3 text-left">日期</th>
-                      <th className="px-4 py-3 text-left">付款方式</th>
-                      <th className="px-4 py-3 text-right">收款金額</th>
-                      <th className="px-4 py-3 text-center">狀態</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-left">Payment method</th>
+                      <th className="px-4 py-3 text-right">Payment amount</th>
+                      <th className="px-4 py-3 text-center">Status</th>
                       <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
@@ -436,7 +436,7 @@ export default function CustomerFinancialPage() {
                             disabled={deletingPR === pr.id}
                             className="px-3 py-1 text-xs font-semibold bg-red-100 hover:bg-red-200 text-red-700 rounded-lg whitespace-nowrap disabled:opacity-50"
                           >
-                            {deletingPR === pr.id ? '刪除中...' : '刪除'}
+                            {deletingPR === pr.id ? 'Deleting' : 'Delete'}
                           </button>
                         </td>
                       </tr>
@@ -447,17 +447,17 @@ export default function CustomerFinancialPage() {
             </Section>
 
             {/* Deposits */}
-            <Section title="訂金 (Deposit)" count={deposits.length}>
+            <Section title="Deposits" count={deposits.length}>
               {deposits.length === 0 ? (
-                <EmptyRow text="暫無訂金記錄" />
+                <EmptyRow text="No deposits" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
                       <th className="px-4 py-3 text-left">Deposit No.</th>
-                      <th className="px-4 py-3 text-left">日期</th>
-                      <th className="px-4 py-3 text-right">收取金額</th>
-                      <th className="px-4 py-3 text-right">可扣抵餘額</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-right">Amount received</th>
+                      <th className="px-4 py-3 text-right">Applyable balance</th>
                       <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
@@ -477,7 +477,7 @@ export default function CustomerFinancialPage() {
                             href="/deposits"
                             className="text-xs font-medium text-accent-text hover:underline"
                           >
-                            管理訂金 →
+                            Manage deposits →
                           </Link>
                         </td>
                       </tr>
@@ -488,17 +488,17 @@ export default function CustomerFinancialPage() {
             </Section>
 
             {/* Expense Charges */}
-            <Section title="費用分攤" count={expenseCharges.length}>
+            <Section title="Expense charges" count={expenseCharges.length}>
               {expenseCharges.length === 0 ? (
-                <EmptyRow text="暫無費用分攤" />
+                <EmptyRow text="No expense charges" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-[11px] uppercase tracking-wide">
-                      <th className="px-4 py-3 text-left">費用單號</th>
-                      <th className="px-4 py-3 text-left">類型</th>
-                      <th className="px-4 py-3 text-right">分攤金額</th>
-                      <th className="px-4 py-3 text-right">未收餘額</th>
+                      <th className="px-4 py-3 text-left">Expense No</th>
+                      <th className="px-4 py-3 text-left">Type</th>
+                      <th className="px-4 py-3 text-right">Allocated amount</th>
+                      <th className="px-4 py-3 text-right">Outstanding</th>
                       <th className="px-4 py-3 text-center"></th>
                     </tr>
                   </thead>
@@ -518,7 +518,7 @@ export default function CustomerFinancialPage() {
                             href="/expense-receipts"
                             className="text-xs font-medium text-accent-text hover:underline"
                           >
-                            費用收款 →
+                            Expense receipts →
                           </Link>
                         </td>
                       </tr>
@@ -531,14 +531,14 @@ export default function CustomerFinancialPage() {
         )}
       </div>
 
-      {/* 修改 DN 金額 Modal */}
+      {/* Edit DN Amount Modal */}
       {editDN && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6">
-            <h3 className="text-base font-bold text-gray-900 mb-1">修改發貨金額</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-1">Edit delivery amount</h3>
             <p className="text-xs text-gray-500 mb-4 font-mono">{editDN.deliveryNo}</p>
             <div className="mb-5">
-              <label className="block text-sm font-medium text-gray-600 mb-1">金額 (RM)</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Amount (RM)</label>
               <input
                 type="number"
                 min="0"
@@ -548,7 +548,7 @@ export default function CustomerFinancialPage() {
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                 autoFocus
               />
-              <p className="text-xs text-gray-400 mt-1">儲存後若金額 &gt; 0 且尚無應收款，將自動建立 AR</p>
+              <p className="text-xs text-gray-400 mt-1">Saving with amount &gt; 0 and no receivable will auto-create AR</p>
             </div>
             <div className="flex gap-3">
               <button
@@ -557,7 +557,7 @@ export default function CustomerFinancialPage() {
                 disabled={savingDN}
                 className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
               >
-                取消
+                Cancel
               </button>
               <button
                 type="button"
@@ -565,7 +565,7 @@ export default function CustomerFinancialPage() {
                 disabled={savingDN}
                 className="flex-1 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold"
               >
-                {savingDN ? '儲存中...' : '儲存'}
+                {savingDN ? 'Saving' : 'Save'}
               </button>
             </div>
           </div>

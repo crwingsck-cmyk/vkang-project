@@ -37,7 +37,7 @@ export default function CleanupPage() {
 
     try {
       // Step 1: Find Tan Ai Sun
-      addLog('Step 1: 查找 Tan Ai Sun 帳號...');
+      addLog('Step 1: Looking up Tan Ai Sun...');
       const [admins, stockists] = await Promise.all([
         UserService.getAdmins(),
         UserService.getStockists(),
@@ -47,86 +47,86 @@ export default function CleanupPage() {
         (u.displayName ?? '').toLowerCase().includes('tan ai sun')
       );
       if (!user?.id) {
-        addLog('❌ 找不到 Tan Ai Sun 用戶，請確認 displayName 是否正確');
+        addLog('❌ Tan Ai Sun not found, check displayName');
         setRunning(false);
         return;
       }
-      addLog(`✓ 找到: ${user.displayName} (userId: ${user.id})`);
+      addLog(`✓ Found: ${user.displayName} (userId: ${user.id})`);
 
       // Step 2: Direct-delete Plus inventory (by known document ID, bypasses query cache)
       const plusDocId = `${user.id}_${PLUS_SKU}`;
-      addLog(`\nStep 2: 直接刪除 Plus 庫存文件（docId=${plusDocId}）...`);
+      addLog(`\nStep 2: Deleting Plus inventory (docId=${plusDocId})...`);
       const plusInv = await FirestoreService.get('inventory', plusDocId);
       if (plusInv) {
-        addLog(`  找到 Plus 庫存: qty=${(plusInv as Record<string, unknown>).quantityOnHand}，刪除中...`);
+        addLog(`  Found Plus inventory: qty=${(plusInv as Record<string, unknown>).quantityOnHand}, deleting...`);
         await FirestoreService.delete('inventory', plusDocId);
-        addLog(`  ✓ Plus 庫存已刪除`);
+        addLog(`  ✓ Plus inventory deleted`);
       } else {
-        addLog(`  ℹ️ Plus 庫存文件不存在（已清理過）`);
+        addLog(`  ℹ️ Plus inventory doc not found (already cleaned)`);
       }
 
       // Step 3: Direct-set TEMP inventory to exactly 34
       const tempDocId = `${user.id}_${TEMP_SKU}`;
-      addLog(`\nStep 3: 直接設定 TEMP 庫存為 ${TARGET_TEMP_QTY}（docId=${tempDocId}）...`);
+      addLog(`\nStep 3: Setting TEMP inventory to ${TARGET_TEMP_QTY} (docId=${tempDocId})...`);
       const tempInv = await FirestoreService.get('inventory', tempDocId);
       if (tempInv) {
         const currentQty = (tempInv as Record<string, unknown>).quantityOnHand;
-        addLog(`  當前 TEMP qty=${currentQty}，強制設定為 ${TARGET_TEMP_QTY}...`);
+        addLog(`  Current TEMP qty=${currentQty}, setting to ${TARGET_TEMP_QTY}...`);
         await FirestoreService.update('inventory', tempDocId, {
           quantityOnHand: TARGET_TEMP_QTY,
           quantityAvailable: TARGET_TEMP_QTY,
           quantityReserved: 0,
         });
-        addLog(`  ✓ TEMP 庫存已設定為 ${TARGET_TEMP_QTY}`);
+        addLog(`  ✓ TEMP inventory set to ${TARGET_TEMP_QTY}`);
       } else {
-        addLog(`  ❌ 找不到 TEMP 庫存文件 (${tempDocId})，請確認 SKU 是否正確`);
+        addLog(`  ❌ TEMP inventory doc not found (${tempDocId}), check SKU`);
       }
 
       // Step 4: Delete ALL ADJUSTMENT transactions with Plus items for this user
-      addLog(`\nStep 4: 查找所有含 Plus(${PLUS_SKU}) 的 ADJUSTMENT 交易...`);
+      addLog(`\nStep 4: Finding ADJUSTMENT transactions with Plus(${PLUS_SKU})...`);
       const txns = await OrderService.getByUserRelated(user.id, 500);
       const plusTxns = (txns as (typeof txns[0] & { id: string })[]).filter((t) =>
         t.transactionType === TransactionType.ADJUSTMENT &&
         t.fromUser?.userId === user.id &&
         t.items?.some((i) => i.productId === PLUS_SKU)
       );
-      addLog(`  找到 ${plusTxns.length} 筆含 Plus 的 ADJUSTMENT 交易`);
+      addLog(`  Found ${plusTxns.length} ADJUSTMENT transaction(s) with Plus`);
 
       let deletedTxn = 0;
       for (const txn of plusTxns) {
         addLog(
-          `  強制刪除: poNumber=${txn.poNumber ?? '(無)'}, ` +
+          `  Deleting: poNumber=${txn.poNumber ?? '(none)'}, ` +
           `items=[${txn.items?.map((i) => `${i.productId}×${i.quantity}`).join(', ')}], ` +
           `docId=${txn.id}`
         );
         await FirestoreService.delete('transactions', txn.id);
-        addLog(`  ✓ 已刪除`);
+        addLog(`  ✓ Deleted`);
         deletedTxn++;
       }
-      addLog(`  交易清理完成，共刪除 ${deletedTxn} 筆 Plus 相關 ADJUSTMENT`);
+      addLog(`  Cleanup done, deleted ${deletedTxn} Plus ADJUSTMENT(s)`);
 
       // Step 5: Verify by direct document lookup
-      addLog('\nStep 5: 驗證結果...');
+      addLog('\nStep 5: Verifying...');
       const [finalPlus, finalTemp] = await Promise.all([
         FirestoreService.get('inventory', plusDocId),
         FirestoreService.get('inventory', tempDocId),
       ]);
 
-      const plusQty = finalPlus ? (finalPlus as Record<string, unknown>).quantityOnHand : '(已刪除)';
-      const tempQty = finalTemp ? (finalTemp as Record<string, unknown>).quantityOnHand : '(未找到)';
+      const plusQty = finalPlus ? (finalPlus as Record<string, unknown>).quantityOnHand : '(deleted)';
+      const tempQty = finalTemp ? (finalTemp as Record<string, unknown>).quantityOnHand : '(not found)';
 
       addLog(`  Plus (${PLUS_SKU}): ${plusQty}`);
       addLog(`  TEMP (${TEMP_SKU}): ${tempQty}`);
 
       if (!finalPlus && tempQty === TARGET_TEMP_QTY) {
-        addLog(`\n✅ 清理完成！Tan Ai Sun 庫存 = TEMP ${TARGET_TEMP_QTY}，Plus 已刪除`);
+        addLog(`\n✅ Cleanup done! Tan Ai Sun inventory = TEMP ${TARGET_TEMP_QTY}, Plus deleted`);
         setDone(true);
       } else {
-        addLog(`\n⚠️ 結果異常，請確認：Plus 應為「已刪除」，TEMP 應為 ${TARGET_TEMP_QTY}`);
+        addLog(`\n⚠️ Unexpected result: Plus should be "deleted", TEMP should be ${TARGET_TEMP_QTY}`);
         setDone(true);
       }
     } catch (err) {
-      addLog(`\n❌ 錯誤: ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`\n❌ Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setRunning(false);
     }
@@ -141,34 +141,34 @@ export default function CleanupPage() {
       <div className="min-h-screen bg-gray-900 text-green-400 p-8 font-mono">
         <h1 className="text-xl font-bold text-white mb-2">Admin Cleanup Tool v2</h1>
         <p className="text-gray-400 text-sm mb-1">
-          目標：Tan Ai Sun 庫存 = TEMP(VKANG-005) 34，無 Plus(VKANG-002)
+          Target: Tan Ai Sun inventory = TEMP(VKANG-005) 34, no Plus(VKANG-002)
         </p>
         <p className="text-yellow-500 text-xs mb-6">
-          ⚡ 直接修改 Firestore 文件（繞過查詢快取），刪除所有 Plus ADJUSTMENT 交易
+          ⚡ Direct Firestore edit (bypass query cache), delete all Plus ADJUSTMENT transactions
         </p>
 
         {running && (
           <div className="flex items-center gap-2 mb-4 text-yellow-400">
             <div className="animate-spin h-4 w-4 border-t-2 border-yellow-400 rounded-full" />
-            <span>執行中...</span>
+            <span>Running...</span>
           </div>
         )}
 
         <div className="bg-black border border-gray-700 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap min-h-[300px]">
-          {log.length === 0 ? <span className="text-gray-600">等待中...</span> : log.join('\n')}
+          {log.length === 0 ? <span className="text-gray-600">Waiting...</span> : log.join('\n')}
         </div>
 
         {done && (
           <div className="mt-6 space-y-3">
             <div className="bg-green-900/30 border border-green-700 rounded-lg px-4 py-3 text-green-300 text-sm">
-              清理完成！請返回 Hierarchy → Tan Ai Sun 確認 running balance = 34，且庫存只有 TEMP 34
+              Cleanup done! Return to Hierarchy → Tan Ai Sun to verify running balance = 34, inventory = TEMP 34 only
             </div>
             <button
               type="button"
               onClick={doCleanup}
               className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm"
             >
-              重新執行（確認冪等性）
+              Re-run (verify idempotency)
             </button>
           </div>
         )}
