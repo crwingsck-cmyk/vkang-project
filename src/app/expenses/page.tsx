@@ -85,7 +85,7 @@ export default function ExpensesPage() {
     (e) => filterType === 'ALL' || e.type === filterType
   );
 
-  const openAddModal = () => {
+  const openAddModal = async () => {
     setShowAddModal(true);
     setAddType(ExpenseType.WEIGHING_SCALE);
     setAddOwnerId('');
@@ -96,6 +96,9 @@ export default function ExpensesPage() {
     setAddPayRef('');
     setAddDesc('');
     setAddError('');
+    // 確保有最新用戶清單供歸屬經銷商選項
+    const custs = await UserService.getAll();
+    setCustomers(custs);
   };
 
   const handleAdd = async () => {
@@ -306,12 +309,12 @@ export default function ExpensesPage() {
 
         {/* Add Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl">
-              <div className="px-6 py-4 border-b border-gray-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md shadow-2xl my-8 flex flex-col max-h-[calc(100vh-4rem)]">
+              <div className="px-6 py-4 border-b border-gray-200 shrink-0">
                 <h2 className="text-lg font-semibold text-gray-900">新增費用</h2>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">歸屬經銷商（選填，用於盈利表）</label>
                   <select
@@ -391,7 +394,7 @@ export default function ExpensesPage() {
                 </div>
                 {addError && <p className="text-sm text-red-600">{addError}</p>}
               </div>
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 shrink-0 bg-white rounded-b-2xl">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}

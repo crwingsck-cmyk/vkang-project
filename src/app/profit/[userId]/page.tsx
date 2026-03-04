@@ -14,7 +14,6 @@ export default function ProfitPage() {
   const userId = (params?.userId ?? '') as string;
 
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
   const [breakdown, setBreakdown] = useState<ProfitBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,23 +23,16 @@ export default function ProfitPage() {
     setLoading(true);
     Promise.all([
       UserService.getById(userId),
-      UserService.getAll(),
       ProfitService.getBreakdown(userId),
-    ]).then(([u, all, bd]) => {
+    ]).then(([u, bd]) => {
       if (cancelled) return;
       setUser(u ?? null);
-      setUsers(all);
       setBreakdown(bd);
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
   }, [userId]);
-
-  const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    if (id) router.push(`/profit/${id}`);
-  };
 
   if (!userId) {
     router.replace('/profit');
@@ -59,15 +51,6 @@ export default function ProfitPage() {
             <p className="text-base text-txt-subtle mt-0.5">盈利 = 收入 − 支出</p>
           </div>
           <div className="flex gap-2">
-            <select
-              value={userId}
-              onChange={handleUserChange}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.displayName}</option>
-              ))}
-            </select>
             <Link
               href={`/customers/${userId}`}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
