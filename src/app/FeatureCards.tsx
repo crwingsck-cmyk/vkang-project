@@ -30,7 +30,7 @@ const features: Feature[] = [
     desc: 'Automatic income and expense calculation with itemized transaction records and P&L visibility.',
     detail: 'Every transaction — order payments, inventory purchases, adjustments — is logged as a financial record. The system auto-categorizes income vs. expenses and generates running totals. Admins can review financial summaries by period, filter by type, and export records for external accounting.',
     tags: ['Auto P&L', 'Transactions', 'Audit Trail', 'Export'],
-    href: '/financials',
+    href: '/profit',
   },
   {
     badge: 'OPS',

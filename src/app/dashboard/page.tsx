@@ -126,7 +126,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <ActionButton href="/products"   label="Products" />
           {role === UserRole.ADMIN        && <ActionButton href="/users"      label="Users" />}
-          {role !== UserRole.CUSTOMER && <ActionButton href="/financials" label="Financials" />}
           {role !== UserRole.CUSTOMER && <ActionButton href="/warehouse"  label="Warehouse" />}
           <ActionButton href="/settings"   label="Settings" />
         </div>
