@@ -796,32 +796,18 @@ function AddMovementModal({
   useEffect(() => {
     async function load() {
       try {
-        const [productList, children, currentUser, existingOrders] = await Promise.all([
+        const [productList, currentUser, existingOrders] = await Promise.all([
           ProductService.getAll(undefined, 200),
-          UserService.getChildren(userId),
           UserService.getById(userId),
           OrderService.getByToUser(userId, 300),
         ]);
 
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
 
-        let downlineList: { id: string; displayName: string }[];
-        let defaultDownlineId: string;
-        let defaultDownlineName: string;
-        // 頂層用戶（無 parentUserId）可出貨給系統內所有用戶
-        if (!currentUser?.parentUserId) {
-          const allUsers = await UserService.getAll();
-          downlineList = allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
-          defaultDownlineId = downlineList[0]?.id ?? '';
-          defaultDownlineName = downlineList[0]?.displayName ?? '';
-        } else {
-          downlineList = [
-            { id: userId, displayName: 'Self-use' },
-            ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
-          ];
-          defaultDownlineId = userId;
-          defaultDownlineName = 'Self-use';
-        }
+        const allUsers = await UserService.getAll();
+        const downlineList = allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
+        const defaultDownlineId = downlineList[0]?.id ?? '';
+        const defaultDownlineName = downlineList[0]?.displayName ?? '';
         setDownlines(downlineList);
 
         // 上游：只顯示直屬上線（parentUserId），若無上線（頂層總經銷商）則固定顯示「台灣」
@@ -1348,10 +1334,9 @@ function EditMovementModal({
   useEffect(() => {
     async function load() {
       try {
-        const [txn, productList, children, currentUser] = await Promise.all([
+        const [txn, productList, currentUser] = await Promise.all([
           OrderService.getById(transactionId),
           ProductService.getAll(undefined, 200),
-          UserService.getChildren(userId),
           UserService.getById(userId),
         ]);
         if (!txn) {
@@ -1367,15 +1352,8 @@ function EditMovementModal({
           return;
         }
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
-        if (!currentUser?.parentUserId) {
-          const allUsers = await UserService.getAll();
-          setDownlines(allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })));
-        } else {
-          setDownlines([
-            { id: userId, displayName: 'Self-use' },
-            ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
-          ]);
-        }
+        const allUsersEdit = await UserService.getAll();
+        setDownlines(allUsersEdit.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })));
 
         // 上游：只顯示直屬上線（parentUserId），若無上線（頂層總經銷商）則固定顯示「台灣」
         let upstreamListEdit: UpstreamOption[] = [];
