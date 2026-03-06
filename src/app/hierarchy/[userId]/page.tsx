@@ -641,36 +641,20 @@ export default function StockLedgerPage() {
             if (!selfUse[row.productId]) selfUse[row.productId] = { productName: row.productName, quantity: 0 };
             selfUse[row.productId].quantity += row.quantity;
           }
-          const hasOpeningStock = Object.keys(openingStockByProduct).length > 0;
           const selfUseList = Object.entries(selfUse)
-            .map(([productId, { productName, quantity }]) => {
-              const os = openingStockByProduct[productId] ?? 0;
-              const net = Math.max(0, quantity - os);
-              return { productId, productName, quantity, os, net };
-            })
-            .sort((a, b) => b.net - a.net);
-          const totalNet = selfUseList.reduce((s, r) => s + r.net, 0);
+            .map(([productId, { productName, quantity }]) => ({ productId, productName, quantity }))
+            .sort((a, b) => b.quantity - a.quantity);
           return (
             <div className="glass-panel overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-surface-base">
                 <h3 className="text-lg font-semibold text-txt-primary">Self-Use Summary</h3>
-                <p className="text-sm text-txt-subtle mt-0.5">
-                  {hasOpeningStock ? 'Self-use out minus Opening Stock = net consumption' : 'Self-use out products and quantities'}
-                </p>
+                <p className="text-sm text-txt-subtle mt-0.5">Self-use out products and quantities</p>
               </div>
               <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border bg-surface-base">
                     <th className="px-4 py-2.5 text-left text-sm font-semibold text-txt-subtle uppercase">Product</th>
-                    {hasOpeningStock && (
-                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Self-Use Out</th>
-                    )}
-                    {hasOpeningStock && (
-                      <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Opening Stock</th>
-                    )}
-                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">
-                      {hasOpeningStock ? 'Net Self-Use' : 'Self-Use Qty'}
-                    </th>
+                    <th className="px-4 py-2.5 text-right text-sm font-semibold text-txt-subtle uppercase">Self-Use Qty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-muted">
@@ -680,28 +664,18 @@ export default function StockLedgerPage() {
                         <span className="text-base font-medium">{r.productName}</span>
                         <span className="text-sm text-txt-subtle ml-1 font-mono">({r.productId})</span>
                       </td>
-                      {hasOpeningStock && (
-                        <td className="px-4 py-3 text-right text-txt-subtle tabular-nums">{r.quantity}</td>
-                      )}
-                      {hasOpeningStock && (
-                        <td className="px-4 py-3 text-right text-txt-subtle tabular-nums">
-                          {r.os > 0 ? `−${r.os}` : '—'}
-                        </td>
-                      )}
                       <td className="px-4 py-3 text-right">
                         <span className="inline-block px-3 py-1 rounded-full bg-teal-100 text-teal-800 font-bold text-base tabular-nums">
-                          {hasOpeningStock ? r.net : r.quantity}
+                          {r.quantity}
                         </span>
                       </td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border bg-surface-2/40">
                     <td className="px-4 py-3 text-base font-bold text-txt-primary">Total</td>
-                    {hasOpeningStock && <td className="px-4 py-3" />}
-                    {hasOpeningStock && <td className="px-4 py-3" />}
                     <td className="px-4 py-3 text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-teal-600 text-white font-bold text-base tabular-nums">
-                        {hasOpeningStock ? totalNet : selfUseList.reduce((s, r) => s + r.quantity, 0)}
+                        {selfUseList.reduce((s, r) => s + r.quantity, 0)}
                       </span>
                     </td>
                   </tr>
