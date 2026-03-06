@@ -477,9 +477,9 @@ export default function PaymentsPage() {
                   {loadingAR ? (
                     <div className="py-8 text-center text-txt-subtle text-sm">Loading receivables...</div>
                   ) : outstanding.length === 0 ? (
-                    <div className="rounded-lg bg-yellow-900/30 border border-yellow-700/50 px-4 py-3">
-                      <p className="text-yellow-300 text-sm font-medium">This customer has no outstanding receivables</p>
-                      <p className="text-yellow-400/70 text-xs mt-1">Ensure there are delivered notes first</p>
+                    <div className="rounded-lg bg-gray-700/50 border border-gray-600 px-4 py-3">
+                      <p className="text-gray-300 text-sm font-medium">No outstanding receivables</p>
+                      <p className="text-gray-400 text-xs mt-1">You can still proceed to record a payment without linking to a delivery note.</p>
                     </div>
                   ) : (
                     <>
