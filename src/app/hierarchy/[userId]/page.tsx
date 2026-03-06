@@ -46,7 +46,6 @@ export default function StockLedgerPage() {
   const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole; phoneNumber?: string; company?: string; city?: string } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
   const [firestoreInv, setFirestoreInv] = useState<{ productId: string; productName: string; quantity: number }[]>([]);
-  const [openingStockByProduct, setOpeningStockByProduct] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editTransactionId, setEditTransactionId] = useState<string | null>(null);
@@ -84,13 +83,6 @@ export default function StockLedgerPage() {
           }))
           .sort((a, b) => b.quantity - a.quantity)
       );
-      // 提取每產品的 Opening Stock 數量（直接從 openingStockQty 欄位讀取）
-      const osMap: Record<string, number> = {};
-      for (const inv of invList) {
-        const osQty = inv.openingStockQty ?? 0;
-        if (osQty > 0) osMap[inv.productId] = osQty;
-      }
-      setOpeningStockByProduct(osMap);
       let upstreamDisplayName = '';
       let grandUpstreamDisplayName = '';
       if (u?.parentUserId) {
