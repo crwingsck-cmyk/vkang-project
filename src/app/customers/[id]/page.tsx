@@ -83,6 +83,7 @@ export default function CustomerFinancialPage() {
   const [editAmount, setEditAmount] = useState('');
   const [savingDN, setSavingDN] = useState(false);
   const [deletingPR, setDeletingPR] = useState<string | null>(null);
+  const [deletingDN, setDeletingDN] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
 
   const load = useCallback(async () => {
@@ -163,6 +164,21 @@ export default function CustomerFinancialPage() {
   const totalBilled = ars.reduce((s, r) => s + r.totalAmount, 0);
   const totalPaid = ars.reduce((s, r) => s + r.paidAmount, 0);
   const totalOutstanding = ars.reduce((s, r) => s + r.remainingAmount, 0);
+
+  const handleDeleteDN = async (dn: DeliveryNote) => {
+    if (!dn.id) return;
+    if (!confirm(`Confirm delete ${dn.deliveryNo}? This action cannot be undone.`)) return;
+    setActionError('');
+    setDeletingDN(dn.id);
+    try {
+      await DeliveryNoteService.delete(dn.id);
+      await load();
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeletingDN(null);
+    }
+  };
 
   const handleDeletePR = async (pr: PaymentReceipt) => {
     if (!pr.id) return;
@@ -333,13 +349,23 @@ export default function CustomerFinancialPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => { setEditDN(dn); setEditAmount(dn.totals.grandTotal.toFixed(2)); }}
-                            className="px-3 py-1 text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-lg whitespace-nowrap"
-                          >
-                            Edit amount
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setEditDN(dn); setEditAmount(dn.totals.grandTotal.toFixed(2)); }}
+                              className="px-3 py-1 text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-lg whitespace-nowrap"
+                            >
+                              Edit amount
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDN(dn)}
+                              disabled={deletingDN === dn.id}
+                              className="px-3 py-1 text-xs font-semibold bg-red-100 hover:bg-red-200 text-red-700 rounded-lg whitespace-nowrap disabled:opacity-50"
+                            >
+                              {deletingDN === dn.id ? 'Deleting' : 'Delete'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
