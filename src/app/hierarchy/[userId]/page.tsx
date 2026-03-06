@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UserService } from '@/services/database/users';
 import { OrderService } from '@/services/database/orders';
@@ -42,6 +43,7 @@ export default function StockLedgerPage() {
   const params = useParams();
   const userId = (params?.userId ?? '') as string;
   useAuth();
+  const toast = useToast();
 
   const [user, setUser] = useState<{ displayName: string; upstreamDisplayName?: string; grandUpstreamDisplayName?: string; role?: UserRole; phoneNumber?: string; company?: string; city?: string } | null>(null);
   const [rows, setRows] = useState<StockLedgerRow[]>([]);
@@ -287,7 +289,7 @@ export default function StockLedgerPage() {
       setDeleteTransactionId(null);
       load();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : 'Delete failed');
       setDeleteTransactionId(null);
     } finally {
       setDeleting(false);
