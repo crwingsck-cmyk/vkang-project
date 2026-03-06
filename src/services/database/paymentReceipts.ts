@@ -41,6 +41,7 @@ export const PaymentReceiptService = {
 
   /**
    * 審核通過：批量核銷應收款，更新收款單狀態
+   * 若 items 為空（未綁定 DN），自動按 FIFO 分配到客戶的 outstanding AR
    */
   async approve(id: string, approvedBy: string): Promise<void> {
     const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
@@ -49,13 +50,37 @@ export const PaymentReceiptService = {
       throw new Error('只有待審核狀態的收款單可進行審核');
     }
 
+    let finalItems = pr.items;
+
+    // 若未綁定任何 DN，自動 FIFO 分配到客戶 outstanding AR
+    if (pr.items.length === 0) {
+      const outstandingARs = await ReceivableService.getOutstandingByCustomer(pr.customerId);
+      // FIFO：依 createdAt 升序（最舊優先）
+      outstandingARs.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+      const autoItems: typeof pr.items = [];
+      let remaining = pr.totalAmount;
+      for (const ar of outstandingARs) {
+        if (remaining <= 0) break;
+        const apply = Math.round(Math.min((ar as typeof ar & { remainingAmount: number }).remainingAmount, remaining) * 100) / 100;
+        if (apply <= 0) continue;
+        autoItems.push({
+          receivableId: (ar as typeof ar & { id: string }).id,
+          deliveryNoteNo: ar.deliveryNoteNo,
+          appliedAmount: apply,
+        });
+        remaining -= apply;
+      }
+      finalItems = autoItems;
+    }
+
     // 批量核銷每一筆應收款
-    for (const item of pr.items) {
+    for (const item of finalItems) {
       await ReceivableService.applyPayment(item.receivableId, item.appliedAmount);
     }
 
     await FirestoreService.update<PaymentReceipt>(COLLECTION, id, {
       status: PaymentReceiptStatus.APPROVED,
+      items: finalItems,
       approvedBy,
       approvedAt: Date.now(),
     });
@@ -64,6 +89,27 @@ export const PaymentReceiptService = {
   async cancel(id: string): Promise<void> {
     await FirestoreService.update<PaymentReceipt>(COLLECTION, id, {
       status: PaymentReceiptStatus.CANCELLED,
+    });
+  },
+
+  async revert(id: string): Promise<void> {
+    const pr = await FirestoreService.get<PaymentReceipt>(COLLECTION, id);
+    if (!pr) throw new Error('Payment receipt not found');
+    if (pr.status !== PaymentReceiptStatus.APPROVED) {
+      throw new Error('Only approved receipts can be reverted');
+    }
+    for (const item of pr.items) {
+      const ar = await ReceivableService.getById(item.receivableId);
+      if (ar) {
+        await ReceivableService.reversePayment(item.receivableId, item.appliedAmount);
+      }
+    }
+    await FirestoreService.update<PaymentReceipt>(COLLECTION, id, {
+      status: PaymentReceiptStatus.DRAFT,
+      items: [],
+      approvedBy: undefined,
+      approvedAt: undefined,
+      updatedAt: Date.now(),
     });
   },
 

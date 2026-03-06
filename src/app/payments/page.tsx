@@ -220,6 +220,17 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleRevert = async (pr: PaymentReceipt) => {
+    if (!confirm(`Revert ${pr.receiptNo} back to Draft? This will reverse the AR payments.`)) return;
+    setActionError('');
+    try {
+      await PaymentReceiptService.revert(pr.id!);
+      await load();
+    } catch (e: any) {
+      setActionError(e.message ?? 'Revert failed');
+    }
+  };
+
   const openEditModal = (pr: PaymentReceipt) => {
     setEditPR(pr);
     setEditPayMethod(pr.paymentMethod ?? 'bank');
@@ -384,6 +395,14 @@ export default function PaymentsPage() {
                             className="text-xs px-2 py-1 rounded bg-gray-700 text-white hover:bg-gray-600"
                           >
                             Cancel
+                          </button>
+                        )}
+                        {pr.status === PaymentReceiptStatus.APPROVED && (
+                          <button
+                            onClick={() => handleRevert(pr)}
+                            className="text-xs px-2 py-1 rounded bg-yellow-700 text-white hover:bg-yellow-600"
+                          >
+                            Revert
                           </button>
                         )}
                         {pr.status === PaymentReceiptStatus.APPROVED && (
