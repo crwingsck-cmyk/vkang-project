@@ -808,7 +808,8 @@ function AddMovementModal({
         let downlineList: { id: string; displayName: string }[];
         let defaultDownlineId: string;
         let defaultDownlineName: string;
-        if (currentUser?.role === UserRole.TAIWAN) {
+        // 頂層用戶（無 parentUserId）可出貨給系統內所有用戶
+        if (!currentUser?.parentUserId) {
           const allUsers = await UserService.getAll();
           downlineList = allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
           defaultDownlineId = downlineList[0]?.id ?? '';
@@ -1366,7 +1367,7 @@ function EditMovementModal({
           return;
         }
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
-        if (currentUser?.role === UserRole.TAIWAN) {
+        if (!currentUser?.parentUserId) {
           const allUsers = await UserService.getAll();
           setDownlines(allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })));
         } else {
