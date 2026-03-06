@@ -71,6 +71,26 @@ export const ExpenseChargeReceiptService = {
     });
   },
 
+  async revert(id: string): Promise<void> {
+    const r = await FirestoreService.get<ExpenseChargeReceipt>(COLLECTION, id);
+    if (!r) throw new Error('Expense receipt not found');
+    if (r.status !== ExpenseChargeReceiptStatus.APPROVED) {
+      throw new Error('Only approved receipts can be reverted');
+    }
+    for (const item of r.items) {
+      const charge = await ExpenseChargeService.getById(item.chargeId);
+      if (charge) {
+        await ExpenseChargeService.reversePayment(item.chargeId, item.appliedAmount);
+      }
+    }
+    await FirestoreService.update<ExpenseChargeReceipt>(COLLECTION, id, {
+      status: ExpenseChargeReceiptStatus.DRAFT,
+      approvedBy: undefined,
+      approvedAt: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+
   async delete(id: string): Promise<void> {
     const r = await FirestoreService.get<ExpenseChargeReceipt>(COLLECTION, id);
     if (!r) throw new Error('Expense receipt not found');

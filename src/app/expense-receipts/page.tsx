@@ -225,6 +225,17 @@ export default function ExpenseReceiptsPage() {
     }
   };
 
+  const handleRevert = async (r: ExpenseChargeReceipt & { id: string }) => {
+    if (!confirm(`Revert ${r.receiptNo} back to Draft? This will reverse the expense charge payments.`)) return;
+    setActionError('');
+    try {
+      await ExpenseChargeReceiptService.revert(r.id!);
+      await load();
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Revert failed');
+    }
+  };
+
   const visible = filter === 'ALL' ? receipts : receipts.filter((r) => r.status === filter);
   const counts = {
     all: receipts.length,
@@ -359,12 +370,12 @@ export default function ExpenseReceiptsPage() {
                             Approve
                           </button>
                         )}
-                        {(r.status === ExpenseChargeReceiptStatus.DRAFT || r.status === ExpenseChargeReceiptStatus.CANCELLED) && (
+                        {r.status === ExpenseChargeReceiptStatus.APPROVED && (
                           <button
-                            onClick={() => handleDelete(r)}
-                            className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                            onClick={() => handleRevert(r)}
+                            className="text-xs px-2 py-1 rounded bg-yellow-700 text-white hover:bg-yellow-600"
                           >
-                            Delete
+                            Revert
                           </button>
                         )}
                         {r.status === ExpenseChargeReceiptStatus.SUBMITTED && (
@@ -373,6 +384,14 @@ export default function ExpenseReceiptsPage() {
                             className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
                           >
                             Cancel
+                          </button>
+                        )}
+                        {r.status !== ExpenseChargeReceiptStatus.SUBMITTED && (
+                          <button
+                            onClick={() => handleDelete(r)}
+                            className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                          >
+                            Delete
                           </button>
                         )}
                       </div>

@@ -136,18 +136,12 @@ export default function PaymentsPage() {
   };
 
   const goToStep3 = () => {
-    if (checkedIds.size === 0) {
-      setModalError('Please select at least one delivery note to create a payment receipt');
-      return;
-    }
     setModalError('');
     setStep(3);
   };
 
   const handleSave = async () => {
-    if (checkedIds.size === 0) { setModalError('Please select delivery notes'); return; }
     if (!amountNum || amountNum <= 0) { setModalError('Please enter the payment amount'); return; }
-    if (amountOverLimit) { setModalError(`Amount exceeds remaining receivable (max ${maxAmount.toFixed(2)}). Please adjust.`); return; }
 
     setSaving(true);
     setModalError('');
@@ -490,7 +484,7 @@ export default function PaymentsPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs text-white">Select delivery notes to settle (at least one required):</p>
+                      <p className="text-xs text-white">Select delivery notes to settle (optional):</p>
                       <div className="space-y-2">
                         {outstanding.map((r) => (
                           <label
@@ -541,10 +535,12 @@ export default function PaymentsPage() {
               {/* Step 3: Payment Details */}
               {step === 3 && (
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
-                    <span className="text-gray-900">Settle limit:</span>
-                    <span className="font-semibold text-gray-900 tabular-nums">{maxAmount.toFixed(2)}</span>
-                  </div>
+                  {checkedIds.size > 0 && (
+                    <div className="rounded-lg bg-surface-2 px-4 py-2 flex justify-between text-sm">
+                      <span className="text-gray-900">Selected DN outstanding:</span>
+                      <span className="font-semibold text-gray-900 tabular-nums">{maxAmount.toFixed(2)}</span>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs text-white mb-1">Payment Date *</label>
@@ -561,20 +557,12 @@ export default function PaymentsPage() {
                     <input
                       type="number"
                       min={0.01}
-                      max={maxAmount}
                       step="0.01"
                       value={amount}
                       onChange={(e) => { setAmount(e.target.value); setModalError(''); }}
-                      placeholder={`Max ${maxAmount.toFixed(2)}`}
-                      className={`w-full bg-gray-700 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none ${
-                        amountOverLimit ? 'border-red-500' : 'border-gray-600 focus:border-accent'
-                      }`}
+                      placeholder="Enter amount"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-accent"
                     />
-                    {amountOverLimit && (
-                      <p className="mt-1 text-xs text-red-400">
-                        ⚠️ Amount exceeds remaining receivable ({maxAmount.toFixed(2)}). Please adjust.
-                      </p>
-                    )}
                   </div>
 
                   <div>
@@ -651,8 +639,7 @@ export default function PaymentsPage() {
                 {step === 2 && (
                   <button
                     onClick={goToStep3}
-                    disabled={checkedIds.size === 0 || outstanding.length === 0}
-                    className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+                    className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
                   >
                     Next →
                   </button>
@@ -660,7 +647,7 @@ export default function PaymentsPage() {
                 {step === 3 && (
                   <button
                     onClick={handleSave}
-                    disabled={saving || !amountNum || amountNum <= 0 || amountOverLimit}
+                    disabled={saving || !amountNum || amountNum <= 0}
                     className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
                   >
                     {saving ? 'Saving...' : 'Save Draft'}
