@@ -838,10 +838,24 @@ function AddMovementModal({
         ]);
 
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
-        setDownlines([
-          { id: userId, displayName: 'Self-use' },
-          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
-        ]);
+
+        let downlineList: { id: string; displayName: string }[];
+        let defaultDownlineId: string;
+        let defaultDownlineName: string;
+        if (currentUser?.role === UserRole.TAIWAN) {
+          const allUsers = await UserService.getAll();
+          downlineList = allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' }));
+          defaultDownlineId = downlineList[0]?.id ?? '';
+          defaultDownlineName = downlineList[0]?.displayName ?? '';
+        } else {
+          downlineList = [
+            { id: userId, displayName: 'Self-use' },
+            ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
+          ];
+          defaultDownlineId = userId;
+          defaultDownlineName = 'Self-use';
+        }
+        setDownlines(downlineList);
 
         // 上游：只顯示直屬上線（parentUserId），若無上線（頂層總經銷商）則固定顯示「台灣」
         let upstreamList: UpstreamOption[] = [];
@@ -866,8 +880,8 @@ function AddMovementModal({
           productName: productList[0]?.name ?? '',
           upstreamId: upstreamList[0]?.id ?? '',
           upstreamName: upstreamList[0]?.displayName ?? '',
-          downlineId: userId,
-          downlineName: 'Self-use',
+          downlineId: defaultDownlineId,
+          downlineName: defaultDownlineName,
           orderRefId: newPONumber,
         }));
       } finally {
@@ -1386,10 +1400,15 @@ function EditMovementModal({
           return;
         }
         setProducts(productList.map((p) => ({ sku: p.sku, name: p.name })));
-        setDownlines([
-          { id: userId, displayName: 'Self-use' },
-          ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
-        ]);
+        if (currentUser?.role === UserRole.TAIWAN) {
+          const allUsers = await UserService.getAll();
+          setDownlines(allUsers.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })));
+        } else {
+          setDownlines([
+            { id: userId, displayName: 'Self-use' },
+            ...children.map((u) => ({ id: u.id ?? u.email ?? '', displayName: u.displayName ?? '' })),
+          ]);
+        }
 
         // 上游：只顯示直屬上線（parentUserId），若無上線（頂層總經銷商）則固定顯示「台灣」
         let upstreamListEdit: UpstreamOption[] = [];
