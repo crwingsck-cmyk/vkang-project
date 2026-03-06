@@ -127,7 +127,6 @@ export default function PaymentsPage() {
   const selectedReceivables = outstanding.filter((r) => checkedIds.has(r.id!));
   const maxAmount = selectedReceivables.reduce((s, r) => s + r.remainingAmount, 0);
   const amountNum = parseFloat(amount) || 0;
-  const amountOverLimit = amountNum > maxAmount;
 
   const goToStep2 = () => {
     if (!selCustomer) { setModalError('Please select a customer'); return; }
